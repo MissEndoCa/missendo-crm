@@ -14,8 +14,10 @@ export default function Settings() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [orgData, setOrgData] = useState({
-    ad_api_key: '',
-    whatsapp_api_key: '',
+    fb_page_access_token: '',
+    fb_ad_account_id: '',
+    wa_phone_number_id: '',
+    wa_access_token: '',
   });
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function Settings() {
     try {
       const { data, error } = await supabase
         .from('organizations')
-        .select('ad_api_key, whatsapp_api_key')
+        .select('fb_page_access_token, fb_ad_account_id, wa_phone_number_id, wa_access_token')
         .eq('id', profile.organization_id)
         .single();
 
@@ -36,8 +38,10 @@ export default function Settings() {
       
       if (data) {
         setOrgData({
-          ad_api_key: data.ad_api_key || '',
-          whatsapp_api_key: data.whatsapp_api_key || '',
+          fb_page_access_token: data.fb_page_access_token || '',
+          fb_ad_account_id: data.fb_ad_account_id || '',
+          wa_phone_number_id: data.wa_phone_number_id || '',
+          wa_access_token: data.wa_access_token || '',
         });
       }
     } catch (error) {
@@ -60,8 +64,10 @@ export default function Settings() {
       const { error } = await supabase
         .from('organizations')
         .update({
-          ad_api_key: orgData.ad_api_key || null,
-          whatsapp_api_key: orgData.whatsapp_api_key || null,
+          fb_page_access_token: orgData.fb_page_access_token || null,
+          fb_ad_account_id: orgData.fb_ad_account_id || null,
+          wa_phone_number_id: orgData.wa_phone_number_id || null,
+          wa_access_token: orgData.wa_access_token || null,
         })
         .eq('id', profile.organization_id);
 
@@ -94,40 +100,51 @@ export default function Settings() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Ad Platform Integration */}
+          {/* Facebook Ads Integration */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
-                Ad Platform API
+                Facebook Ads Lead API
               </CardTitle>
               <CardDescription>
-                Connect your advertising platforms to automatically import leads
+                Connect your Facebook Ad account to automatically import leads
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="ad_api_key">
+                <Label htmlFor="fb_page_access_token">
                   <div className="flex items-center gap-2">
                     <Key className="w-4 h-4" />
-                    API Key
+                    Page Access Token
                   </div>
                 </Label>
                 <Input
-                  id="ad_api_key"
+                  id="fb_page_access_token"
                   type="password"
-                  placeholder="Enter your ad platform API key"
-                  value={orgData.ad_api_key}
-                  onChange={(e) => setOrgData({ ...orgData, ad_api_key: e.target.value })}
+                  placeholder="Enter your Facebook Page Access Token"
+                  value={orgData.fb_page_access_token}
+                  onChange={(e) => setOrgData({ ...orgData, fb_page_access_token: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fb_ad_account_id">
+                  Ad Account ID
+                </Label>
+                <Input
+                  id="fb_ad_account_id"
+                  placeholder="act_123456789"
+                  value={orgData.fb_ad_account_id}
+                  onChange={(e) => setOrgData({ ...orgData, fb_ad_account_id: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Used to automatically fetch leads from Facebook Ads, Google Ads, etc.
+                  Format: act_XXXXXXXXXX (Found in Facebook Ads Manager)
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* WhatsApp Integration */}
+          {/* WhatsApp Business Integration */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -140,21 +157,35 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="whatsapp_api_key">
+                <Label htmlFor="wa_phone_number_id">
+                  Phone Number ID
+                </Label>
+                <Input
+                  id="wa_phone_number_id"
+                  placeholder="Enter your Phone Number ID"
+                  value={orgData.wa_phone_number_id}
+                  onChange={(e) => setOrgData({ ...orgData, wa_phone_number_id: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Found in WhatsApp Business Platform settings
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="wa_access_token">
                   <div className="flex items-center gap-2">
                     <Key className="w-4 h-4" />
-                    API Key
+                    Access Token
                   </div>
                 </Label>
                 <Input
-                  id="whatsapp_api_key"
+                  id="wa_access_token"
                   type="password"
-                  placeholder="Enter your WhatsApp API key"
-                  value={orgData.whatsapp_api_key}
-                  onChange={(e) => setOrgData({ ...orgData, whatsapp_api_key: e.target.value })}
+                  placeholder="Enter your WhatsApp Access Token"
+                  value={orgData.wa_access_token}
+                  onChange={(e) => setOrgData({ ...orgData, wa_access_token: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Send appointment reminders and communicate with patients via WhatsApp
+                  Permanent access token for WhatsApp Business API
                 </p>
               </div>
             </CardContent>

@@ -313,46 +313,52 @@ export type Database = {
       }
       organizations: {
         Row: {
-          ad_api_key: string | null
           address: string | null
           city: string | null
           country: string | null
           created_at: string | null
           email: string | null
+          fb_ad_account_id: string | null
+          fb_page_access_token: string | null
           id: string
           is_active: boolean | null
           name: string
           phone: string | null
           updated_at: string | null
-          whatsapp_api_key: string | null
+          wa_access_token: string | null
+          wa_phone_number_id: string | null
         }
         Insert: {
-          ad_api_key?: string | null
           address?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
           email?: string | null
+          fb_ad_account_id?: string | null
+          fb_page_access_token?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           phone?: string | null
           updated_at?: string | null
-          whatsapp_api_key?: string | null
+          wa_access_token?: string | null
+          wa_phone_number_id?: string | null
         }
         Update: {
-          ad_api_key?: string | null
           address?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
           email?: string | null
+          fb_ad_account_id?: string | null
+          fb_page_access_token?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           phone?: string | null
           updated_at?: string | null
-          whatsapp_api_key?: string | null
+          wa_access_token?: string | null
+          wa_phone_number_id?: string | null
         }
         Relationships: []
       }
