@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Plus, Search, Building2, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import OrganizationUsers from '@/components/OrganizationUsers';
 
 interface Organization {
   id: string;
@@ -342,9 +343,15 @@ export default function Organizations() {
                       {format(new Date(org.created_at), 'MMM dd, yyyy')}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
+                      <div className="flex gap-2">
+                        <OrganizationUsers 
+                          organizationId={org.id} 
+                          organizationName={org.name}
+                        />
+                        <Button variant="ghost" size="sm">
+                          Edit
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
