@@ -22,10 +22,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Search, User, Phone, Mail, Upload, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PatientDetails } from '@/components/PatientDetails';
 
 interface Patient {
   id: string;
@@ -48,6 +50,7 @@ export default function Patients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -63,6 +66,11 @@ export default function Patients() {
     allergies: '',
     notes: '',
     photo_url: '',
+    has_companion: false,
+    companion_first_name: '',
+    companion_last_name: '',
+    companion_phone: '',
+    companion_id_number: '',
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
@@ -162,6 +170,10 @@ export default function Patients() {
         medical_condition: formData.medical_condition || null,
         allergies: formData.allergies || null,
         notes: formData.notes || null,
+        companion_first_name: formData.has_companion ? formData.companion_first_name : null,
+        companion_last_name: formData.has_companion ? formData.companion_last_name : null,
+        companion_phone: formData.has_companion ? formData.companion_phone : null,
+        companion_id_number: formData.has_companion ? formData.companion_id_number : null,
       };
 
       if (selectedPatient) {
@@ -214,6 +226,11 @@ export default function Patients() {
       allergies: '',
       notes: '',
       photo_url: '',
+      has_companion: false,
+      companion_first_name: '',
+      companion_last_name: '',
+      companion_phone: '',
+      companion_id_number: '',
     });
     setPhotoFile(null);
     setPhotoPreview('');
@@ -244,6 +261,11 @@ export default function Patients() {
         allergies: data.allergies || '',
         notes: data.notes || '',
         photo_url: data.photo_url || '',
+        has_companion: data.has_companion || false,
+        companion_first_name: data.companion_first_name || '',
+        companion_last_name: data.companion_last_name || '',
+        companion_phone: data.companion_phone || '',
+        companion_id_number: data.companion_id_number || '',
       });
       setPhotoPreview(data.photo_url || '');
     }
@@ -423,6 +445,61 @@ export default function Patients() {
                   />
                 </div>
 
+                <div className="border-t pt-4 space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="has_companion"
+                      checked={formData.has_companion}
+                      onCheckedChange={(checked) => setFormData({ ...formData, has_companion: checked as boolean })}
+                    />
+                    <Label htmlFor="has_companion" className="font-medium cursor-pointer">
+                      Patient has a companion
+                    </Label>
+                  </div>
+
+                  {formData.has_companion && (
+                    <div className="pl-6 space-y-4 border-l-2 border-primary/20">
+                      <h4 className="font-medium text-sm">Companion Information</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="companion_first_name">First Name</Label>
+                          <Input
+                            id="companion_first_name"
+                            value={formData.companion_first_name}
+                            onChange={(e) => setFormData({ ...formData, companion_first_name: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="companion_last_name">Last Name</Label>
+                          <Input
+                            id="companion_last_name"
+                            value={formData.companion_last_name}
+                            onChange={(e) => setFormData({ ...formData, companion_last_name: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="companion_phone">Phone</Label>
+                          <Input
+                            id="companion_phone"
+                            value={formData.companion_phone}
+                            onChange={(e) => setFormData({ ...formData, companion_phone: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="companion_id_number">ID Number</Label>
+                          <Input
+                            id="companion_id_number"
+                            value={formData.companion_id_number}
+                            onChange={(e) => setFormData({ ...formData, companion_id_number: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancel
@@ -473,8 +550,8 @@ export default function Patients() {
                 </TableRow>
               ) : (
                 filteredPatients.map((patient) => (
-                  <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(patient)}>
-                    <TableCell>
+                  <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell onClick={() => handleEdit(patient)}>
                       <div className="flex items-center gap-2">
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={patient.photo_url || ''} />
@@ -490,7 +567,7 @@ export default function Patients() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={() => handleEdit(patient)}>
                       <div className="space-y-1">
                         {patient.email && (
                           <div className="flex items-center gap-1 text-sm">
@@ -504,19 +581,32 @@ export default function Patients() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell onClick={() => handleEdit(patient)} className="text-sm text-muted-foreground">
                       {patient.date_of_birth ? format(new Date(patient.date_of_birth), 'MMM dd, yyyy') : '-'}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell onClick={() => handleEdit(patient)} className="text-sm">
                       {patient.country || '-'}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell onClick={() => handleEdit(patient)} className="text-sm text-muted-foreground">
                       {format(new Date(patient.created_at), 'MMM dd, yyyy')}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(patient)}>
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPatient(patient);
+                            setShowPatientDetails(true);
+                          }}
+                        >
+                          Details
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -525,6 +615,23 @@ export default function Patients() {
           </Table>
         </div>
       </div>
+
+      {/* Patient Details Dialog */}
+      <Dialog open={showPatientDetails} onOpenChange={setShowPatientDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Patient Details - {selectedPatient?.first_name} {selectedPatient?.last_name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPatient && (
+            <PatientDetails
+              patientId={selectedPatient.id}
+              onClose={() => setShowPatientDetails(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

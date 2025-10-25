@@ -457,6 +457,48 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_documents: {
+        Row: {
+          created_at: string | null
+          document_name: string
+          document_type: string
+          file_path: string
+          file_size: number | null
+          id: string
+          notes: string | null
+          organization_id: string
+          patient_id: string
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_name: string
+          document_type: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          patient_id: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_name?: string
+          document_type?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          patient_id?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       patient_treatments: {
         Row: {
           appointment_id: string | null
@@ -531,6 +573,10 @@ export type Database = {
         Row: {
           address: string | null
           allergies: string | null
+          companion_first_name: string | null
+          companion_id_number: string | null
+          companion_last_name: string | null
+          companion_phone: string | null
           country: string | null
           created_at: string | null
           created_by: string | null
@@ -538,6 +584,7 @@ export type Database = {
           email: string | null
           first_name: string
           gender: string | null
+          has_companion: boolean | null
           id: string
           last_name: string
           lead_id: string | null
@@ -551,6 +598,10 @@ export type Database = {
         Insert: {
           address?: string | null
           allergies?: string | null
+          companion_first_name?: string | null
+          companion_id_number?: string | null
+          companion_last_name?: string | null
+          companion_phone?: string | null
           country?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -558,6 +609,7 @@ export type Database = {
           email?: string | null
           first_name: string
           gender?: string | null
+          has_companion?: boolean | null
           id?: string
           last_name: string
           lead_id?: string | null
@@ -571,6 +623,10 @@ export type Database = {
         Update: {
           address?: string | null
           allergies?: string | null
+          companion_first_name?: string | null
+          companion_id_number?: string | null
+          companion_last_name?: string | null
+          companion_phone?: string | null
           country?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -578,6 +634,7 @@ export type Database = {
           email?: string | null
           first_name?: string
           gender?: string | null
+          has_companion?: boolean | null
           id?: string
           last_name?: string
           lead_id?: string | null
