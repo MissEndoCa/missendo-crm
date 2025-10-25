@@ -11,6 +11,7 @@ import Leads from "./pages/Leads";
 import Patients from "./pages/Patients";
 import Appointments from "./pages/Appointments";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import Organizations from "./pages/Organizations";
 import Treatments from "./pages/Treatments";
 import Transfers from "./pages/Transfers";
@@ -115,6 +116,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />
