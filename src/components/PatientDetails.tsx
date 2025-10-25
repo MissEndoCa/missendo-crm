@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Hotel, Car, FileText, Plus, Upload, Download, Trash2 } from 'lucide-react';
+import { Calendar, Hotel, Car, FileText, Plus, Upload, Download, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -32,6 +32,7 @@ interface Document {
   document_type: string;
   file_path: string;
   created_at: string;
+  notes: string | null;
 }
 
 export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
@@ -194,6 +195,62 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
+  const handleDeleteDocument = async (documentId: string, filePath: string) => {
+    try {
+      const { error: storageError } = await supabase.storage
+        .from('patient-documents')
+        .remove([filePath]);
+
+      if (storageError) throw storageError;
+
+      const { error: dbError } = await supabase
+        .from('patient_documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: 'Success',
+        description: 'Document deleted successfully'
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete document',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Appointment deleted successfully'
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete appointment',
+        variant: 'destructive'
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="appointments" className="w-full">
@@ -297,6 +354,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       <TableHead>Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Notes</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -305,6 +363,18 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                         <TableCell>{format(new Date(apt.appointment_date), 'PPP p')}</TableCell>
                         <TableCell className="capitalize">{apt.status}</TableCell>
                         <TableCell>{apt.notes || '-'}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAppointment(apt.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -363,7 +433,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Notes</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -372,16 +442,25 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     {documents.map(doc => (
                       <TableRow key={doc.id}>
                         <TableCell className="font-medium">{doc.document_name}</TableCell>
-                        <TableCell>{doc.document_type}</TableCell>
+                        <TableCell>{doc.notes || '-'}</TableCell>
                         <TableCell>{format(new Date(doc.created_at), 'PPP')}</TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteDocument(doc.id, doc.file_path)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

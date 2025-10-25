@@ -22,8 +22,11 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'TRY', 'AED'];
 
 interface Transfer {
   id: string;
@@ -226,11 +229,16 @@ export default function Transfers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="currency">Currency</Label>
-                    <Input
-                      id="currency"
-                      value={formData.currency}
-                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    />
+                    <Select value={formData.currency} onValueChange={(value) => setFormData({ ...formData, currency: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map(curr => (
+                          <SelectItem key={curr} value={curr}>{curr}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

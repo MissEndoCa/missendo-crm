@@ -34,6 +34,8 @@ import { Search, DollarSign, TrendingUp, TrendingDown, FileText, Plus, ArrowUpCi
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'TRY', 'AED'];
+
 interface FinancialRecord {
   id: string;
   patient_id: string;
@@ -351,9 +353,9 @@ export default function Accounting() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="TRY">TRY</SelectItem>
+                          {CURRENCIES.map(curr => (
+                            <SelectItem key={curr} value={curr}>{curr}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -442,9 +444,9 @@ export default function Accounting() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="TRY">TRY</SelectItem>
+                          {CURRENCIES.map(curr => (
+                            <SelectItem key={curr} value={curr}>{curr}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
