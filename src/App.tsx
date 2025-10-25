@@ -16,6 +16,7 @@ import Organizations from "./pages/Organizations";
 import Treatments from "./pages/Treatments";
 import Transfers from "./pages/Transfers";
 import Hotels from "./pages/Hotels";
+import Accounting from "./pages/Accounting";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -156,6 +157,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Hotels />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/accounting"
+              element={
+                <ProtectedRoute>
+                  <Accounting />
                 </ProtectedRoute>
               }
             />
