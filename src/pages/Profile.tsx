@@ -8,19 +8,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Upload, Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Upload, Loader2, Lock } from 'lucide-react';
 
 export default function Profile() {
   const { profile, user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     phone: '',
     avatar_url: '',
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   useEffect(() => {
@@ -106,6 +114,70 @@ export default function Profile() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Password must be at least 6 characters long',
+      });
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'New passwords do not match',
+      });
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      // First verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile?.email || '',
+        password: passwordData.currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      // Clear form
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Password changed successfully',
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to change password',
+      });
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -219,6 +291,90 @@ export default function Profile() {
                     </>
                   ) : (
                     'Save Changes'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Password Change Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Update your password. You must enter your current password to make changes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordChange} className="space-y-6">
+              {/* Current Password */}
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <Separator />
+
+              {/* New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  required
+                  autoComplete="new-password"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters long
+                </p>
+              </div>
+
+              {/* Confirm New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div className="flex justify-end gap-4">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => setPasswordData({
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                  })}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={passwordLoading}>
+                  {passwordLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Changing...
+                    </>
+                  ) : (
+                    'Change Password'
                   )}
                 </Button>
               </div>
