@@ -12,6 +12,15 @@ interface DashboardStats {
   upcomingAppointments: number;
   totalRevenue: number;
   monthlyGrowth: number;
+  conversionRate: number;
+  avgTreatmentValue: number;
+}
+
+interface RecentActivity {
+  id: string;
+  type: 'lead' | 'appointment' | 'patient';
+  message: string;
+  time: Date;
 }
 
 export default function Dashboard() {
@@ -23,12 +32,89 @@ export default function Dashboard() {
     upcomingAppointments: 0,
     totalRevenue: 0,
     monthlyGrowth: 0,
+    conversionRate: 0,
+    avgTreatmentValue: 0,
   });
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboardStats();
+    loadRecentActivities();
   }, [profile]);
+
+  const loadRecentActivities = async () => {
+    if (!profile) return;
+
+    try {
+      const organizationFilter = isSuperAdmin 
+        ? {} 
+        : { organization_id: profile.organization_id };
+
+      // Get recent leads (last 5)
+      const { data: recentLeads } = await supabase
+        .from('leads')
+        .select('id, first_name, last_name, created_at')
+        .match(organizationFilter)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Get recent appointments (last 5)
+      const { data: recentAppointments } = await supabase
+        .from('appointments')
+        .select('id, created_at, patients(first_name, last_name)')
+        .match(organizationFilter)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Get recent patients (last 5)
+      const { data: recentPatients } = await supabase
+        .from('patients')
+        .select('id, first_name, last_name, created_at')
+        .match(organizationFilter)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Combine and sort all activities
+      const activities: RecentActivity[] = [];
+
+      recentLeads?.forEach(lead => {
+        activities.push({
+          id: lead.id,
+          type: 'lead',
+          message: `New lead: ${lead.first_name} ${lead.last_name}`,
+          time: new Date(lead.created_at),
+        });
+      });
+
+      recentAppointments?.forEach(apt => {
+        const patientName = apt.patients 
+          ? `${apt.patients.first_name} ${apt.patients.last_name}`
+          : 'Unknown';
+        activities.push({
+          id: apt.id,
+          type: 'appointment',
+          message: `Appointment scheduled for ${patientName}`,
+          time: new Date(apt.created_at),
+        });
+      });
+
+      recentPatients?.forEach(patient => {
+        activities.push({
+          id: patient.id,
+          type: 'patient',
+          message: `New patient: ${patient.first_name} ${patient.last_name}`,
+          time: new Date(patient.created_at),
+        });
+      });
+
+      // Sort by time and take latest 5
+      activities.sort((a, b) => b.time.getTime() - a.time.getTime());
+      setRecentActivities(activities.slice(0, 5));
+    } catch (error) {
+      console.error('Error loading recent activities:', error);
+    }
+  };
 
   const loadDashboardStats = async () => {
     if (!profile) return;
@@ -48,6 +134,11 @@ export default function Dashboard() {
         .from('leads')
         .select('*', { count: 'exact', head: true })
         .match({ ...organizationFilter, status: 'new' });
+
+      const { count: convertedLeads } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .match({ ...organizationFilter, status: 'converted' });
 
       // Get patients count
       const { count: totalPatients } = await supabase
@@ -69,6 +160,37 @@ export default function Dashboard() {
         .match(organizationFilter);
 
       const totalRevenue = financialData?.reduce((sum, record) => sum + Number(record.total_amount), 0) || 0;
+      const avgTreatmentValue = financialData && financialData.length > 0 
+        ? totalRevenue / financialData.length 
+        : 0;
+
+      // Calculate conversion rate
+      const conversionRate = totalLeads && totalLeads > 0
+        ? ((convertedLeads || 0) / totalLeads) * 100
+        : 0;
+
+      // Calculate monthly growth (comparing last 30 days with previous 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+      const { count: recentPatients } = await supabase
+        .from('patients')
+        .select('*', { count: 'exact', head: true })
+        .match(organizationFilter)
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      const { count: previousPatients } = await supabase
+        .from('patients')
+        .select('*', { count: 'exact', head: true })
+        .match(organizationFilter)
+        .gte('created_at', sixtyDaysAgo.toISOString())
+        .lt('created_at', thirtyDaysAgo.toISOString());
+
+      const monthlyGrowth = previousPatients && previousPatients > 0
+        ? (((recentPatients || 0) - previousPatients) / previousPatients) * 100
+        : 0;
 
       setStats({
         totalLeads: totalLeads || 0,
@@ -76,7 +198,9 @@ export default function Dashboard() {
         totalPatients: totalPatients || 0,
         upcomingAppointments: upcomingAppointments || 0,
         totalRevenue,
-        monthlyGrowth: 12.5, // This would be calculated based on historical data
+        monthlyGrowth,
+        conversionRate,
+        avgTreatmentValue,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -113,12 +237,32 @@ export default function Dashboard() {
     {
       title: 'Revenue',
       value: `$${stats.totalRevenue.toLocaleString()}`,
-      subtitle: `+${stats.monthlyGrowth}% this month`,
+      subtitle: `${stats.monthlyGrowth >= 0 ? '+' : ''}${stats.monthlyGrowth.toFixed(1)}% this month`,
       icon: DollarSign,
       color: 'text-success',
       bgColor: 'bg-success/10',
     },
   ];
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'lead': return 'bg-success';
+      case 'appointment': return 'bg-primary';
+      case 'patient': return 'bg-warning';
+      default: return 'bg-muted';
+    }
+  };
+
+  const getTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return `${seconds} seconds ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
+  };
 
   return (
     <Layout>
@@ -164,29 +308,23 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-2 h-2 bg-success rounded-full" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">New lead assigned</p>
-                    <p className="text-xs text-muted-foreground">2 minutes ago</p>
-                  </div>
+              {recentActivities.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No recent activity
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                      <div className={`w-2 h-2 ${getActivityColor(activity.type)} rounded-full`} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{activity.message}</p>
+                        <p className="text-xs text-muted-foreground">{getTimeAgo(activity.time)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-2 h-2 bg-primary rounded-full" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Appointment scheduled</p>
-                    <p className="text-xs text-muted-foreground">1 hour ago</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-2 h-2 bg-warning rounded-full" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Patient check-in completed</p>
-                    <p className="text-xs text-muted-foreground">3 hours ago</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -201,15 +339,21 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm font-medium">Conversion Rate</span>
-                  <span className="text-sm font-bold text-success">24.5%</span>
+                  <span className="text-sm font-bold text-success">
+                    {loading ? '...' : `${stats.conversionRate.toFixed(1)}%`}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm font-medium">Avg. Treatment Value</span>
-                  <span className="text-sm font-bold text-primary">$2,450</span>
+                  <span className="text-sm font-bold text-primary">
+                    {loading ? '...' : `$${stats.avgTreatmentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm font-medium">Patient Satisfaction</span>
-                  <span className="text-sm font-bold text-accent">4.8/5.0</span>
+                  <span className="text-sm font-medium">Monthly Growth</span>
+                  <span className={`text-sm font-bold ${stats.monthlyGrowth >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {loading ? '...' : `${stats.monthlyGrowth >= 0 ? '+' : ''}${stats.monthlyGrowth.toFixed(1)}%`}
+                  </span>
                 </div>
               </div>
             </CardContent>
