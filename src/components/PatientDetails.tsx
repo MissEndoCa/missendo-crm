@@ -254,10 +254,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="appointments" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
         </TabsList>
 
         <TabsContent value="appointments" className="space-y-4">
@@ -471,16 +470,6 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="services">
-          <Card>
-            <CardHeader>
-              <CardTitle>Assigned Services</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Services are assigned through appointments</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
