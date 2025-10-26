@@ -21,10 +21,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Building2, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Search, Building2, CheckCircle, XCircle, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import OrganizationUsers from '@/components/OrganizationUsers';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Organization {
   id: string;
@@ -36,6 +37,10 @@ interface Organization {
   country: string | null;
   is_active: boolean;
   created_at: string;
+  wa_access_token: string | null;
+  wa_phone_number_id: string | null;
+  fb_ad_account_id: string | null;
+  fb_page_access_token: string | null;
 }
 
 export default function Organizations() {
@@ -44,6 +49,7 @@ export default function Organizations() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isApiDialogOpen, setIsApiDialogOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const { toast } = useToast();
 
@@ -55,6 +61,13 @@ export default function Organizations() {
     city: '',
     country: 'Turkey',
     is_active: true,
+  });
+
+  const [apiFormData, setApiFormData] = useState({
+    wa_access_token: '',
+    wa_phone_number_id: '',
+    fb_ad_account_id: '',
+    fb_page_access_token: '',
   });
 
   useEffect(() => {
@@ -151,6 +164,47 @@ export default function Organizations() {
       is_active: org.is_active,
     });
     setIsDialogOpen(true);
+  };
+
+  const handleApiSettings = (org: Organization, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrg(org);
+    setApiFormData({
+      wa_access_token: org.wa_access_token || '',
+      wa_phone_number_id: org.wa_phone_number_id || '',
+      fb_ad_account_id: org.fb_ad_account_id || '',
+      fb_page_access_token: org.fb_page_access_token || '',
+    });
+    setIsApiDialogOpen(true);
+  };
+
+  const handleApiSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOrg) return;
+
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update(apiFormData)
+        .eq('id', selectedOrg.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "API settings updated successfully",
+      });
+
+      setIsApiDialogOpen(false);
+      loadOrganizations();
+    } catch (error) {
+      console.error('Error updating API settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update API settings",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredOrganizations = organizations.filter(org =>
@@ -344,6 +398,14 @@ export default function Organizations() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => handleApiSettings(org, e)}
+                        >
+                          <Settings className="w-4 h-4 mr-1" />
+                          API
+                        </Button>
                         <OrganizationUsers 
                           organizationId={org.id} 
                           organizationName={org.name}
@@ -359,6 +421,77 @@ export default function Organizations() {
             </TableBody>
           </Table>
         </div>
+
+        {/* API Settings Dialog */}
+        <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>API Settings - {selectedOrg?.name}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleApiSubmit} className="space-y-4">
+              <div className="space-y-4">
+                <div className="border-b pb-3">
+                  <h3 className="font-semibold mb-3">WhatsApp Business API</h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="wa_access_token">Access Token</Label>
+                      <Textarea
+                        id="wa_access_token"
+                        value={apiFormData.wa_access_token}
+                        onChange={(e) => setApiFormData({ ...apiFormData, wa_access_token: e.target.value })}
+                        placeholder="Enter WhatsApp Access Token"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wa_phone_number_id">Phone Number ID</Label>
+                      <Input
+                        id="wa_phone_number_id"
+                        value={apiFormData.wa_phone_number_id}
+                        onChange={(e) => setApiFormData({ ...apiFormData, wa_phone_number_id: e.target.value })}
+                        placeholder="Enter Phone Number ID"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Facebook Ads API</h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="fb_ad_account_id">Ad Account ID</Label>
+                      <Input
+                        id="fb_ad_account_id"
+                        value={apiFormData.fb_ad_account_id}
+                        onChange={(e) => setApiFormData({ ...apiFormData, fb_ad_account_id: e.target.value })}
+                        placeholder="act_123456789"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fb_page_access_token">Page Access Token</Label>
+                      <Textarea
+                        id="fb_page_access_token"
+                        value={apiFormData.fb_page_access_token}
+                        onChange={(e) => setApiFormData({ ...apiFormData, fb_page_access_token: e.target.value })}
+                        placeholder="Enter Facebook Page Access Token"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsApiDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Save API Settings
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

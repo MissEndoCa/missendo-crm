@@ -296,6 +296,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          appointment_scheduled_date: string | null
           assigned_by_missendo: boolean | null
           assigned_to: string | null
           contacted_at: string | null
@@ -313,8 +314,11 @@ export type Database = {
           source: string | null
           status: Database["public"]["Enums"]["lead_status"] | null
           updated_at: string | null
+          will_come: boolean | null
+          will_not_come_reason: string | null
         }
         Insert: {
+          appointment_scheduled_date?: string | null
           assigned_by_missendo?: boolean | null
           assigned_to?: string | null
           contacted_at?: string | null
@@ -332,8 +336,11 @@ export type Database = {
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
           updated_at?: string | null
+          will_come?: boolean | null
+          will_not_come_reason?: string | null
         }
         Update: {
+          appointment_scheduled_date?: string | null
           assigned_by_missendo?: boolean | null
           assigned_to?: string | null
           contacted_at?: string | null
@@ -351,6 +358,8 @@ export type Database = {
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
           updated_at?: string | null
+          will_come?: boolean | null
+          will_not_come_reason?: string | null
         }
         Relationships: [
           {
@@ -865,6 +874,8 @@ export type Database = {
         | "appointment_scheduled"
         | "converted"
         | "rejected"
+        | "will_not_come"
+        | "converted_to_patient"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1008,6 +1019,8 @@ export const Constants = {
         "appointment_scheduled",
         "converted",
         "rejected",
+        "will_not_come",
+        "converted_to_patient",
       ],
     },
   },

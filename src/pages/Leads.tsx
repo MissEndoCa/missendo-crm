@@ -44,6 +44,11 @@ interface Lead {
   source: string | null;
   notes: string | null;
   created_at: string;
+  appointment_scheduled_date: string | null;
+  will_come: boolean | null;
+  will_not_come_reason: string | null;
+  organization_id: string;
+  assigned_by_missendo: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -52,12 +57,20 @@ const statusColors: Record<string, string> = {
   no_contact: 'bg-gray-100 text-gray-800',
   appointment_scheduled: 'bg-green-100 text-green-800',
   converted: 'bg-purple-100 text-purple-800',
+  converted_to_patient: 'bg-purple-100 text-purple-800',
   rejected: 'bg-red-100 text-red-800',
+  will_not_come: 'bg-red-100 text-red-800',
 };
+
+interface Organization {
+  id: string;
+  name: string;
+}
 
 export default function Leads() {
   const { profile, isSuperAdmin } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -71,13 +84,35 @@ export default function Leads() {
     phone: '',
     country: '',
     source: '',
-    status: 'new' as const,
+    status: 'new' as string,
     notes: '',
+    appointment_scheduled_date: '',
+    will_come: null as boolean | null,
+    will_not_come_reason: '',
+    organization_id: '',
   });
 
   useEffect(() => {
     loadLeads();
-  }, [profile]);
+    if (isSuperAdmin) {
+      loadOrganizations();
+    }
+  }, [profile, isSuperAdmin]);
+
+  const loadOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (error) {
+      console.error('Error loading organizations:', error);
+    }
+  };
 
   const loadLeads = async () => {
     if (!profile) return;
@@ -118,9 +153,19 @@ export default function Leads() {
     }
 
     try {
-      const leadData = {
-        ...formData,
-        organization_id: profile?.organization_id,
+      const leadData: any = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email || null,
+        phone: formData.phone,
+        country: formData.country || null,
+        source: formData.source || null,
+        status: formData.status,
+        notes: formData.notes || null,
+        appointment_scheduled_date: formData.appointment_scheduled_date || null,
+        will_come: formData.will_come,
+        will_not_come_reason: formData.will_not_come_reason || null,
+        organization_id: isSuperAdmin && formData.organization_id ? formData.organization_id : profile?.organization_id,
         assigned_by_missendo: isSuperAdmin,
         created_by: profile?.id,
       };
@@ -169,8 +214,12 @@ export default function Leads() {
       phone: '',
       country: '',
       source: '',
-      status: 'new',
+      status: 'new' as string,
       notes: '',
+      appointment_scheduled_date: '',
+      will_come: null,
+      will_not_come_reason: '',
+      organization_id: '',
     });
     setSelectedLead(null);
   };
@@ -186,6 +235,10 @@ export default function Leads() {
       source: lead.source || '',
       status: lead.status as any,
       notes: lead.notes || '',
+      appointment_scheduled_date: lead.appointment_scheduled_date ? new Date(lead.appointment_scheduled_date).toISOString().split('T')[0] : '',
+      will_come: lead.will_come,
+      will_not_come_reason: lead.will_not_come_reason || '',
+      organization_id: lead.organization_id || '',
     });
     setIsDialogOpen(true);
   };
@@ -279,6 +332,24 @@ export default function Leads() {
                   </div>
                 </div>
 
+                {isSuperAdmin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="organization_id">Assign to Organization</Label>
+                    <Select value={formData.organization_id} onValueChange={(value) => setFormData({ ...formData, organization_id: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select organization" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {organizations.map((org) => (
+                          <SelectItem key={org.id} value={org.id}>
+                            {org.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
@@ -290,11 +361,60 @@ export default function Leads() {
                       <SelectItem value="contacted">Contacted</SelectItem>
                       <SelectItem value="no_contact">No Contact</SelectItem>
                       <SelectItem value="appointment_scheduled">Appointment Scheduled</SelectItem>
-                      <SelectItem value="converted">Converted</SelectItem>
+                      <SelectItem value="converted_to_patient">Converted to Patient</SelectItem>
+                      <SelectItem value="will_not_come">Will Not Come</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {(formData.status === 'appointment_scheduled' || formData.status === 'converted_to_patient') && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="appointment_scheduled_date">Appointment Date</Label>
+                      <Input
+                        id="appointment_scheduled_date"
+                        type="date"
+                        value={formData.appointment_scheduled_date}
+                        onChange={(e) => setFormData({ ...formData, appointment_scheduled_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Will the patient come?</Label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            checked={formData.will_come === true}
+                            onChange={() => setFormData({ ...formData, will_come: true, will_not_come_reason: '' })}
+                          />
+                          <span>Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            checked={formData.will_come === false}
+                            onChange={() => setFormData({ ...formData, will_come: false })}
+                          />
+                          <span>No</span>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {formData.will_come === false && (
+                  <div className="space-y-2">
+                    <Label htmlFor="will_not_come_reason">Reason for Not Coming</Label>
+                    <Textarea
+                      id="will_not_come_reason"
+                      value={formData.will_not_come_reason}
+                      onChange={(e) => setFormData({ ...formData, will_not_come_reason: e.target.value })}
+                      placeholder="Enter reason why the patient won't come"
+                      rows={3}
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
