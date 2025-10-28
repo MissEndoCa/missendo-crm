@@ -364,7 +364,7 @@ export default function Organizations() {
                 </TableRow>
               ) : (
                 filteredOrganizations.map((org) => (
-                  <TableRow key={org.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(org)}>
+                  <TableRow key={org.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-primary" />
@@ -410,7 +410,14 @@ export default function Organizations() {
                           organizationId={org.id} 
                           organizationName={org.name}
                         />
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(org);
+                          }}
+                        >
                           Edit
                         </Button>
                       </div>
