@@ -44,7 +44,7 @@ interface Organization {
 }
 
 export default function Organizations() {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, loading: authLoading } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -212,6 +212,17 @@ export default function Organizations() {
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
   );
+
+  // Show loading while authentication is being checked
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!isSuperAdmin) {
     return (
