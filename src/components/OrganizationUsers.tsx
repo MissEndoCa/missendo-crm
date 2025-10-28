@@ -46,11 +46,109 @@ interface User {
   roles: string[];
 }
 
+interface PasswordResetDialogProps {
+  user: User;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function PasswordResetDialog({ user, onClose, onSuccess }: PasswordResetDialogProps) {
+  const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(
+        `https://xzcpxatfzgusrxfreeoi.supabase.co/functions/v1/update-user-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            newPassword,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update password');
+      }
+
+      toast({
+        title: "Success",
+        description: `Password updated for ${user.first_name} ${user.last_name}`,
+      });
+
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update password",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Reset Password - {user.first_name} {user.last_name}</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="newPassword">New Password *</Label>
+          <Input
+            id="newPassword"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={6}
+            placeholder="Enter new password (min 6 characters)"
+          />
+          <p className="text-sm text-muted-foreground">
+            The user will be able to login with this new password immediately.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Updating...' : 'Update Password'}
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  );
+}
+
 export default function OrganizationUsers({ organizationId, organizationName }: OrganizationUsersProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
+  const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -196,26 +294,9 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
     }
   };
 
-  const handleResetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `Password reset email sent to ${email}`,
-      });
-    } catch (error: any) {
-      console.error('Error sending reset email:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send password reset email",
-        variant: "destructive",
-      });
-    }
+  const handleResetPasswordClick = (user: User, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedUserForReset(user);
   };
 
   return (
@@ -389,7 +470,7 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleResetPassword(user.email)}
+                            onClick={(e) => handleResetPasswordClick(user, e)}
                           >
                             <KeyRound className="w-3 h-3 mr-2" />
                             Reset Password
@@ -403,6 +484,17 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
             </div>
           </div>
         </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={!!selectedUserForReset} onOpenChange={() => setSelectedUserForReset(null)}>
+        {selectedUserForReset && (
+          <PasswordResetDialog
+            user={selectedUserForReset}
+            onClose={() => setSelectedUserForReset(null)}
+            onSuccess={loadUsers}
+          />
+        )}
       </Dialog>
     </>
   );
