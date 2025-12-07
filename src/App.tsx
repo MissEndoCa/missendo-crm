@@ -14,6 +14,7 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Organizations from "./pages/Organizations";
 import Treatments from "./pages/Treatments";
+import PatientTreatments from "./pages/PatientTreatments";
 import Transfers from "./pages/Transfers";
 import Hotels from "./pages/Hotels";
 import Accounting from "./pages/Accounting";
@@ -141,6 +142,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Treatments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-treatments"
+              element={
+                <ProtectedRoute>
+                  <PatientTreatments />
                 </ProtectedRoute>
               }
             />

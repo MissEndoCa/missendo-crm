@@ -24,6 +24,7 @@ import {
   Car,
   Hotel,
   DollarSign,
+  FileText,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -119,6 +120,17 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <Stethoscope className="w-5 h-5" />
                 <span className="font-medium">Treatments</span>
+              </Link>
+              <Link
+                to="/patient-treatments"
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  location.pathname === '/patient-treatments'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                <span className="font-medium">Patient Treatments</span>
               </Link>
               <Link
                 to="/transfers"

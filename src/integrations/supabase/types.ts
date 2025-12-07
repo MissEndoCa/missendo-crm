@@ -521,7 +521,9 @@ export type Database = {
           patient_id: string
           performed_at: string | null
           price: number
+          treatment_date: string | null
           treatment_id: string
+          treatment_plan_pdf: string | null
           updated_at: string | null
         }
         Insert: {
@@ -536,7 +538,9 @@ export type Database = {
           patient_id: string
           performed_at?: string | null
           price: number
+          treatment_date?: string | null
           treatment_id: string
+          treatment_plan_pdf?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -551,7 +555,9 @@ export type Database = {
           patient_id?: string
           performed_at?: string | null
           price?: number
+          treatment_date?: string | null
           treatment_id?: string
+          treatment_plan_pdf?: string | null
           updated_at?: string | null
         }
         Relationships: [
