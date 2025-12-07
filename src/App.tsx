@@ -17,6 +17,7 @@ import Treatments from "./pages/Treatments";
 import PatientTreatments from "./pages/PatientTreatments";
 import Transfers from "./pages/Transfers";
 import Hotels from "./pages/Hotels";
+import PatientHotels from "./pages/PatientHotels";
 import Accounting from "./pages/Accounting";
 import NotFound from "./pages/NotFound";
 
@@ -166,6 +167,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Hotels />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-hotels"
+              element={
+                <ProtectedRoute>
+                  <PatientHotels />
                 </ProtectedRoute>
               }
             />

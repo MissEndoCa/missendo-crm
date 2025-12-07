@@ -17,6 +17,8 @@ export type Database = {
       appointments: {
         Row: {
           appointment_date: string
+          check_in_date: string | null
+          check_out_date: string | null
           created_at: string | null
           created_by: string | null
           duration_minutes: number | null
@@ -35,6 +37,8 @@ export type Database = {
         }
         Insert: {
           appointment_date: string
+          check_in_date?: string | null
+          check_out_date?: string | null
           created_at?: string | null
           created_by?: string | null
           duration_minutes?: number | null
@@ -53,6 +57,8 @@ export type Database = {
         }
         Update: {
           appointment_date?: string
+          check_in_date?: string | null
+          check_out_date?: string | null
           created_at?: string | null
           created_by?: string | null
           duration_minutes?: number | null
