@@ -20,14 +20,35 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, User, Phone, Mail, Upload, X } from 'lucide-react';
+import { Plus, Search, User, Phone, Mail, Upload, X, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PatientDetails } from '@/components/PatientDetails';
+
+type ClinicCategory = 'hair' | 'dental' | 'aesthetic';
+
+interface PartnerClinic {
+  id: string;
+  name: string;
+  category: ClinicCategory;
+}
+
+const categoryLabels: Record<ClinicCategory, string> = {
+  hair: 'Saç',
+  dental: 'Diş',
+  aesthetic: 'Estetik',
+};
 
 interface Patient {
   id: string;
@@ -40,12 +61,15 @@ interface Patient {
   country: string | null;
   medical_condition: string | null;
   photo_url: string | null;
+  partner_clinic_id: string | null;
   created_at: string;
+  partner_clinic?: PartnerClinic | null;
 }
 
 export default function Patients() {
   const { profile, isSuperAdmin } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [partnerClinics, setPartnerClinics] = useState<PartnerClinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -66,6 +90,7 @@ export default function Patients() {
     allergies: '',
     notes: '',
     photo_url: '',
+    partner_clinic_id: '',
     has_companion: false,
     companion_first_name: '',
     companion_last_name: '',
@@ -77,13 +102,42 @@ export default function Patients() {
 
   useEffect(() => {
     loadPatients();
+    loadPartnerClinics();
   }, [profile]);
+
+  const loadPartnerClinics = async () => {
+    if (!profile) return;
+
+    try {
+      let query = supabase
+        .from('partner_clinics')
+        .select('id, name, category')
+        .eq('is_active', true)
+        .order('name');
+
+      if (!isSuperAdmin && profile.organization_id) {
+        query = query.eq('organization_id', profile.organization_id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setPartnerClinics(data || []);
+    } catch (error) {
+      console.error('Error loading partner clinics:', error);
+    }
+  };
 
   const loadPatients = async () => {
     if (!profile) return;
 
     try {
-      let query = supabase.from('patients').select('*').order('created_at', { ascending: false });
+      let query = supabase
+        .from('patients')
+        .select(`
+          *,
+          partner_clinic:partner_clinics(id, name, category)
+        `)
+        .order('created_at', { ascending: false });
 
       if (!isSuperAdmin && profile.organization_id) {
         query = query.eq('organization_id', profile.organization_id);
@@ -170,6 +224,7 @@ export default function Patients() {
         medical_condition: formData.medical_condition || null,
         allergies: formData.allergies || null,
         notes: formData.notes || null,
+        partner_clinic_id: formData.partner_clinic_id || null,
         companion_first_name: formData.has_companion ? formData.companion_first_name : null,
         companion_last_name: formData.has_companion ? formData.companion_last_name : null,
         companion_phone: formData.has_companion ? formData.companion_phone : null,
@@ -226,6 +281,7 @@ export default function Patients() {
       allergies: '',
       notes: '',
       photo_url: '',
+      partner_clinic_id: '',
       has_companion: false,
       companion_first_name: '',
       companion_last_name: '',
@@ -261,6 +317,7 @@ export default function Patients() {
         allergies: data.allergies || '',
         notes: data.notes || '',
         photo_url: data.photo_url || '',
+        partner_clinic_id: data.partner_clinic_id || '',
         has_companion: data.has_companion || false,
         companion_first_name: data.companion_first_name || '',
         companion_last_name: data.companion_last_name || '',
@@ -403,6 +460,31 @@ export default function Patients() {
                       onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="partner_clinic">Partner Klinik</Label>
+                  <Select
+                    value={formData.partner_clinic_id}
+                    onValueChange={(value) => setFormData({ ...formData, partner_clinic_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Klinik seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {partnerClinics.map((clinic) => (
+                        <SelectItem key={clinic.id} value={clinic.id}>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4" />
+                            <span>{clinic.name}</span>
+                            <Badge variant="outline" className="ml-1 text-xs">
+                              {categoryLabels[clinic.category]}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

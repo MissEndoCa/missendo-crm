@@ -472,6 +472,48 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_clinics: {
+        Row: {
+          address: string | null
+          category: Database["public"]["Enums"]["clinic_category"]
+          created_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          category: Database["public"]["Enums"]["clinic_category"]
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          category?: Database["public"]["Enums"]["clinic_category"]
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       patient_documents: {
         Row: {
           created_at: string | null
@@ -612,6 +654,7 @@ export type Database = {
           medical_condition: string | null
           notes: string | null
           organization_id: string
+          partner_clinic_id: string | null
           phone: string
           photo_url: string | null
           updated_at: string | null
@@ -637,6 +680,7 @@ export type Database = {
           medical_condition?: string | null
           notes?: string | null
           organization_id: string
+          partner_clinic_id?: string | null
           phone: string
           photo_url?: string | null
           updated_at?: string | null
@@ -662,6 +706,7 @@ export type Database = {
           medical_condition?: string | null
           notes?: string | null
           organization_id?: string
+          partner_clinic_id?: string | null
           phone?: string
           photo_url?: string | null
           updated_at?: string | null
@@ -679,6 +724,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_partner_clinic_id_fkey"
+            columns: ["partner_clinic_id"]
+            isOneToOne: false
+            referencedRelation: "partner_clinics"
             referencedColumns: ["id"]
           },
         ]
@@ -878,6 +930,7 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+      clinic_category: "hair" | "dental" | "aesthetic"
       discount_type: "percentage" | "fixed_amount"
       lead_status:
         | "new"
@@ -1023,6 +1076,7 @@ export const Constants = {
         "cancelled",
         "no_show",
       ],
+      clinic_category: ["hair", "dental", "aesthetic"],
       discount_type: ["percentage", "fixed_amount"],
       lead_status: [
         "new",
