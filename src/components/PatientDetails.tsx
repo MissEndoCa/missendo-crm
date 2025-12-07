@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -74,7 +75,25 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const [notes, setNotes] = useState<PatientNote[]>([]);
   const [payments, setPayments] = useState<PatientPayment[]>([]);
   const [patientTransfers, setPatientTransfers] = useState<PatientTransfer[]>([]);
-  const [patientInfo, setPatientInfo] = useState<{ total_cost: number; total_paid: number } | null>(null);
+  const [patientInfo, setPatientInfo] = useState<{ 
+    total_cost: number; 
+    total_paid: number;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+    date_of_birth?: string;
+    gender?: string;
+    country?: string;
+    address?: string;
+    medical_condition?: string;
+    allergies?: string;
+    notes?: string;
+    has_companion?: boolean;
+    companion_first_name?: string;
+    companion_last_name?: string;
+    companion_phone?: string;
+  } | null>(null);
   const [hotels, setHotels] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
   const [treatments, setTreatments] = useState<any[]>([]);
@@ -125,7 +144,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         supabase.from('patient_notes').select('*').eq('patient_id', patientId).order('note_date', { ascending: false }),
         supabase.from('patient_payments').select('*').eq('patient_id', patientId).order('payment_date', { ascending: false }),
         supabase.from('patient_transfers').select('*').eq('patient_id', patientId).order('transfer_datetime', { ascending: false }),
-        supabase.from('patients').select('total_cost, total_paid').eq('id', patientId).maybeSingle(),
+        supabase.from('patients').select('total_cost, total_paid, first_name, last_name, email, phone, date_of_birth, gender, country, address, medical_condition, allergies, notes, has_companion, companion_first_name, companion_last_name, companion_phone').eq('id', patientId).maybeSingle(),
         supabase.from('hotels').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('transfer_services').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id)
@@ -241,11 +260,16 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
       if (error) throw error;
 
-      setViewingDocument({
-        url: data.signedUrl,
-        name: fileName,
-        type: fileType
-      });
+      // For PDFs, open in new tab to avoid Chrome blocking
+      if (fileType.includes('pdf')) {
+        window.open(data.signedUrl, '_blank');
+      } else {
+        setViewingDocument({
+          url: data.signedUrl,
+          name: fileName,
+          type: fileType
+        });
+      }
     } catch (error) {
       console.error('Error viewing document:', error);
       toast({
@@ -547,6 +571,76 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
   return (
     <div className="space-y-6">
+      {/* Patient Profile Summary Card */}
+      {patientInfo && (
+        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Basic Info */}
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  <span className="text-lg font-semibold">{patientInfo.first_name} {patientInfo.last_name}</span>
+                  {patientInfo.gender && (
+                    <Badge variant="secondary">{patientInfo.gender}</Badge>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  {patientInfo.phone && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="w-4 h-4" />
+                      <span>{patientInfo.phone}</span>
+                    </div>
+                  )}
+                  {patientInfo.email && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="w-4 h-4" />
+                      <span>{patientInfo.email}</span>
+                    </div>
+                  )}
+                  {patientInfo.country && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span>{patientInfo.country} {patientInfo.address && `- ${patientInfo.address}`}</span>
+                    </div>
+                  )}
+                  {patientInfo.date_of_birth && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      <span>{format(new Date(patientInfo.date_of_birth), 'dd.MM.yyyy')}</span>
+                    </div>
+                  )}
+                </div>
+
+                {patientInfo.medical_condition && (
+                  <div className="mt-2 p-2 bg-background/50 rounded text-sm">
+                    <span className="font-medium">Tıbbi Durum:</span> {patientInfo.medical_condition}
+                  </div>
+                )}
+                
+                {patientInfo.allergies && (
+                  <div className="p-2 bg-destructive/10 text-destructive rounded text-sm">
+                    <span className="font-medium">Alerjiler:</span> {patientInfo.allergies}
+                  </div>
+                )}
+              </div>
+
+              {/* Companion Info */}
+              {patientInfo.has_companion && patientInfo.companion_first_name && (
+                <div className="md:w-64 p-3 bg-background/50 rounded-lg">
+                  <h4 className="font-medium text-sm mb-2">Refakatçi Bilgileri</h4>
+                  <p className="text-sm">{patientInfo.companion_first_name} {patientInfo.companion_last_name}</p>
+                  {patientInfo.companion_phone && (
+                    <p className="text-xs text-muted-foreground">{patientInfo.companion_phone}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="notes" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="notes">Notlar</TabsTrigger>
@@ -1114,20 +1208,15 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
       </Tabs>
 
-      {/* Document Viewer Dialog */}
+      {/* Document Viewer Dialog - for images only, PDFs open in new tab */}
       <Dialog open={!!viewingDocument} onOpenChange={() => setViewingDocument(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>{viewingDocument?.name}</DialogTitle>
+            <DialogDescription>Belge önizleme</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-auto">
-            {viewingDocument?.type.includes('pdf') ? (
-              <iframe
-                src={viewingDocument.url}
-                className="w-full h-[70vh] border-0"
-                title={viewingDocument.name}
-              />
-            ) : viewingDocument?.type.includes('image') ? (
+            {viewingDocument?.type.includes('image') ? (
               <img
                 src={viewingDocument.url}
                 alt={viewingDocument.name}
@@ -1136,9 +1225,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">Bu dosya türü önizlenemiyor.</p>
-                <Button onClick={() => viewingDocument && handleDownloadDocument(viewingDocument.url, viewingDocument.name)}>
-                  <Download className="w-4 h-4 mr-2" />
-                  İndir
+                <Button onClick={() => viewingDocument && window.open(viewingDocument.url, '_blank')}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Yeni Sekmede Aç
                 </Button>
               </div>
             )}
