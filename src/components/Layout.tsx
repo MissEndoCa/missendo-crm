@@ -24,7 +24,7 @@ import {
   Car,
   Hotel,
   DollarSign,
-  FileText,
+  Handshake,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -110,6 +110,17 @@ export default function Layout({ children }: LayoutProps) {
               <p className="px-4 text-xs font-semibold text-sidebar-foreground/50 uppercase mb-2">
                 Services
               </p>
+              <Link
+                to="/partner-clinics"
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  location.pathname === '/partner-clinics'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                }`}
+              >
+                <Handshake className="w-5 h-5" />
+                <span className="font-medium">Partner Klinikler</span>
+              </Link>
               <Link
                 to="/treatments"
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
