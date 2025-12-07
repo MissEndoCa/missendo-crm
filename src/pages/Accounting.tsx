@@ -30,7 +30,17 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, DollarSign, TrendingUp, TrendingDown, FileText, Plus, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Search, DollarSign, TrendingUp, TrendingDown, FileText, Plus, ArrowUpCircle, ArrowDownCircle, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -105,6 +115,19 @@ export default function Accounting() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isIncomeDialogOpen, setIsIncomeDialogOpen] = useState(false);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<IncomeExpense | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  
+  const [editForm, setEditForm] = useState({
+    category: '',
+    amount: '',
+    currency: 'USD',
+    description: '',
+    reference_type: '',
+    notes: ''
+  });
   
   const [incomeForm, setIncomeForm] = useState({
     category: '',
@@ -254,6 +277,90 @@ export default function Accounting() {
       toast({
         title: 'Error',
         description: 'Failed to add expense',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditClick = (item: IncomeExpense) => {
+    setEditingItem(item);
+    setEditForm({
+      category: item.category,
+      amount: String(item.amount),
+      currency: item.currency,
+      description: item.description || '',
+      reference_type: item.reference_type || '',
+      notes: item.notes || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    try {
+      const { error } = await supabase
+        .from('income_expenses')
+        .update({
+          category: editForm.category,
+          amount: parseFloat(editForm.amount),
+          currency: editForm.currency,
+          description: editForm.description || null,
+          reference_type: editForm.reference_type || null,
+          notes: editForm.notes || null
+        })
+        .eq('id', editingItem.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Transaction updated successfully',
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingItem(null);
+      fetchIncomeExpenses();
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update transaction',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setDeletingItemId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingItemId) return;
+
+    try {
+      const { error } = await supabase
+        .from('income_expenses')
+        .delete()
+        .eq('id', deletingItemId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Transaction deleted successfully',
+      });
+
+      setDeleteDialogOpen(false);
+      setDeletingItemId(null);
+      fetchIncomeExpenses();
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete transaction',
         variant: 'destructive',
       });
     }
@@ -575,6 +682,7 @@ export default function Accounting() {
                       <TableHead>Reference</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -597,6 +705,25 @@ export default function Accounting() {
                         </TableCell>
                         <TableCell>
                           {new Date(item.date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(item.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -707,6 +834,110 @@ export default function Accounting() {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit {editingItem?.type === 'income' ? 'Income' : 'Expense'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateItem} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category *</Label>
+                <Select value={editForm.category} onValueChange={(value) => setEditForm({...editForm, category: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(editingItem?.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-amount">Amount *</Label>
+                  <Input
+                    id="edit-amount"
+                    type="number"
+                    step="0.01"
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-currency">Currency</Label>
+                  <Select value={editForm.currency} onValueChange={(value) => setEditForm({...editForm, currency: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map(curr => (
+                        <SelectItem key={curr} value={curr}>{curr}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Input
+                  id="edit-description"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-reference">Reference Type</Label>
+                <Select value={editForm.reference_type} onValueChange={(value) => setEditForm({...editForm, reference_type: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REFERENCE_TYPES.map(ref => (
+                      <SelectItem key={ref.value} value={ref.value}>{ref.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Update</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this transaction.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
