@@ -22,7 +22,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, User, Phone, Mail, Upload, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Search, User, Phone, Mail, Upload, X, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -40,11 +42,19 @@ interface Patient {
   medical_condition: string | null;
   photo_url: string | null;
   created_at: string;
+  organization_id: string;
+  organizations?: { name: string } | null;
+}
+
+interface Organization {
+  id: string;
+  name: string;
 }
 
 export default function Patients() {
   const { profile, isSuperAdmin } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -70,13 +80,32 @@ export default function Patients() {
     companion_last_name: '',
     companion_phone: '',
     companion_id_number: '',
+    organization_id: '',
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
 
   useEffect(() => {
     loadPatients();
-  }, [profile]);
+    if (isSuperAdmin) {
+      loadOrganizations();
+    }
+  }, [profile, isSuperAdmin]);
+
+  const loadOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (error) {
+      console.error('Error loading organizations:', error);
+    }
+  };
 
   const loadPatients = async () => {
     if (!profile) return;
@@ -84,7 +113,7 @@ export default function Patients() {
     try {
       let query = supabase
         .from('patients')
-        .select('*')
+        .select('*, organizations(name)')
         .order('created_at', { ascending: false });
 
       if (!isSuperAdmin && profile.organization_id) {
@@ -162,7 +191,9 @@ export default function Patients() {
       const patientData = {
         ...formData,
         photo_url: photoUrl || null,
-        organization_id: profile.organization_id,
+        organization_id: isSuperAdmin && formData.organization_id 
+          ? formData.organization_id 
+          : profile.organization_id,
         created_by: profile.id,
         email: formData.email || null,
         date_of_birth: formData.date_of_birth || null,
@@ -233,6 +264,7 @@ export default function Patients() {
       companion_last_name: '',
       companion_phone: '',
       companion_id_number: '',
+      organization_id: profile?.organization_id || '',
     });
     setPhotoFile(null);
     setPhotoPreview('');
@@ -268,6 +300,7 @@ export default function Patients() {
         companion_last_name: data.companion_last_name || '',
         companion_phone: data.companion_phone || '',
         companion_id_number: data.companion_id_number || '',
+        organization_id: data.organization_id || '',
       });
       setPhotoPreview(data.photo_url || '');
     }
@@ -335,6 +368,26 @@ export default function Patients() {
                     </Label>
                   </div>
                 </div>
+
+                {/* Clinic selection for super admins */}
+                {isSuperAdmin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="organization_id">Klinik *</Label>
+                    <Select 
+                      value={formData.organization_id} 
+                      onValueChange={(value) => setFormData({ ...formData, organization_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Klinik seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {organizations.map(org => (
+                          <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -531,6 +584,7 @@ export default function Patients() {
               <TableRow>
                 <TableHead>Patient</TableHead>
                 <TableHead>Contact</TableHead>
+                {isSuperAdmin && <TableHead>Klinik</TableHead>}
                 <TableHead>Birth Date</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead>Registered</TableHead>
@@ -540,13 +594,13 @@ export default function Patients() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8">
                     Loading patients...
                   </TableCell>
                 </TableRow>
               ) : filteredPatients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8 text-muted-foreground">
                     No patients found
                   </TableCell>
                 </TableRow>
@@ -583,6 +637,14 @@ export default function Patients() {
                         </div>
                       </div>
                     </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell onClick={() => handleEdit(patient)}>
+                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                          <Building2 className="w-3 h-3" />
+                          {patient.organizations?.name || '-'}
+                        </Badge>
+                      </TableCell>
+                    )}
                     <TableCell onClick={() => handleEdit(patient)} className="text-sm text-muted-foreground">
                       {patient.date_of_birth ? format(new Date(patient.date_of_birth), 'MMM dd, yyyy') : '-'}
                     </TableCell>
