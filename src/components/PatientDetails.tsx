@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare } from 'lucide-react';
+import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -46,12 +46,35 @@ interface PatientNote {
   created_by: string | null;
 }
 
+interface PatientPayment {
+  id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string | null;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+}
+
+interface PatientTransfer {
+  id: string;
+  clinic_name: string | null;
+  flight_info: string | null;
+  airport_pickup_info: string | null;
+  transfer_datetime: string;
+  notes: string | null;
+  created_at: string;
+}
+
 export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [notes, setNotes] = useState<PatientNote[]>([]);
+  const [payments, setPayments] = useState<PatientPayment[]>([]);
+  const [patientTransfers, setPatientTransfers] = useState<PatientTransfer[]>([]);
+  const [patientInfo, setPatientInfo] = useState<{ total_cost: number; total_paid: number } | null>(null);
   const [hotels, setHotels] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
   const [treatments, setTreatments] = useState<any[]>([]);
@@ -74,6 +97,21 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     content: ''
   });
 
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    payment_method: '',
+    notes: ''
+  });
+
+  const [transferForm, setTransferForm] = useState({
+    clinic_name: '',
+    flight_info: '',
+    airport_pickup_info: '',
+    transfer_datetime: '',
+    notes: ''
+  });
+
   useEffect(() => {
     loadData();
   }, [patientId]);
@@ -81,10 +119,13 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsRes, documentsRes, notesRes, hotelsRes, transfersRes, treatmentsRes] = await Promise.all([
+      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes] = await Promise.all([
         supabase.from('appointments').select('*, treatments(name), hotels(hotel_name), transfer_services(company_name)').eq('patient_id', patientId),
         supabase.from('patient_documents').select('*').eq('patient_id', patientId),
         supabase.from('patient_notes').select('*').eq('patient_id', patientId).order('note_date', { ascending: false }),
+        supabase.from('patient_payments').select('*').eq('patient_id', patientId).order('payment_date', { ascending: false }),
+        supabase.from('patient_transfers').select('*').eq('patient_id', patientId).order('transfer_datetime', { ascending: false }),
+        supabase.from('patients').select('total_cost, total_paid').eq('id', patientId).maybeSingle(),
         supabase.from('hotels').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('transfer_services').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id)
@@ -93,6 +134,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       setAppointments(appointmentsRes.data || []);
       setDocuments(documentsRes.data || []);
       setNotes(notesRes.data || []);
+      setPayments(paymentsRes.data || []);
+      setPatientTransfers(patientTransfersRes.data || []);
+      setPatientInfo(patientRes.data);
       setHotels(hotelsRes.data || []);
       setTransfers(transfersRes.data || []);
       setTreatments(treatmentsRes.data || []);
@@ -355,11 +399,159 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
+  const handleAddPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentForm.amount) return;
+
+    try {
+      const paymentAmount = parseFloat(paymentForm.amount);
+      
+      const { error } = await supabase.from('patient_payments').insert([{
+        patient_id: patientId,
+        organization_id: profile?.organization_id,
+        amount: paymentAmount,
+        payment_date: paymentForm.payment_date,
+        payment_method: paymentForm.payment_method || null,
+        notes: paymentForm.notes || null,
+        created_by: profile?.id
+      }]);
+
+      if (error) throw error;
+
+      // Update total_paid in patients table
+      const newTotalPaid = (patientInfo?.total_paid || 0) + paymentAmount;
+      await supabase.from('patients').update({ total_paid: newTotalPaid }).eq('id', patientId);
+
+      toast({
+        title: 'Başarılı',
+        description: 'Ödeme kaydedildi'
+      });
+
+      setPaymentForm({
+        amount: '',
+        payment_date: new Date().toISOString().split('T')[0],
+        payment_method: '',
+        notes: ''
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error adding payment:', error);
+      toast({
+        title: 'Hata',
+        description: 'Ödeme kaydedilemedi',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string, amount: number) => {
+    try {
+      const { error } = await supabase
+        .from('patient_payments')
+        .delete()
+        .eq('id', paymentId);
+
+      if (error) throw error;
+
+      // Update total_paid in patients table
+      const newTotalPaid = Math.max(0, (patientInfo?.total_paid || 0) - amount);
+      await supabase.from('patients').update({ total_paid: newTotalPaid }).eq('id', patientId);
+
+      toast({
+        title: 'Başarılı',
+        description: 'Ödeme silindi'
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      toast({
+        title: 'Hata',
+        description: 'Ödeme silinemedi',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleAddTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferForm.transfer_datetime) return;
+
+    try {
+      const { error } = await supabase.from('patient_transfers').insert([{
+        patient_id: patientId,
+        organization_id: profile?.organization_id,
+        clinic_name: transferForm.clinic_name || null,
+        flight_info: transferForm.flight_info || null,
+        airport_pickup_info: transferForm.airport_pickup_info || null,
+        transfer_datetime: transferForm.transfer_datetime,
+        notes: transferForm.notes || null,
+        created_by: profile?.id
+      }]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Başarılı',
+        description: 'Transfer bilgisi eklendi'
+      });
+
+      setTransferForm({
+        clinic_name: '',
+        flight_info: '',
+        airport_pickup_info: '',
+        transfer_datetime: '',
+        notes: ''
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error adding transfer:', error);
+      toast({
+        title: 'Hata',
+        description: 'Transfer bilgisi eklenemedi',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteTransfer = async (transferId: string) => {
+    try {
+      const { error } = await supabase
+        .from('patient_transfers')
+        .delete()
+        .eq('id', transferId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Başarılı',
+        description: 'Transfer bilgisi silindi'
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error deleting transfer:', error);
+      toast({
+        title: 'Hata',
+        description: 'Transfer bilgisi silinemedi',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const totalCost = patientInfo?.total_cost || 0;
+  const totalPaid = patientInfo?.total_paid || 0;
+  const remainingDebt = totalCost - totalPaid;
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="notes" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="notes">Notlar</TabsTrigger>
+          <TabsTrigger value="payments">Ödemeler</TabsTrigger>
+          <TabsTrigger value="transfers">Transferler</TabsTrigger>
           <TabsTrigger value="appointments">Randevular</TabsTrigger>
           <TabsTrigger value="documents">Belgeler</TabsTrigger>
         </TabsList>
@@ -440,6 +632,257 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     </div>
                   ))}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-4">
+          {/* Payment Summary Card */}
+          <Card className="border-l-4 border-l-primary">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Toplam Tutar</p>
+                  <p className="text-2xl font-bold text-foreground">${totalCost.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ödenen</p>
+                  <p className="text-2xl font-bold text-green-600">${totalPaid.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Kalan Borç</p>
+                  <p className={`text-2xl font-bold ${remainingDebt > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    ${remainingDebt.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Yeni Ödeme Ekle
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddPayment} className="space-y-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_amount">Tutar *</Label>
+                    <Input
+                      id="payment_amount"
+                      type="number"
+                      step="0.01"
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})}
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_date">Tarih *</Label>
+                    <Input
+                      id="payment_date"
+                      type="date"
+                      value={paymentForm.payment_date}
+                      onChange={(e) => setPaymentForm({...paymentForm, payment_date: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_method">Ödeme Yöntemi</Label>
+                    <Select value={paymentForm.payment_method} onValueChange={(value) => setPaymentForm({...paymentForm, payment_method: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seçiniz" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Nakit</SelectItem>
+                        <SelectItem value="credit_card">Kredi Kartı</SelectItem>
+                        <SelectItem value="bank_transfer">Banka Transferi</SelectItem>
+                        <SelectItem value="other">Diğer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_notes">Not</Label>
+                    <Input
+                      id="payment_notes"
+                      value={paymentForm.notes}
+                      onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
+                      placeholder="Açıklama..."
+                    />
+                  </div>
+                </div>
+                <Button type="submit">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Ödeme Ekle
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ödeme Geçmişi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {payments.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">Henüz ödeme kaydı yok</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tarih</TableHead>
+                      <TableHead>Tutar</TableHead>
+                      <TableHead>Yöntem</TableHead>
+                      <TableHead>Not</TableHead>
+                      <TableHead>İşlem</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map(payment => (
+                      <TableRow key={payment.id}>
+                        <TableCell>{format(new Date(payment.payment_date), 'dd.MM.yyyy')}</TableCell>
+                        <TableCell className="font-semibold text-green-600">
+                          ${payment.amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          {payment.payment_method === 'cash' ? 'Nakit' :
+                           payment.payment_method === 'credit_card' ? 'Kredi Kartı' :
+                           payment.payment_method === 'bank_transfer' ? 'Banka Transferi' :
+                           payment.payment_method || '-'}
+                        </TableCell>
+                        <TableCell>{payment.notes || '-'}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeletePayment(payment.id, payment.amount)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="transfers" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plane className="h-5 w-5" />
+                Transfer Bilgisi Ekle
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddTransfer} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="clinic_name">Klinik Adı</Label>
+                    <Input
+                      id="clinic_name"
+                      value={transferForm.clinic_name}
+                      onChange={(e) => setTransferForm({...transferForm, clinic_name: e.target.value})}
+                      placeholder="Örn: ABC Dental"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="flight_info">Uçuş Bilgisi</Label>
+                    <Input
+                      id="flight_info"
+                      value={transferForm.flight_info}
+                      onChange={(e) => setTransferForm({...transferForm, flight_info: e.target.value})}
+                      placeholder="Örn: TK555 LAX"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="airport_pickup_info">Havalimanı Karşılama</Label>
+                    <Input
+                      id="airport_pickup_info"
+                      value={transferForm.airport_pickup_info}
+                      onChange={(e) => setTransferForm({...transferForm, airport_pickup_info: e.target.value})}
+                      placeholder="Örn: İstanbul Havalimanı Kapı 5"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="transfer_datetime">Tarih & Saat *</Label>
+                    <Input
+                      id="transfer_datetime"
+                      type="datetime-local"
+                      value={transferForm.transfer_datetime}
+                      onChange={(e) => setTransferForm({...transferForm, transfer_datetime: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transfer_notes">Not</Label>
+                  <Textarea
+                    id="transfer_notes"
+                    value={transferForm.notes}
+                    onChange={(e) => setTransferForm({...transferForm, notes: e.target.value})}
+                    rows={2}
+                    placeholder="Ek bilgiler..."
+                  />
+                </div>
+                <Button type="submit">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Transfer Ekle
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Transfer Geçmişi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {patientTransfers.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">Henüz transfer kaydı yok</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tarih & Saat</TableHead>
+                      <TableHead>Klinik</TableHead>
+                      <TableHead>Uçuş</TableHead>
+                      <TableHead>Karşılama</TableHead>
+                      <TableHead>Not</TableHead>
+                      <TableHead>İşlem</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {patientTransfers.map(transfer => (
+                      <TableRow key={transfer.id}>
+                        <TableCell>{format(new Date(transfer.transfer_datetime), 'dd.MM.yyyy HH:mm')}</TableCell>
+                        <TableCell>{transfer.clinic_name || '-'}</TableCell>
+                        <TableCell className="font-mono">{transfer.flight_info || '-'}</TableCell>
+                        <TableCell>{transfer.airport_pickup_info || '-'}</TableCell>
+                        <TableCell>{transfer.notes || '-'}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteTransfer(transfer.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>

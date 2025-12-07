@@ -558,6 +558,120 @@ export type Database = {
           },
         ]
       }
+      patient_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          patient_id: string
+          payment_date: string
+          payment_method: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          patient_id: string
+          payment_date?: string
+          payment_method?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          patient_id?: string
+          payment_date?: string
+          payment_method?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_payments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_transfers: {
+        Row: {
+          airport_pickup_info: string | null
+          clinic_name: string | null
+          created_at: string | null
+          created_by: string | null
+          flight_info: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          patient_id: string
+          transfer_datetime: string
+          updated_at: string | null
+        }
+        Insert: {
+          airport_pickup_info?: string | null
+          clinic_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          flight_info?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          patient_id: string
+          transfer_datetime: string
+          updated_at?: string | null
+        }
+        Update: {
+          airport_pickup_info?: string | null
+          clinic_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          flight_info?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          patient_id?: string
+          transfer_datetime?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_transfers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_transfers_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_treatments: {
         Row: {
           appointment_id: string | null
@@ -658,6 +772,8 @@ export type Database = {
           organization_id: string
           phone: string
           photo_url: string | null
+          total_cost: number | null
+          total_paid: number | null
           updated_at: string | null
         }
         Insert: {
@@ -683,6 +799,8 @@ export type Database = {
           organization_id: string
           phone: string
           photo_url?: string | null
+          total_cost?: number | null
+          total_paid?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -708,6 +826,8 @@ export type Database = {
           organization_id?: string
           phone?: string
           photo_url?: string | null
+          total_cost?: number | null
+          total_paid?: number | null
           updated_at?: string | null
         }
         Relationships: [
