@@ -254,27 +254,26 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
   const handleViewDocument = async (filePath: string, fileName: string, fileType: string) => {
     try {
+      // Download file as blob to avoid Chrome blocking cross-origin URLs
       const { data, error } = await supabase.storage
         .from('patient-documents')
-        .createSignedUrl(filePath, 3600);
+        .download(filePath);
 
       if (error) throw error;
 
-      // For PDFs, open in new tab to avoid Chrome blocking
-      if (fileType.includes('pdf')) {
-        window.open(data.signedUrl, '_blank');
-      } else {
-        setViewingDocument({
-          url: data.signedUrl,
-          name: fileName,
-          type: fileType
-        });
-      }
+      // Create blob URL for viewing
+      const blobUrl = URL.createObjectURL(data);
+      
+      setViewingDocument({
+        url: blobUrl,
+        name: fileName,
+        type: fileType
+      });
     } catch (error) {
       console.error('Error viewing document:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to view document',
+        title: 'Hata',
+        description: 'Belge görüntülenemedi',
         variant: 'destructive'
       });
     }
@@ -573,69 +572,78 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     <div className="space-y-6">
       {/* Patient Profile Summary Card */}
       {patientInfo && (
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* Basic Info */}
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center gap-2">
-                  <User className="w-5 h-5 text-primary" />
-                  <span className="text-lg font-semibold">{patientInfo.first_name} {patientInfo.last_name}</span>
-                  {patientInfo.gender && (
-                    <Badge variant="secondary">{patientInfo.gender}</Badge>
-                  )}
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="py-4">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Left: Basic Info */}
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{patientInfo.first_name} {patientInfo.last_name}</h3>
+                    <div className="flex items-center gap-2">
+                      {patientInfo.gender && (
+                        <Badge variant="outline" className="text-xs">{patientInfo.gender}</Badge>
+                      )}
+                      {patientInfo.date_of_birth && (
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(patientInfo.date_of_birth), 'dd.MM.yyyy')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   {patientInfo.phone && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="w-4 h-4" />
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-muted-foreground" />
                       <span>{patientInfo.phone}</span>
                     </div>
                   )}
                   {patientInfo.email && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="w-4 h-4" />
-                      <span>{patientInfo.email}</span>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span className="truncate">{patientInfo.email}</span>
                     </div>
                   )}
-                  {patientInfo.country && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <MapPin className="w-4 h-4" />
-                      <span>{patientInfo.country} {patientInfo.address && `- ${patientInfo.address}`}</span>
-                    </div>
-                  )}
-                  {patientInfo.date_of_birth && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>{format(new Date(patientInfo.date_of_birth), 'dd.MM.yyyy')}</span>
+                  {(patientInfo.country || patientInfo.address) && (
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="truncate">{[patientInfo.address, patientInfo.country].filter(Boolean).join(', ')}</span>
                     </div>
                   )}
                 </div>
+              </div>
 
+              {/* Right: Medical Info & Companion */}
+              <div className="lg:w-80 space-y-2">
                 {patientInfo.medical_condition && (
-                  <div className="mt-2 p-2 bg-background/50 rounded text-sm">
-                    <span className="font-medium">Tıbbi Durum:</span> {patientInfo.medical_condition}
+                  <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-xs">
+                    <span className="font-medium text-amber-700 dark:text-amber-400">Tıbbi Durum:</span>
+                    <p className="mt-1 text-amber-900 dark:text-amber-200 line-clamp-2">{patientInfo.medical_condition}</p>
                   </div>
                 )}
                 
                 {patientInfo.allergies && (
-                  <div className="p-2 bg-destructive/10 text-destructive rounded text-sm">
-                    <span className="font-medium">Alerjiler:</span> {patientInfo.allergies}
+                  <div className="p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded text-xs">
+                    <span className="font-medium text-red-700 dark:text-red-400">Alerjiler:</span>
+                    <span className="ml-1 text-red-900 dark:text-red-200">{patientInfo.allergies}</span>
+                  </div>
+                )}
+
+                {patientInfo.has_companion && patientInfo.companion_first_name && (
+                  <div className="p-2 bg-muted/50 rounded text-xs">
+                    <span className="font-medium">Refakatçi:</span>
+                    <span className="ml-1">{patientInfo.companion_first_name} {patientInfo.companion_last_name}</span>
+                    {patientInfo.companion_phone && (
+                      <span className="ml-2 text-muted-foreground">({patientInfo.companion_phone})</span>
+                    )}
                   </div>
                 )}
               </div>
-
-              {/* Companion Info */}
-              {patientInfo.has_companion && patientInfo.companion_first_name && (
-                <div className="md:w-64 p-3 bg-background/50 rounded-lg">
-                  <h4 className="font-medium text-sm mb-2">Refakatçi Bilgileri</h4>
-                  <p className="text-sm">{patientInfo.companion_first_name} {patientInfo.companion_last_name}</p>
-                  {patientInfo.companion_phone && (
-                    <p className="text-xs text-muted-foreground">{patientInfo.companion_phone}</p>
-                  )}
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -1208,20 +1216,36 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
       </Tabs>
 
-      {/* Document Viewer Dialog - for images only, PDFs open in new tab */}
-      <Dialog open={!!viewingDocument} onOpenChange={() => setViewingDocument(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+      {/* Document Viewer Dialog - inline PDF viewer using blob URL */}
+      <Dialog open={!!viewingDocument} onOpenChange={() => {
+        if (viewingDocument?.url) {
+          URL.revokeObjectURL(viewingDocument.url);
+        }
+        setViewingDocument(null);
+      }}>
+        <DialogContent className="max-w-5xl h-[85vh]">
           <DialogHeader>
-            <DialogTitle>{viewingDocument?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              {viewingDocument?.name}
+            </DialogTitle>
             <DialogDescription>Belge önizleme</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-auto">
-            {viewingDocument?.type.includes('image') ? (
-              <img
+          <div className="flex-1 overflow-hidden h-full">
+            {viewingDocument?.type.includes('pdf') ? (
+              <iframe
                 src={viewingDocument.url}
-                alt={viewingDocument.name}
-                className="max-w-full h-auto mx-auto"
+                className="w-full h-[calc(85vh-120px)] border-0 rounded"
+                title={viewingDocument.name}
               />
+            ) : viewingDocument?.type.includes('image') ? (
+              <div className="flex items-center justify-center h-[calc(85vh-120px)] overflow-auto">
+                <img
+                  src={viewingDocument.url}
+                  alt={viewingDocument.name}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">Bu dosya türü önizlenemiyor.</p>
