@@ -372,13 +372,13 @@ export default function Patients() {
                 {/* Clinic selection for super admins */}
                 {isSuperAdmin && (
                   <div className="space-y-2">
-                    <Label htmlFor="organization_id">Klinik *</Label>
+                    <Label htmlFor="organization_id">Clinic *</Label>
                     <Select 
                       value={formData.organization_id} 
                       onValueChange={(value) => setFormData({ ...formData, organization_id: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Klinik seçin" />
+                        <SelectValue placeholder="Select clinic" />
                       </SelectTrigger>
                       <SelectContent>
                         {organizations.map(org => (
