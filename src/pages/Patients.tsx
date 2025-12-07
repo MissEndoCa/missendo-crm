@@ -169,7 +169,9 @@ export default function Patients() {
         photoUrl = publicUrl;
       }
       const patientData = {
-        ...formData,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
         photo_url: photoUrl || null,
         organization_id: isSuperAdmin && formData.organization_id ? formData.organization_id : profile.organization_id,
         created_by: profile.id,
@@ -181,6 +183,7 @@ export default function Patients() {
         medical_condition: formData.medical_condition || null,
         allergies: formData.allergies || null,
         notes: formData.notes || null,
+        has_companion: formData.has_companion || false,
         companion_first_name: formData.has_companion ? formData.companion_first_name : null,
         companion_last_name: formData.has_companion ? formData.companion_last_name : null,
         companion_phone: formData.has_companion ? formData.companion_phone : null,
