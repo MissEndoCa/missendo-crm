@@ -756,23 +756,21 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           {/* Payment Summary Card */}
           <Card className="border-l-4 border-l-primary">
             <CardContent className="pt-6">
-              <div className={`grid ${remainingDebt > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-4 text-center`}>
-                <div>
-                  <p className="text-sm text-muted-foreground">Toplam Tutar</p>
-                  <p className="text-2xl font-bold text-foreground">${totalCost.toLocaleString()}</p>
-                </div>
+              <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-sm text-muted-foreground">Ödenen</p>
                   <p className="text-2xl font-bold text-green-600">${totalPaid.toLocaleString()}</p>
                 </div>
-                {remainingDebt > 0 && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Kalan Borç</p>
-                    <p className="text-2xl font-bold text-destructive">
-                      ${remainingDebt.toLocaleString()}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm text-muted-foreground">Borç</p>
+                  <p className={`text-2xl font-bold ${remainingDebt > 0 ? 'text-destructive' : 'text-foreground'}`}>
+                    ${remainingDebt > 0 ? remainingDebt.toLocaleString() : '0'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Toplam Tutar</p>
+                  <p className="text-2xl font-bold text-foreground">${totalCost.toLocaleString()}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -819,6 +817,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                         <SelectItem value="cash">Nakit</SelectItem>
                         <SelectItem value="credit_card">Kredi Kartı</SelectItem>
                         <SelectItem value="bank_transfer">Banka Transferi</SelectItem>
+                        <SelectItem value="zelle">Zelle</SelectItem>
                         <SelectItem value="other">Diğer</SelectItem>
                       </SelectContent>
                     </Select>
@@ -870,6 +869,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                           {payment.payment_method === 'cash' ? 'Nakit' :
                            payment.payment_method === 'credit_card' ? 'Kredi Kartı' :
                            payment.payment_method === 'bank_transfer' ? 'Banka Transferi' :
+                           payment.payment_method === 'zelle' ? 'Zelle' :
                            payment.payment_method || '-'}
                         </TableCell>
                         <TableCell>{payment.notes || '-'}</TableCell>
