@@ -148,7 +148,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes] = await Promise.all([
+      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes] = await Promise.all([
         supabase.from('appointments').select('*, treatments(name), hotels(hotel_name), transfer_services(company_name)').eq('patient_id', patientId),
         supabase.from('patient_documents').select('*').eq('patient_id', patientId),
         supabase.from('patient_notes').select('*').eq('patient_id', patientId).order('note_date', { ascending: false }),
@@ -157,15 +157,25 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         supabase.from('patients').select('total_cost, total_paid, first_name, last_name, email, phone, date_of_birth, gender, country, address, medical_condition, allergies, notes, photo_url, has_companion, companion_first_name, companion_last_name, companion_phone').eq('id', patientId).maybeSingle(),
         supabase.from('hotels').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('transfer_services').select('*').eq('organization_id', profile?.organization_id),
-        supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id)
+        supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id),
+        supabase.from('patient_treatments').select('final_price').eq('patient_id', patientId)
       ]);
 
+      // Calculate total cost from patient treatments
+      const treatmentTotal = (patientTreatmentsRes.data || []).reduce((sum, t) => sum + (Number(t.final_price) || 0), 0);
+      
       setAppointments(appointmentsRes.data || []);
       setDocuments(documentsRes.data || []);
       setNotes(notesRes.data || []);
       setPayments(paymentsRes.data || []);
       setPatientTransfers(patientTransfersRes.data || []);
-      setPatientInfo(patientRes.data);
+      // Use calculated treatment total if total_cost is 0 or null
+      const patientData = patientRes.data;
+      if (patientData) {
+        const dbTotalCost = patientData.total_cost || 0;
+        patientData.total_cost = dbTotalCost > 0 ? dbTotalCost : treatmentTotal;
+      }
+      setPatientInfo(patientData);
       setHotels(hotelsRes.data || []);
       setTransfers(transfersRes.data || []);
       setTreatments(treatmentsRes.data || []);
