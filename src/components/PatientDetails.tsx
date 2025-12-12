@@ -361,12 +361,22 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
   const handleRenameDocument = async (documentId: string, newName: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('patient_documents')
-        .update({ document_name: newName })
-        .eq('id', documentId);
+        .update({ document_name: newName, updated_at: new Date().toISOString() })
+        .eq('id', documentId)
+        .select();
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        throw new Error('No document was updated');
+      }
+
+      // Update documents state directly for immediate UI update
+      setDocuments(prev => prev.map(doc => 
+        doc.id === documentId ? { ...doc, document_name: newName } : doc
+      ));
 
       toast({
         title: 'Success',
@@ -374,7 +384,6 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       });
 
       setEditingDocument(null);
-      loadData();
     } catch (error) {
       console.error('Error renaming document:', error);
       toast({
