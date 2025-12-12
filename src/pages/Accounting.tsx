@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, DollarSign, TrendingUp, TrendingDown, FileText, Plus, ArrowUpCircle, ArrowDownCircle, Pencil, Trash2 } from 'lucide-react';
+import { Search, DollarSign, TrendingUp, TrendingDown, FileText, Plus, ArrowUpCircle, ArrowDownCircle, Pencil, Trash2, Filter } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,25 +45,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'TRY', 'AED'];
-
-interface FinancialRecord {
-  id: string;
-  patient_id: string;
-  total_amount: number;
-  treatment_cost: number;
-  transfer_cost: number;
-  hotel_cost: number;
-  companion_cost: number;
-  total_discount: number;
-  currency: string;
-  payment_status: string;
-  notes: string | null;
-  created_at: string;
-  patient?: {
-    first_name: string;
-    last_name: string;
-  };
-}
+const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'Credit Card', 'Zelle'];
 
 interface IncomeExpense {
   id: string;
@@ -75,9 +57,19 @@ interface IncomeExpense {
   date: string;
   reference_type: string | null;
   notes: string | null;
+  patient_id: string | null;
+  payment_method: string | null;
+  patient?: {
+    first_name: string;
+    last_name: string;
+  } | null;
+  organization?: {
+    name: string;
+  } | null;
 }
 
 const INCOME_CATEGORIES = [
+  'Patient Payment',
   'Treatment Payment',
   'Service Fee',
   'Consultation Fee',
@@ -100,6 +92,7 @@ const EXPENSE_CATEGORIES = [
 const REFERENCE_TYPES = [
   { value: 'appointment', label: 'Appointment' },
   { value: 'patient', label: 'Patient' },
+  { value: 'patient_payment', label: 'Patient Payment' },
   { value: 'treatment', label: 'Treatment' },
   { value: 'transfer', label: 'Transfer' },
   { value: 'hotel', label: 'Hotel' },
@@ -110,11 +103,16 @@ const REFERENCE_TYPES = [
 export default function Accounting() {
   const { profile } = useAuth();
   const { toast } = useToast();
-  const [records, setRecords] = useState<FinancialRecord[]>([]);
   const [incomeExpenses, setIncomeExpenses] = useState<IncomeExpense[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [clinicFilter, setClinicFilter] = useState<string>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
+  const [dateFromFilter, setDateFromFilter] = useState<string>('');
+  const [dateToFilter, setDateToFilter] = useState<string>('');
   const [isIncomeDialogOpen, setIsIncomeDialogOpen] = useState(false);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -128,6 +126,7 @@ export default function Accounting() {
     currency: 'USD',
     description: '',
     reference_type: '',
+    payment_method: '',
     notes: ''
   });
   
@@ -137,6 +136,7 @@ export default function Accounting() {
     currency: 'USD',
     description: '',
     reference_type: '',
+    payment_method: '',
     notes: ''
   });
   
@@ -151,16 +151,16 @@ export default function Accounting() {
 
   useEffect(() => {
     if (profile?.organization_id) {
-      fetchRecords();
       fetchIncomeExpenses();
+      fetchOrganizations();
     }
   }, [profile?.organization_id]);
 
-  const fetchRecords = async () => {
+  const fetchIncomeExpenses = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('financial_records')
+        .from('income_expenses')
         .select(`
           *,
           patient:patients (
@@ -169,15 +169,15 @@ export default function Accounting() {
           )
         `)
         .eq('organization_id', profile?.organization_id)
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false });
 
       if (error) throw error;
-      setRecords(data || []);
+      setIncomeExpenses((data as IncomeExpense[]) || []);
     } catch (error) {
-      console.error('Error fetching financial records:', error);
+      console.error('Error fetching income/expenses:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch financial records',
+        description: 'Failed to fetch transactions',
         variant: 'destructive',
       });
     } finally {
@@ -185,18 +185,17 @@ export default function Accounting() {
     }
   };
 
-  const fetchIncomeExpenses = async () => {
+  const fetchOrganizations = async () => {
     try {
       const { data, error } = await supabase
-        .from('income_expenses')
-        .select('*')
-        .eq('organization_id', profile?.organization_id)
-        .order('date', { ascending: false });
+        .from('organizations')
+        .select('id, name')
+        .eq('is_active', true);
 
       if (error) throw error;
-      setIncomeExpenses((data as IncomeExpense[]) || []);
+      setOrganizations(data || []);
     } catch (error) {
-      console.error('Error fetching income/expenses:', error);
+      console.error('Error fetching organizations:', error);
     }
   };
 
@@ -211,6 +210,7 @@ export default function Accounting() {
         currency: incomeForm.currency,
         description: incomeForm.description || null,
         reference_type: incomeForm.reference_type || null,
+        payment_method: incomeForm.payment_method || null,
         notes: incomeForm.notes || null,
         created_by: profile?.id
       }]);
@@ -229,6 +229,7 @@ export default function Accounting() {
         currency: 'USD',
         description: '',
         reference_type: '',
+        payment_method: '',
         notes: ''
       });
       fetchIncomeExpenses();
@@ -292,6 +293,7 @@ export default function Accounting() {
       currency: item.currency,
       description: item.description || '',
       reference_type: item.reference_type || '',
+      payment_method: item.payment_method || '',
       notes: item.notes || ''
     });
     setIsEditDialogOpen(true);
@@ -310,6 +312,7 @@ export default function Accounting() {
           currency: editForm.currency,
           description: editForm.description || null,
           reference_type: editForm.reference_type || null,
+          payment_method: editForm.payment_method || null,
           notes: editForm.notes || null
         })
         .eq('id', editingItem.id);
@@ -368,46 +371,35 @@ export default function Accounting() {
     }
   };
 
-  const filteredRecords = records.filter((record) => {
-    const matchesSearch =
-      record.patient?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.patient?.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredTransactions = incomeExpenses.filter((item) => {
+    const patientName = item.patient ? `${item.patient.first_name} ${item.patient.last_name}`.toLowerCase() : '';
+    const matchesSearch = searchTerm === '' || 
+      patientName.includes(searchTerm.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || record.payment_status === statusFilter;
+    const matchesType = typeFilter === 'all' || item.type === typeFilter;
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || item.payment_method === paymentMethodFilter;
     
-    return matchesSearch && matchesStatus;
+    const itemDate = new Date(item.date);
+    const matchesDateFrom = !dateFromFilter || itemDate >= new Date(dateFromFilter);
+    const matchesDateTo = !dateToFilter || itemDate <= new Date(dateToFilter);
+    
+    return matchesSearch && matchesType && matchesCategory && matchesPaymentMethod && matchesDateFrom && matchesDateTo;
   });
 
-  const totalIncome = incomeExpenses
+  const totalIncome = filteredTransactions
     .filter(item => item.type === 'income')
     .reduce((sum, item) => sum + Number(item.amount), 0);
   
-  const totalExpense = incomeExpenses
+  const totalExpense = filteredTransactions
     .filter(item => item.type === 'expense')
     .reduce((sum, item) => sum + Number(item.amount), 0);
 
   const netProfit = totalIncome - totalExpense;
 
-  const totalRevenue = filteredRecords.reduce((sum, record) => sum + Number(record.total_amount), 0);
-  const totalPaid = filteredRecords
-    .filter(r => r.payment_status === 'paid')
-    .reduce((sum, record) => sum + Number(record.total_amount), 0);
-  const totalPending = filteredRecords
-    .filter(r => r.payment_status === 'pending')
-    .reduce((sum, record) => sum + Number(record.total_amount), 0);
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      paid: 'default',
-      pending: 'secondary',
-      overdue: 'destructive',
-    };
-    return (
-      <Badge variant={variants[status] || 'outline'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
+  const allCategories = [...new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES])];
 
   return (
     <Layout>
@@ -468,6 +460,19 @@ export default function Accounting() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="income-payment-method">Payment Method</Label>
+                    <Select value={incomeForm.payment_method} onValueChange={(value) => setIncomeForm({...incomeForm, payment_method: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map(method => (
+                          <SelectItem key={method} value={method}>{method}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="income-description">Description</Label>
@@ -603,7 +608,7 @@ export default function Accounting() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Income</CardTitle>
@@ -612,7 +617,7 @@ export default function Accounting() {
             <CardContent>
               <div className="text-2xl font-bold text-green-600">${totalIncome.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
-                {incomeExpenses.filter(i => i.type === 'income').length} transactions
+                {filteredTransactions.filter(i => i.type === 'income').length} transactions
               </p>
             </CardContent>
           </Card>
@@ -625,7 +630,7 @@ export default function Accounting() {
             <CardContent>
               <div className="text-2xl font-bold text-red-600">${totalExpense.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
-                {incomeExpenses.filter(i => i.type === 'expense').length} transactions
+                {filteredTransactions.filter(i => i.type === 'expense').length} transactions
               </p>
             </CardContent>
           </Card>
@@ -644,34 +649,94 @@ export default function Accounting() {
               </p>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Patient Payments</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${totalPaid.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">
-                {filteredRecords.filter(r => r.payment_status === 'paid').length} paid
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Income/Expense Transactions */}
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by patient, description..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {allCategories.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Payment Method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Methods</SelectItem>
+                  {PAYMENT_METHODS.map(method => (
+                    <SelectItem key={method} value={method}>{method}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="date"
+                placeholder="From Date"
+                value={dateFromFilter}
+                onChange={(e) => setDateFromFilter(e.target.value)}
+              />
+              <Input
+                type="date"
+                placeholder="To Date"
+                value={dateToFilter}
+                onChange={(e) => setDateToFilter(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Transactions Table */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Income & Expenses
+              Transactions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {incomeExpenses.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : filteredTransactions.length === 0 ? (
               <div className="text-center py-12">
                 <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No income or expenses recorded yet</p>
+                <p className="text-muted-foreground">No transactions found</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -679,16 +744,17 @@ export default function Accounting() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Type</TableHead>
+                      <TableHead>Patient</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Reference</TableHead>
                       <TableHead>Amount</TableHead>
+                      <TableHead>Payment Method</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {incomeExpenses.map((item) => (
+                    {filteredTransactions.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <Badge variant={item.type === 'income' ? 'default' : 'destructive'}>
@@ -699,15 +765,18 @@ export default function Accounting() {
                             )}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{item.category}</TableCell>
-                        <TableCell>{item.description || '-'}</TableCell>
-                        <TableCell className="capitalize">{item.reference_type || '-'}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.patient ? `${item.patient.first_name} ${item.patient.last_name}` : '-'}
+                        </TableCell>
+                        <TableCell>{item.category}</TableCell>
                         <TableCell className={`font-bold ${item.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                           {item.type === 'income' ? '+' : '-'}{item.currency} {Number(item.amount).toFixed(2)}
                         </TableCell>
+                        <TableCell>{item.payment_method || '-'}</TableCell>
                         <TableCell>
                           {new Date(item.date).toLocaleDateString()}
                         </TableCell>
+                        <TableCell className="max-w-[200px] truncate">{item.description || '-'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
@@ -726,107 +795,6 @@ export default function Accounting() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by patient name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Payment Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Records Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Financial Records
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
-            ) : filteredRecords.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No financial records found</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Patient</TableHead>
-                      <TableHead>Treatment</TableHead>
-                      <TableHead>Transfer</TableHead>
-                      <TableHead>Hotel</TableHead>
-                      <TableHead>Companion</TableHead>
-                      <TableHead>Discount</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRecords.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-medium">
-                          {record.patient?.first_name} {record.patient?.last_name}
-                        </TableCell>
-                        <TableCell>
-                          {record.currency} {Number(record.treatment_cost).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {record.currency} {Number(record.transfer_cost).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {record.currency} {Number(record.hotel_cost).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {record.currency} {Number(record.companion_cost).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-red-600">
-                          -{record.currency} {Number(record.total_discount).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="font-bold">
-                          {record.currency} {Number(record.total_amount).toFixed(2)}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(record.payment_status)}</TableCell>
-                        <TableCell>
-                          {new Date(record.created_at).toLocaleDateString()}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -883,6 +851,21 @@ export default function Accounting() {
                   </Select>
                 </div>
               </div>
+              {editingItem?.type === 'income' && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-payment-method">Payment Method</Label>
+                  <Select value={editForm.payment_method} onValueChange={(value) => setEditForm({...editForm, payment_method: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(method => (
+                        <SelectItem key={method} value={method}>{method}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Description</Label>
                 <Input
@@ -923,13 +906,13 @@ export default function Accounting() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete this transaction.
+                Are you sure you want to delete this transaction? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
