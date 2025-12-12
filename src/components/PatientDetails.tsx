@@ -32,6 +32,7 @@ interface Appointment {
   appointment_date: string;
   status: string;
   notes: string;
+  duration_minutes: number | null;
   treatments: { name: string } | null;
   hotels: { hotel_name: string } | null;
   transfer_services: { company_name: string } | null;
@@ -112,9 +113,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
   const [appointmentForm, setAppointmentForm] = useState({
     appointment_date: '',
-    treatment_id: '',
-    hotel_id: '',
-    transfer_id: '',
+    appointment_time: '',
+    duration_minutes: '60',
+    appointment_type: '',
     notes: ''
   });
 
@@ -189,14 +190,15 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const handleAddAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Combine date and time
+      const appointmentDateTime = `${appointmentForm.appointment_date}T${appointmentForm.appointment_time}`;
+      
       const { error } = await supabase.from('appointments').insert([{
         patient_id: patientId,
         organization_id: profile?.organization_id,
-        appointment_date: appointmentForm.appointment_date,
-        treatment_id: appointmentForm.treatment_id || null,
-        hotel_id: appointmentForm.hotel_id || null,
-        transfer_id: appointmentForm.transfer_id || null,
-        notes: appointmentForm.notes || null,
+        appointment_date: appointmentDateTime,
+        duration_minutes: parseInt(appointmentForm.duration_minutes) || 60,
+        notes: appointmentForm.appointment_type ? `${appointmentForm.appointment_type}${appointmentForm.notes ? ': ' + appointmentForm.notes : ''}` : appointmentForm.notes || null,
         status: 'scheduled',
         created_by: profile?.id
       }]);
@@ -210,9 +212,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
       setAppointmentForm({
         appointment_date: '',
-        treatment_id: '',
-        hotel_id: '',
-        transfer_id: '',
+        appointment_time: '',
+        duration_minutes: '60',
+        appointment_type: '',
         notes: ''
       });
 
@@ -1025,67 +1027,67 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddAppointment} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="appointment_date">Date & Time *</Label>
+                    <Label htmlFor="appointment_date">Date *</Label>
                     <Input
                       id="appointment_date"
-                      type="datetime-local"
+                      type="date"
                       value={appointmentForm.appointment_date}
                       onChange={(e) => setAppointmentForm({...appointmentForm, appointment_date: e.target.value})}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="treatment_id">Treatment</Label>
-                    <Select value={appointmentForm.treatment_id} onValueChange={(value) => setAppointmentForm({...appointmentForm, treatment_id: value})}>
+                    <Label htmlFor="appointment_time">Time *</Label>
+                    <Input
+                      id="appointment_time"
+                      type="time"
+                      value={appointmentForm.appointment_time}
+                      onChange={(e) => setAppointmentForm({...appointmentForm, appointment_time: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="duration_minutes">Duration (minutes)</Label>
+                    <Select value={appointmentForm.duration_minutes} onValueChange={(value) => setAppointmentForm({...appointmentForm, duration_minutes: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select treatment" />
+                        <SelectValue placeholder="Select duration" />
                       </SelectTrigger>
                       <SelectContent>
-                        {treatments.map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
+                        <SelectItem value="15">15 min</SelectItem>
+                        <SelectItem value="30">30 min</SelectItem>
+                        <SelectItem value="45">45 min</SelectItem>
+                        <SelectItem value="60">1 hour</SelectItem>
+                        <SelectItem value="90">1.5 hours</SelectItem>
+                        <SelectItem value="120">2 hours</SelectItem>
+                        <SelectItem value="180">3 hours</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="hotel_id">Hotel</Label>
-                    <Select value={appointmentForm.hotel_id} onValueChange={(value) => setAppointmentForm({...appointmentForm, hotel_id: value})}>
+                    <Label htmlFor="appointment_type">Type *</Label>
+                    <Select value={appointmentForm.appointment_type} onValueChange={(value) => setAppointmentForm({...appointmentForm, appointment_type: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select hotel" />
+                        <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {hotels.map(h => (
-                          <SelectItem key={h.id} value={h.id}>{h.hotel_name}</SelectItem>
-                        ))}
+                        <SelectItem value="Examination">Examination</SelectItem>
+                        <SelectItem value="Procedure">Procedure</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="transfer_id">Transfer</Label>
-                    <Select value={appointmentForm.transfer_id} onValueChange={(value) => setAppointmentForm({...appointmentForm, transfer_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select transfer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {transfers.map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.company_name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Input
+                      id="notes"
+                      value={appointmentForm.notes}
+                      onChange={(e) => setAppointmentForm({...appointmentForm, notes: e.target.value})}
+                      placeholder="Additional details..."
+                    />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={appointmentForm.notes}
-                    onChange={(e) => setAppointmentForm({...appointmentForm, notes: e.target.value})}
-                    rows={3}
-                  />
                 </div>
                 <Button type="submit">
                   <Plus className="w-4 h-4 mr-2" />
@@ -1106,38 +1108,39 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Duration</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Treatment</TableHead>
-                      <TableHead>Hotel</TableHead>
-                      <TableHead>Transfer</TableHead>
                       <TableHead>Notes</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {appointments.map(apt => (
-                      <TableRow key={apt.id}>
-                        <TableCell>{format(new Date(apt.appointment_date), 'PPP p')}</TableCell>
-                        <TableCell className="capitalize">{apt.status}</TableCell>
-                        <TableCell>{apt.treatments?.name || '-'}</TableCell>
-                        <TableCell>{apt.hotels?.hotel_name || '-'}</TableCell>
-                        <TableCell>{apt.transfer_services?.company_name || '-'}</TableCell>
-                        <TableCell>{apt.notes || '-'}</TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteAppointment(apt.id);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {appointments.map(apt => {
+                      const aptDate = new Date(apt.appointment_date);
+                      return (
+                        <TableRow key={apt.id}>
+                          <TableCell>{format(aptDate, 'dd.MM.yyyy')}</TableCell>
+                          <TableCell>{format(aptDate, 'HH:mm')}</TableCell>
+                          <TableCell>{apt.duration_minutes || 60} min</TableCell>
+                          <TableCell className="capitalize">{apt.status}</TableCell>
+                          <TableCell>{apt.notes || '-'}</TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteAppointment(apt.id);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
