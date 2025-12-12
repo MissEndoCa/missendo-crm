@@ -996,12 +996,12 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="transfer_hotel">Hotel</Label>
-                    <Select value={transferForm.hotel_id} onValueChange={(value) => setTransferForm({...transferForm, hotel_id: value})}>
+                    <Select value={transferForm.hotel_id || "none"} onValueChange={(value) => setTransferForm({...transferForm, hotel_id: value === "none" ? "" : value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select hotel" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No hotel</SelectItem>
+                        <SelectItem value="none">No hotel</SelectItem>
                         {hotels.filter(h => h.is_active).map(hotel => (
                           <SelectItem key={hotel.id} value={hotel.id}>{hotel.hotel_name}</SelectItem>
                         ))}
