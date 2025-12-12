@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -121,6 +121,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentNotes, setDocumentNotes] = useState('');
+  const [editingDocument, setEditingDocument] = useState<{ id: string; name: string } | null>(null);
 
   const [noteForm, setNoteForm] = useState({
     note_date: new Date().toISOString().split('T')[0],
@@ -353,6 +354,32 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       toast({
         title: 'Error',
         description: 'Failed to delete document',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleRenameDocument = async (documentId: string, newName: string) => {
+    try {
+      const { error } = await supabase
+        .from('patient_documents')
+        .update({ document_name: newName })
+        .eq('id', documentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Document renamed successfully'
+      });
+
+      setEditingDocument(null);
+      loadData();
+    } catch (error) {
+      console.error('Error renaming document:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to rename document',
         variant: 'destructive'
       });
     }
@@ -1159,11 +1186,11 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardContent>
               <form onSubmit={handleUploadDocument} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="document">File (PDF, PNG, JPEG, STL) *</Label>
+                  <Label htmlFor="document">File (PDF, PNG, JPEG, STL, MP4, MOV) *</Label>
                   <Input
                     id="document"
                     type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.stl"
+                    accept=".pdf,.png,.jpg,.jpeg,.stl,.mp4,.mov,.avi,.webm"
                     onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
                     required
                   />
@@ -1205,7 +1232,36 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   <TableBody>
                     {documents.map(doc => (
                       <TableRow key={doc.id}>
-                        <TableCell className="font-medium">{doc.document_name}</TableCell>
+                        <TableCell className="font-medium">
+                          {editingDocument?.id === doc.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editingDocument.name}
+                                onChange={(e) => setEditingDocument({ ...editingDocument, name: e.target.value })}
+                                className="h-8 w-48"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRenameDocument(doc.id, editingDocument.name)}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingDocument(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary" />}
+                              {doc.document_name}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{doc.notes || '-'}</TableCell>
                         <TableCell>{format(new Date(doc.created_at), 'PPP')}</TableCell>
                         <TableCell>
@@ -1213,7 +1269,16 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                             <Button
                               size="sm"
                               variant="ghost"
+                              onClick={() => setEditingDocument({ id: doc.id, name: doc.document_name })}
+                              title="Rename"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}
+                              title="View"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -1221,6 +1286,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}
+                              title="Download"
                             >
                               <Download className="w-4 h-4" />
                             </Button>
@@ -1228,6 +1294,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDeleteDocument(doc.id, doc.file_path)}
+                              title="Delete"
                             >
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
@@ -1318,12 +1385,22 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   className="max-w-full max-h-full object-contain"
                 />
               </div>
+            ) : viewingDocument?.type.includes('video') ? (
+              <div className="flex items-center justify-center h-[calc(85vh-120px)]">
+                <video
+                  src={viewingDocument.url}
+                  controls
+                  className="max-w-full max-h-full"
+                >
+                  Your browser does not support video playback.
+                </video>
+              </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">Bu dosya türü önizlenemiyor.</p>
+                <p className="text-muted-foreground mb-4">This file type cannot be previewed.</p>
                 <Button onClick={() => viewingDocument && window.open(viewingDocument.url, '_blank')}>
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  Yeni Sekmede Aç
+                  Open in New Tab
                 </Button>
               </div>
             )}
