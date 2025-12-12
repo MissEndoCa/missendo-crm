@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -147,8 +148,12 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     notes: '',
     hotel_id: '',
     origin: '',
-    destination: ''
+    destination: '',
+    destination_type: '' as '' | 'hotel' | 'clinic',
+    destination_hotel_id: '',
+    destination_clinic_id: ''
   });
+  const [organizations, setOrganizations] = useState<any[]>([]);
 
   useEffect(() => {
     loadData();
@@ -157,7 +162,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes] = await Promise.all([
+      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes, organizationsRes] = await Promise.all([
         supabase.from('appointments').select('*, treatments(name), hotels(hotel_name), transfer_services(company_name)').eq('patient_id', patientId),
         supabase.from('patient_documents').select('*').eq('patient_id', patientId),
         supabase.from('patient_notes').select('*').eq('patient_id', patientId).order('note_date', { ascending: false }),
@@ -167,7 +172,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         supabase.from('hotels').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('transfer_services').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id),
-        supabase.from('patient_treatments').select('final_price').eq('patient_id', patientId)
+        supabase.from('patient_treatments').select('final_price').eq('patient_id', patientId),
+        supabase.from('organizations').select('id, name').eq('is_active', true)
       ]);
 
       // Calculate total cost from patient treatments
@@ -188,6 +194,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       setHotels(hotelsRes.data || []);
       setTransfers(transfersRes.data || []);
       setTreatments(treatmentsRes.data || []);
+      setOrganizations(organizationsRes.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -566,6 +573,16 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     e.preventDefault();
     if (!transferForm.transfer_datetime) return;
 
+    // Build destination based on type
+    let finalDestination = transferForm.destination;
+    if (transferForm.destination_type === 'hotel' && transferForm.destination_hotel_id) {
+      const selectedHotel = hotels.find(h => h.id === transferForm.destination_hotel_id);
+      finalDestination = selectedHotel?.hotel_name || '';
+    } else if (transferForm.destination_type === 'clinic' && transferForm.destination_clinic_id) {
+      const selectedOrg = organizations.find(o => o.id === transferForm.destination_clinic_id);
+      finalDestination = selectedOrg?.name || '';
+    }
+
     try {
       const { error } = await supabase.from('patient_transfers').insert([{
         patient_id: patientId,
@@ -577,7 +594,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         notes: transferForm.notes || null,
         hotel_id: transferForm.hotel_id || null,
         origin: transferForm.origin || null,
-        destination: transferForm.destination || null,
+        destination: finalDestination || null,
         created_by: profile?.id
       }]);
 
@@ -596,7 +613,10 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         notes: '',
         hotel_id: '',
         origin: '',
-        destination: ''
+        destination: '',
+        destination_type: '',
+        destination_hotel_id: '',
+        destination_clinic_id: ''
       });
 
       loadData();
@@ -973,13 +993,78 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="destination">To (Destination)</Label>
-                    <Input
-                      id="destination"
-                      value={transferForm.destination}
-                      onChange={(e) => setTransferForm({...transferForm, destination: e.target.value})}
-                      placeholder="e.g. Grand Hyatt Hotel"
-                    />
+                    <Label>To (Destination)</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="dest_hotel"
+                            checked={transferForm.destination_type === 'hotel'}
+                            onCheckedChange={(checked) => setTransferForm({
+                              ...transferForm,
+                              destination_type: checked ? 'hotel' : '',
+                              destination: '',
+                              destination_hotel_id: '',
+                              destination_clinic_id: ''
+                            })}
+                          />
+                          <Label htmlFor="dest_hotel" className="text-sm font-normal cursor-pointer">Is Hotel</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="dest_clinic"
+                            checked={transferForm.destination_type === 'clinic'}
+                            onCheckedChange={(checked) => setTransferForm({
+                              ...transferForm,
+                              destination_type: checked ? 'clinic' : '',
+                              destination: '',
+                              destination_hotel_id: '',
+                              destination_clinic_id: ''
+                            })}
+                          />
+                          <Label htmlFor="dest_clinic" className="text-sm font-normal cursor-pointer">Is Clinic</Label>
+                        </div>
+                      </div>
+                      
+                      {transferForm.destination_type === 'hotel' ? (
+                        <Select 
+                          value={transferForm.destination_hotel_id || "none"} 
+                          onValueChange={(value) => setTransferForm({...transferForm, destination_hotel_id: value === "none" ? "" : value})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select hotel" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Select a hotel</SelectItem>
+                            {hotels.filter(h => h.is_active).map(hotel => (
+                              <SelectItem key={hotel.id} value={hotel.id}>{hotel.hotel_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : transferForm.destination_type === 'clinic' ? (
+                        <Select 
+                          value={transferForm.destination_clinic_id || "none"} 
+                          onValueChange={(value) => setTransferForm({...transferForm, destination_clinic_id: value === "none" ? "" : value})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select clinic" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Select a clinic</SelectItem>
+                            {organizations.map(org => (
+                              <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          id="destination"
+                          value={transferForm.destination}
+                          onChange={(e) => setTransferForm({...transferForm, destination: e.target.value})}
+                          placeholder="e.g. Grand Hyatt Hotel"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
