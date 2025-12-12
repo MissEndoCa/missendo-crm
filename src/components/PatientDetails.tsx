@@ -526,6 +526,23 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       const newTotalPaid = (patientInfo?.total_paid || 0) + paymentAmount;
       await supabase.from('patients').update({ total_paid: newTotalPaid }).eq('id', patientId);
 
+      // Also add to income_expenses for accounting
+      const patientFullName = `${patientInfo?.first_name || ''} ${patientInfo?.last_name || ''}`.trim();
+      await supabase.from('income_expenses').insert([{
+        organization_id: profile?.organization_id,
+        type: 'income',
+        category: 'Patient Payment',
+        amount: paymentAmount,
+        currency: 'USD',
+        description: `Payment from ${patientFullName}`,
+        reference_type: 'patient_payment',
+        reference_id: patientId,
+        patient_id: patientId,
+        payment_method: paymentForm.payment_method || null,
+        notes: paymentForm.notes || null,
+        created_by: profile?.id
+      }]);
+
       toast({
         title: 'Success',
         description: 'Payment recorded'

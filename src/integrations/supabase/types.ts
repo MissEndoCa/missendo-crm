@@ -276,6 +276,8 @@ export type Database = {
           id: string
           notes: string | null
           organization_id: string
+          patient_id: string | null
+          payment_method: string | null
           reference_id: string | null
           reference_type: string | null
           type: string
@@ -292,6 +294,8 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id: string
+          patient_id?: string | null
+          payment_method?: string | null
           reference_id?: string | null
           reference_type?: string | null
           type: string
@@ -308,12 +312,22 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id?: string
+          patient_id?: string | null
+          payment_method?: string | null
           reference_id?: string | null
           reference_type?: string | null
           type?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "income_expenses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leads: {
         Row: {
