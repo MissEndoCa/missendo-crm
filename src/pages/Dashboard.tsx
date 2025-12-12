@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +25,7 @@ interface RecentActivity {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { profile, isSuperAdmin } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalLeads: 0,
@@ -153,15 +155,15 @@ export default function Dashboard() {
         .match({ ...organizationFilter, status: 'scheduled' })
         .gte('appointment_date', new Date().toISOString());
 
-      // Get financial data
-      const { data: financialData } = await supabase
-        .from('financial_records')
-        .select('total_amount')
-        .match(organizationFilter);
+      // Get revenue from patient treatments
+      const { data: treatmentData } = await supabase
+        .from('patient_treatments')
+        .select('final_price, patients!inner(organization_id)')
+        .match(isSuperAdmin ? {} : { 'patients.organization_id': profile.organization_id });
 
-      const totalRevenue = financialData?.reduce((sum, record) => sum + Number(record.total_amount), 0) || 0;
-      const avgTreatmentValue = financialData && financialData.length > 0 
-        ? totalRevenue / financialData.length 
+      const totalRevenue = treatmentData?.reduce((sum, record) => sum + Number(record.final_price || 0), 0) || 0;
+      const avgTreatmentValue = treatmentData && treatmentData.length > 0 
+        ? totalRevenue / treatmentData.length 
         : 0;
 
       // Calculate conversion rate
@@ -217,6 +219,7 @@ export default function Dashboard() {
       icon: ClipboardList,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
+      link: '/leads',
     },
     {
       title: 'Patients',
@@ -225,6 +228,7 @@ export default function Dashboard() {
       icon: Users,
       color: 'text-accent',
       bgColor: 'bg-accent/10',
+      link: '/patients',
     },
     {
       title: 'Appointments',
@@ -233,6 +237,7 @@ export default function Dashboard() {
       icon: Calendar,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
+      link: '/appointments',
     },
     {
       title: 'Revenue',
@@ -241,6 +246,7 @@ export default function Dashboard() {
       icon: DollarSign,
       color: 'text-success',
       bgColor: 'bg-success/10',
+      link: '/accounting',
     },
   ];
 
@@ -280,7 +286,11 @@ export default function Dashboard() {
           {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
-              <Card key={stat.title} className="hover:shadow-lg transition-shadow">
+              <Card 
+                key={stat.title} 
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => navigate(stat.link)}
+              >
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {stat.title}
