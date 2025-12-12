@@ -25,7 +25,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Hotel, User, Building2, MapPin, Calendar, Moon, DollarSign, Pencil } from 'lucide-react';
+import { Plus, Search, Hotel, User, Building2, MapPin, Calendar, Moon, DollarSign, Pencil, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'TRY', 'AED'];
@@ -40,6 +40,10 @@ interface HotelData {
   currency: string;
   amenities: string | null;
   is_active: boolean;
+  star_rating: number | null;
+  single_room_price: number | null;
+  double_room_price: number | null;
+  family_room_price: number | null;
 }
 
 interface Patient {
@@ -88,6 +92,10 @@ export default function Hotels() {
     currency: 'USD',
     amenities: '',
     is_active: true,
+    star_rating: '3',
+    single_room_price: '',
+    double_room_price: '',
+    family_room_price: '',
   });
 
   const [bookingFormData, setBookingFormData] = useState({
@@ -198,12 +206,16 @@ export default function Hotels() {
         hotel_name: formData.hotel_name,
         address: formData.address || null,
         city: formData.city || null,
-        price_per_night: parseFloat(formData.price_per_night),
+        price_per_night: parseFloat(formData.price_per_night) || 0,
         companion_price: formData.companion_price ? parseFloat(formData.companion_price) : null,
         currency: formData.currency,
         amenities: formData.amenities || null,
         is_active: formData.is_active,
         organization_id: profile.organization_id,
+        star_rating: formData.star_rating ? parseInt(formData.star_rating) : 3,
+        single_room_price: formData.single_room_price ? parseFloat(formData.single_room_price) : null,
+        double_room_price: formData.double_room_price ? parseFloat(formData.double_room_price) : null,
+        family_room_price: formData.family_room_price ? parseFloat(formData.family_room_price) : null,
       };
 
       if (selectedHotel) {
@@ -291,6 +303,10 @@ export default function Hotels() {
       currency: 'USD',
       amenities: '',
       is_active: true,
+      star_rating: '3',
+      single_room_price: '',
+      double_room_price: '',
+      family_room_price: '',
     });
     setSelectedHotel(null);
   };
@@ -317,6 +333,10 @@ export default function Hotels() {
       currency: hotel.currency,
       amenities: hotel.amenities || '',
       is_active: hotel.is_active,
+      star_rating: hotel.star_rating?.toString() || '3',
+      single_room_price: hotel.single_room_price?.toString() || '',
+      double_room_price: hotel.double_room_price?.toString() || '',
+      family_room_price: hotel.family_room_price?.toString() || '',
     });
     setIsDialogOpen(true);
   };
@@ -447,28 +467,21 @@ export default function Hotels() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="price_per_night">Price per Night *</Label>
-                        <Input
-                          id="price_per_night"
-                          type="number"
-                          step="0.01"
-                          value={formData.price_per_night}
-                          onChange={(e) => setFormData({ ...formData, price_per_night: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="companion_price">Companion Price</Label>
-                        <Input
-                          id="companion_price"
-                          type="number"
-                          step="0.01"
-                          value={formData.companion_price}
-                          onChange={(e) => setFormData({ ...formData, companion_price: e.target.value })}
-                          placeholder="Optional"
-                        />
+                        <Label htmlFor="star_rating">Star Rating</Label>
+                        <Select value={formData.star_rating} onValueChange={(value) => setFormData({ ...formData, star_rating: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select rating" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5].map(rating => (
+                              <SelectItem key={rating} value={rating.toString()}>
+                                {'⭐'.repeat(rating)} ({rating} Star{rating > 1 ? 's' : ''})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="currency">Currency</Label>
@@ -482,6 +495,70 @@ export default function Hotels() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Room Prices (per night)</Label>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <Label htmlFor="single_room_price" className="text-xs text-muted-foreground">Single Room</Label>
+                          <Input
+                            id="single_room_price"
+                            type="number"
+                            step="0.01"
+                            value={formData.single_room_price}
+                            onChange={(e) => setFormData({ ...formData, single_room_price: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="double_room_price" className="text-xs text-muted-foreground">Double Room</Label>
+                          <Input
+                            id="double_room_price"
+                            type="number"
+                            step="0.01"
+                            value={formData.double_room_price}
+                            onChange={(e) => setFormData({ ...formData, double_room_price: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="family_room_price" className="text-xs text-muted-foreground">Family Room</Label>
+                          <Input
+                            id="family_room_price"
+                            type="number"
+                            step="0.01"
+                            value={formData.family_room_price}
+                            onChange={(e) => setFormData({ ...formData, family_room_price: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="price_per_night">Default Price/Night</Label>
+                        <Input
+                          id="price_per_night"
+                          type="number"
+                          step="0.01"
+                          value={formData.price_per_night}
+                          onChange={(e) => setFormData({ ...formData, price_per_night: e.target.value })}
+                          placeholder="Fallback price"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="companion_price">Companion Extra</Label>
+                        <Input
+                          id="companion_price"
+                          type="number"
+                          step="0.01"
+                          value={formData.companion_price}
+                          onChange={(e) => setFormData({ ...formData, companion_price: e.target.value })}
+                          placeholder="Additional cost"
+                        />
                       </div>
                     </div>
 
@@ -526,8 +603,9 @@ export default function Hotels() {
                   <TableRow>
                     <TableHead>Hotel</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Price/Night</TableHead>
-                    <TableHead>Companion</TableHead>
+                    <TableHead>Single</TableHead>
+                    <TableHead>Double</TableHead>
+                    <TableHead>Family</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -535,13 +613,13 @@ export default function Hotels() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         Loading hotels...
                       </TableCell>
                     </TableRow>
                   ) : filteredHotels.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No hotels found
                       </TableCell>
                     </TableRow>
@@ -553,23 +631,32 @@ export default function Hotels() {
                             <Hotel className="w-4 h-4 text-primary" />
                             <div>
                               <div className="font-medium">{hotel.hotel_name}</div>
-                              {hotel.amenities && (
-                                <div className="text-xs text-muted-foreground line-clamp-1">
-                                  {hotel.amenities}
-                                </div>
-                              )}
+                              <div className="flex items-center gap-1 text-xs text-amber-500">
+                                {Array.from({ length: hotel.star_rating || 3 }).map((_, i) => (
+                                  <Star key={i} className="w-3 h-3 fill-current" />
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {hotel.city || '-'}
                         </TableCell>
-                        <TableCell className="font-medium">
-                          {hotel.currency} {hotel.price_per_night.toFixed(2)}
+                        <TableCell className="text-sm">
+                          {hotel.single_room_price 
+                            ? `${hotel.currency} ${hotel.single_room_price.toFixed(0)}`
+                            : '-'
+                          }
                         </TableCell>
                         <TableCell className="text-sm">
-                          {hotel.companion_price 
-                            ? `${hotel.currency} ${hotel.companion_price.toFixed(2)}`
+                          {hotel.double_room_price 
+                            ? `${hotel.currency} ${hotel.double_room_price.toFixed(0)}`
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {hotel.family_room_price 
+                            ? `${hotel.currency} ${hotel.family_room_price.toFixed(0)}`
                             : '-'
                           }
                         </TableCell>

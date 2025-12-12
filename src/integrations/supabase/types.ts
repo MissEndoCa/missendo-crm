@@ -204,11 +204,15 @@ export type Database = {
           companion_price: number | null
           created_at: string | null
           currency: string | null
+          double_room_price: number | null
+          family_room_price: number | null
           hotel_name: string
           id: string
           is_active: boolean | null
           organization_id: string
           price_per_night: number
+          single_room_price: number | null
+          star_rating: number | null
           updated_at: string | null
         }
         Insert: {
@@ -218,11 +222,15 @@ export type Database = {
           companion_price?: number | null
           created_at?: string | null
           currency?: string | null
+          double_room_price?: number | null
+          family_room_price?: number | null
           hotel_name: string
           id?: string
           is_active?: boolean | null
           organization_id: string
           price_per_night: number
+          single_room_price?: number | null
+          star_rating?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -232,11 +240,15 @@ export type Database = {
           companion_price?: number | null
           created_at?: string | null
           currency?: string | null
+          double_room_price?: number | null
+          family_room_price?: number | null
           hotel_name?: string
           id?: string
           is_active?: boolean | null
           organization_id?: string
           price_per_night?: number
+          single_room_price?: number | null
+          star_rating?: number | null
           updated_at?: string | null
         }
         Relationships: [
