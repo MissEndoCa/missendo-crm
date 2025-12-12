@@ -292,8 +292,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     } catch (error) {
       console.error('Error viewing document:', error);
       toast({
-        title: 'Hata',
-        description: 'Belge görüntülenemedi',
+        title: 'Error',
+        description: 'Failed to view document',
         variant: 'destructive'
       });
     }
@@ -397,8 +397,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       if (error) throw error;
 
       toast({
-        title: 'Başarılı',
-        description: 'Not eklendi'
+        title: 'Success',
+        description: 'Note added'
       });
 
       setNoteForm({
@@ -410,8 +410,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     } catch (error) {
       console.error('Error adding note:', error);
       toast({
-        title: 'Hata',
-        description: 'Not eklenemedi',
+        title: 'Error',
+        description: 'Failed to add note',
         variant: 'destructive'
       });
     }
@@ -427,16 +427,16 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       if (error) throw error;
 
       toast({
-        title: 'Başarılı',
-        description: 'Not silindi'
+        title: 'Success',
+        description: 'Note deleted'
       });
 
       loadData();
     } catch (error) {
       console.error('Error deleting note:', error);
       toast({
-        title: 'Hata',
-        description: 'Not silinemedi',
+        title: 'Error',
+        description: 'Failed to delete note',
         variant: 'destructive'
       });
     }
@@ -466,8 +466,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       await supabase.from('patients').update({ total_paid: newTotalPaid }).eq('id', patientId);
 
       toast({
-        title: 'Başarılı',
-        description: 'Ödeme kaydedildi'
+        title: 'Success',
+        description: 'Payment recorded'
       });
 
       setPaymentForm({
@@ -481,8 +481,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     } catch (error) {
       console.error('Error adding payment:', error);
       toast({
-        title: 'Hata',
-        description: 'Ödeme kaydedilemedi',
+        title: 'Error',
+        description: 'Failed to record payment',
         variant: 'destructive'
       });
     }
@@ -502,16 +502,16 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       await supabase.from('patients').update({ total_paid: newTotalPaid }).eq('id', patientId);
 
       toast({
-        title: 'Başarılı',
-        description: 'Ödeme silindi'
+        title: 'Success',
+        description: 'Payment deleted'
       });
 
       loadData();
     } catch (error) {
       console.error('Error deleting payment:', error);
       toast({
-        title: 'Hata',
-        description: 'Ödeme silinemedi',
+        title: 'Error',
+        description: 'Failed to delete payment',
         variant: 'destructive'
       });
     }
@@ -536,8 +536,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       if (error) throw error;
 
       toast({
-        title: 'Başarılı',
-        description: 'Transfer bilgisi eklendi'
+        title: 'Success',
+        description: 'Transfer info added'
       });
 
       setTransferForm({
@@ -552,8 +552,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     } catch (error) {
       console.error('Error adding transfer:', error);
       toast({
-        title: 'Hata',
-        description: 'Transfer bilgisi eklenemedi',
+        title: 'Error',
+        description: 'Failed to add transfer info',
         variant: 'destructive'
       });
     }
@@ -569,16 +569,16 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       if (error) throw error;
 
       toast({
-        title: 'Başarılı',
-        description: 'Transfer bilgisi silindi'
+        title: 'Success',
+        description: 'Transfer info deleted'
       });
 
       loadData();
     } catch (error) {
       console.error('Error deleting transfer:', error);
       toast({
-        title: 'Hata',
-        description: 'Transfer bilgisi silinemedi',
+        title: 'Error',
+        description: 'Failed to delete transfer info',
         variant: 'destructive'
       });
     }
@@ -645,21 +645,21 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               <div className="lg:w-80 space-y-2">
                 {patientInfo.medical_condition && (
                   <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-xs">
-                    <span className="font-medium text-amber-700 dark:text-amber-400">Tıbbi Durum:</span>
+                    <span className="font-medium text-amber-700 dark:text-amber-400">Medical Condition:</span>
                     <p className="mt-1 text-amber-900 dark:text-amber-200 line-clamp-2">{patientInfo.medical_condition}</p>
                   </div>
                 )}
                 
                 {patientInfo.allergies && (
                   <div className="p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded text-xs">
-                    <span className="font-medium text-red-700 dark:text-red-400">Alerjiler:</span>
+                    <span className="font-medium text-red-700 dark:text-red-400">Allergies:</span>
                     <span className="ml-1 text-red-900 dark:text-red-200">{patientInfo.allergies}</span>
                   </div>
                 )}
 
                 {patientInfo.has_companion && patientInfo.companion_first_name && (
                   <div className="p-2 bg-muted/50 rounded text-xs">
-                    <span className="font-medium">Refakatçi:</span>
+                    <span className="font-medium">Companion:</span>
                     <span className="ml-1">{patientInfo.companion_first_name} {patientInfo.companion_last_name}</span>
                     {patientInfo.companion_phone && (
                       <span className="ml-2 text-muted-foreground">({patientInfo.companion_phone})</span>
@@ -674,11 +674,11 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
       <Tabs defaultValue="notes" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="notes">Notlar</TabsTrigger>
-          <TabsTrigger value="payments">Ödemeler</TabsTrigger>
-          <TabsTrigger value="transfers">Transferler</TabsTrigger>
-          <TabsTrigger value="appointments">Randevular</TabsTrigger>
-          <TabsTrigger value="documents">Belgeler</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="transfers">Transfers</TabsTrigger>
+          <TabsTrigger value="appointments">Appointments</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="notes" className="space-y-4">
@@ -686,14 +686,14 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
-                Yeni Not Ekle
+                Add New Note
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddNote} className="space-y-4">
                 <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="note_date">Tarih *</Label>
+                    <Label htmlFor="note_date">Date *</Label>
                     <Input
                       id="note_date"
                       type="date"
@@ -703,12 +703,12 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="col-span-3 space-y-2">
-                    <Label htmlFor="note_content">Not *</Label>
+                    <Label htmlFor="note_content">Note *</Label>
                     <Textarea
                       id="note_content"
                       value={noteForm.content}
                       onChange={(e) => setNoteForm({...noteForm, content: e.target.value})}
-                      placeholder="Notunuzu yazın..."
+                      placeholder="Write your note..."
                       rows={2}
                       required
                     />
@@ -716,7 +716,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                 </div>
                 <Button type="submit">
                   <Plus className="w-4 h-4 mr-2" />
-                  Not Ekle
+                  Add Note
                 </Button>
               </form>
             </CardContent>
@@ -724,11 +724,11 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Not Geçmişi</CardTitle>
+              <CardTitle>Note History</CardTitle>
             </CardHeader>
             <CardContent>
               {notes.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">Henüz not eklenmemiş</p>
+                <p className="text-muted-foreground text-center py-4">No notes yet</p>
               ) : (
                 <div className="space-y-4">
                   {notes.map(note => (
@@ -744,7 +744,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       <div className="flex-1">
                         <p className="text-sm whitespace-pre-wrap">{note.content}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Eklenme: {format(new Date(note.created_at), 'dd.MM.yyyy HH:mm')}
+                          Added: {format(new Date(note.created_at), 'dd.MM.yyyy HH:mm')}
                         </p>
                       </div>
                       <Button
@@ -768,17 +768,17 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardContent className="pt-6">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <p className="text-sm text-muted-foreground">Ödenen</p>
+                  <p className="text-sm text-muted-foreground">Paid</p>
                   <p className="text-2xl font-bold text-green-600">${totalPaid.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Borç</p>
+                  <p className="text-sm text-muted-foreground">Debt</p>
                   <p className={`text-2xl font-bold ${remainingDebt > 0 ? 'text-destructive' : 'text-foreground'}`}>
                     ${remainingDebt > 0 ? remainingDebt.toLocaleString() : '0'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Toplam Tutar</p>
+                  <p className="text-sm text-muted-foreground">Total Amount</p>
                   <p className="text-2xl font-bold text-foreground">${totalCost.toLocaleString()}</p>
                 </div>
               </div>
@@ -789,14 +789,14 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Yeni Ödeme Ekle
+                Add New Payment
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddPayment} className="space-y-4">
                 <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="payment_amount">Tutar *</Label>
+                    <Label htmlFor="payment_amount">Amount *</Label>
                     <Input
                       id="payment_amount"
                       type="number"
@@ -808,7 +808,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="payment_date">Tarih *</Label>
+                    <Label htmlFor="payment_date">Date *</Label>
                     <Input
                       id="payment_date"
                       type="date"
@@ -818,33 +818,33 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="payment_method">Ödeme Yöntemi</Label>
+                    <Label htmlFor="payment_method">Payment Method</Label>
                     <Select value={paymentForm.payment_method} onValueChange={(value) => setPaymentForm({...paymentForm, payment_method: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Seçiniz" />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">Nakit</SelectItem>
-                        <SelectItem value="credit_card">Kredi Kartı</SelectItem>
-                        <SelectItem value="bank_transfer">Banka Transferi</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="credit_card">Credit Card</SelectItem>
+                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                         <SelectItem value="zelle">Zelle</SelectItem>
-                        <SelectItem value="other">Diğer</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="payment_notes">Not</Label>
+                    <Label htmlFor="payment_notes">Note</Label>
                     <Input
                       id="payment_notes"
                       value={paymentForm.notes}
                       onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
-                      placeholder="Açıklama..."
+                      placeholder="Description..."
                     />
                   </div>
                 </div>
                 <Button type="submit">
                   <Plus className="w-4 h-4 mr-2" />
-                  Ödeme Ekle
+                  Add Payment
                 </Button>
               </form>
             </CardContent>
@@ -852,20 +852,20 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Ödeme Geçmişi</CardTitle>
+              <CardTitle>Payment History</CardTitle>
             </CardHeader>
             <CardContent>
               {payments.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">Henüz ödeme kaydı yok</p>
+                <p className="text-muted-foreground text-center py-4">No payment records yet</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tarih</TableHead>
-                      <TableHead>Tutar</TableHead>
-                      <TableHead>Yöntem</TableHead>
-                      <TableHead>Not</TableHead>
-                      <TableHead>İşlem</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Note</TableHead>
+                      <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -876,9 +876,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                           ${payment.amount.toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          {payment.payment_method === 'cash' ? 'Nakit' :
-                           payment.payment_method === 'credit_card' ? 'Kredi Kartı' :
-                           payment.payment_method === 'bank_transfer' ? 'Banka Transferi' :
+                          {payment.payment_method === 'cash' ? 'Cash' :
+                           payment.payment_method === 'credit_card' ? 'Credit Card' :
+                           payment.payment_method === 'bank_transfer' ? 'Bank Transfer' :
                            payment.payment_method === 'zelle' ? 'Zelle' :
                            payment.payment_method || '-'}
                         </TableCell>
@@ -906,43 +906,43 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plane className="h-5 w-5" />
-                Transfer Bilgisi Ekle
+                Add Transfer Info
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddTransfer} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="clinic_name">Klinik Adı</Label>
+                    <Label htmlFor="clinic_name">Clinic Name</Label>
                     <Input
                       id="clinic_name"
                       value={transferForm.clinic_name}
                       onChange={(e) => setTransferForm({...transferForm, clinic_name: e.target.value})}
-                      placeholder="Örn: ABC Dental"
+                      placeholder="e.g. ABC Dental"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="flight_info">Uçuş Bilgisi</Label>
+                    <Label htmlFor="flight_info">Flight Info</Label>
                     <Input
                       id="flight_info"
                       value={transferForm.flight_info}
                       onChange={(e) => setTransferForm({...transferForm, flight_info: e.target.value})}
-                      placeholder="Örn: TK555 LAX"
+                      placeholder="e.g. TK555 LAX"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="airport_pickup_info">Havalimanı Karşılama</Label>
+                    <Label htmlFor="airport_pickup_info">Airport Pickup</Label>
                     <Input
                       id="airport_pickup_info"
                       value={transferForm.airport_pickup_info}
                       onChange={(e) => setTransferForm({...transferForm, airport_pickup_info: e.target.value})}
-                      placeholder="Örn: İstanbul Havalimanı Kapı 5"
+                      placeholder="e.g. Istanbul Airport Gate 5"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="transfer_datetime">Tarih & Saat *</Label>
+                    <Label htmlFor="transfer_datetime">Date & Time *</Label>
                     <Input
                       id="transfer_datetime"
                       type="datetime-local"
@@ -953,18 +953,18 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="transfer_notes">Not</Label>
+                  <Label htmlFor="transfer_notes">Note</Label>
                   <Textarea
                     id="transfer_notes"
                     value={transferForm.notes}
                     onChange={(e) => setTransferForm({...transferForm, notes: e.target.value})}
                     rows={2}
-                    placeholder="Ek bilgiler..."
+                    placeholder="Additional info..."
                   />
                 </div>
                 <Button type="submit">
                   <Plus className="w-4 h-4 mr-2" />
-                  Transfer Ekle
+                  Add Transfer
                 </Button>
               </form>
             </CardContent>
@@ -972,21 +972,21 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Transfer Geçmişi</CardTitle>
+              <CardTitle>Transfer History</CardTitle>
             </CardHeader>
             <CardContent>
               {patientTransfers.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">Henüz transfer kaydı yok</p>
+                <p className="text-muted-foreground text-center py-4">No transfer records yet</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tarih & Saat</TableHead>
-                      <TableHead>Klinik</TableHead>
-                      <TableHead>Uçuş</TableHead>
-                      <TableHead>Karşılama</TableHead>
-                      <TableHead>Not</TableHead>
-                      <TableHead>İşlem</TableHead>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Clinic</TableHead>
+                      <TableHead>Flight</TableHead>
+                      <TableHead>Pickup</TableHead>
+                      <TableHead>Note</TableHead>
+                      <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1256,7 +1256,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               <FileText className="w-5 h-5" />
               {viewingDocument?.name}
             </DialogTitle>
-            <DialogDescription>Belge önizleme</DialogDescription>
+            <DialogDescription>Document preview</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-auto h-full">
             {viewingDocument?.type.includes('pdf') ? (
@@ -1272,7 +1272,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   error={
                     <div className="flex flex-col items-center justify-center h-[calc(85vh-180px)] gap-4">
                       <FileText className="w-16 h-16 text-muted-foreground" />
-                      <p className="text-muted-foreground">PDF yüklenemedi.</p>
+                      <p className="text-muted-foreground">Failed to load PDF.</p>
                     </div>
                   }
                 >
@@ -1294,7 +1294,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
                     <span className="text-sm text-muted-foreground">
-                      Sayfa {pageNumber} / {numPages}
+                      Page {pageNumber} / {numPages}
                     </span>
                     <Button
                       variant="outline"
