@@ -621,11 +621,13 @@ export type Database = {
           clinic_name: string | null
           created_at: string | null
           created_by: string | null
+          destination: string | null
           flight_info: string | null
           hotel_id: string | null
           id: string
           notes: string | null
           organization_id: string
+          origin: string | null
           patient_id: string
           transfer_datetime: string
           updated_at: string | null
@@ -635,11 +637,13 @@ export type Database = {
           clinic_name?: string | null
           created_at?: string | null
           created_by?: string | null
+          destination?: string | null
           flight_info?: string | null
           hotel_id?: string | null
           id?: string
           notes?: string | null
           organization_id: string
+          origin?: string | null
           patient_id: string
           transfer_datetime: string
           updated_at?: string | null
@@ -649,11 +653,13 @@ export type Database = {
           clinic_name?: string | null
           created_at?: string | null
           created_by?: string | null
+          destination?: string | null
           flight_info?: string | null
           hotel_id?: string | null
           id?: string
           notes?: string | null
           organization_id?: string
+          origin?: string | null
           patient_id?: string
           transfer_datetime?: string
           updated_at?: string | null

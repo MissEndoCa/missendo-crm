@@ -75,6 +75,8 @@ interface PatientTransfer {
   created_at: string;
   hotel_id: string | null;
   hotels?: { hotel_name: string } | null;
+  origin: string | null;
+  destination: string | null;
 }
 
 export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
@@ -143,7 +145,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     airport_pickup_info: '',
     transfer_datetime: '',
     notes: '',
-    hotel_id: ''
+    hotel_id: '',
+    origin: '',
+    destination: ''
   });
 
   useEffect(() => {
@@ -572,6 +576,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         transfer_datetime: transferForm.transfer_datetime,
         notes: transferForm.notes || null,
         hotel_id: transferForm.hotel_id || null,
+        origin: transferForm.origin || null,
+        destination: transferForm.destination || null,
         created_by: profile?.id
       }]);
 
@@ -588,7 +594,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         airport_pickup_info: '',
         transfer_datetime: '',
         notes: '',
-        hotel_id: ''
+        hotel_id: '',
+        origin: '',
+        destination: ''
       });
 
       loadData();
@@ -956,6 +964,26 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               <form onSubmit={handleAddTransfer} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
+                    <Label htmlFor="origin">From (Origin)</Label>
+                    <Input
+                      id="origin"
+                      value={transferForm.origin}
+                      onChange={(e) => setTransferForm({...transferForm, origin: e.target.value})}
+                      placeholder="e.g. Istanbul Airport"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="destination">To (Destination)</Label>
+                    <Input
+                      id="destination"
+                      value={transferForm.destination}
+                      onChange={(e) => setTransferForm({...transferForm, destination: e.target.value})}
+                      placeholder="e.g. Grand Hyatt Hotel"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="clinic_name">Clinic Name</Label>
                     <Input
                       id="clinic_name"
@@ -1039,10 +1067,10 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date & Time</TableHead>
+                      <TableHead>From → To</TableHead>
                       <TableHead>Clinic</TableHead>
                       <TableHead>Hotel</TableHead>
                       <TableHead>Flight</TableHead>
-                      <TableHead>Pickup</TableHead>
                       <TableHead>Note</TableHead>
                       <TableHead>Action</TableHead>
                     </TableRow>
@@ -1051,10 +1079,14 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     {patientTransfers.map(transfer => (
                       <TableRow key={transfer.id}>
                         <TableCell>{format(new Date(transfer.transfer_datetime), 'dd.MM.yyyy HH:mm')}</TableCell>
+                        <TableCell>
+                          {transfer.origin || transfer.destination ? (
+                            <span>{transfer.origin || '?'} → {transfer.destination || '?'}</span>
+                          ) : '-'}
+                        </TableCell>
                         <TableCell>{transfer.clinic_name || '-'}</TableCell>
                         <TableCell>{transfer.hotels?.hotel_name || '-'}</TableCell>
                         <TableCell className="font-mono">{transfer.flight_info || '-'}</TableCell>
-                        <TableCell>{transfer.airport_pickup_info || '-'}</TableCell>
                         <TableCell>{transfer.notes || '-'}</TableCell>
                         <TableCell>
                           <Button
