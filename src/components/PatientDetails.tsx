@@ -460,14 +460,20 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     e.preventDefault();
     if (!editingAppointment) return;
 
+    console.log('Update appointment - form data:', appointmentForm);
+    console.log('Editing appointment ID:', editingAppointment.id);
+
     try {
-      const appointmentDateTime = `${appointmentForm.appointment_date}T${appointmentForm.appointment_time}`;
+      const appointmentDateTime = `${appointmentForm.appointment_date}T${appointmentForm.appointment_time}:00`;
+      console.log('DateTime to save:', appointmentDateTime);
       
-      const { error } = await supabase.from('appointments').update({
+      const { data, error } = await supabase.from('appointments').update({
         appointment_date: appointmentDateTime,
         duration_minutes: parseInt(appointmentForm.duration_minutes) || 60,
         notes: appointmentForm.appointment_type ? `${appointmentForm.appointment_type}${appointmentForm.notes ? ': ' + appointmentForm.notes : ''}` : appointmentForm.notes || null,
-      }).eq('id', editingAppointment.id);
+      }).eq('id', editingAppointment.id).select();
+
+      console.log('Update result:', { data, error });
 
       if (error) throw error;
 
