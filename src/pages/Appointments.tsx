@@ -5,15 +5,20 @@ import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar as CalendarIcon, Clock, User, MapPin, Hotel, Car, FileText, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar as CalendarIcon, Clock, User, MapPin, Hotel, Car, FileText, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { format, addDays, startOfWeek, isSameDay, isToday, parseISO } from 'date-fns';
+import { format, addDays, isSameDay, isToday, parseISO } from 'date-fns';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { TimePicker } from '@/components/TimePicker';
 
 interface Appointment {
   id: string;
@@ -21,9 +26,12 @@ interface Appointment {
   duration_minutes: number;
   status: string;
   notes: string | null;
+  patient_id: string;
   patients: {
     first_name: string;
     last_name: string;
+    phone?: string;
+    email?: string;
   } | null;
   treatments: {
     name: string;
@@ -46,6 +54,36 @@ const statusColors: Record<string, string> = {
   no_show: 'bg-gray-100 text-gray-800',
 };
 
+const statusOptions = [
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'no_show', label: 'No Show' },
+];
+
+const durationOptions = [
+  { value: '15', label: '15 min' },
+  { value: '30', label: '30 min' },
+  { value: '45', label: '45 min' },
+  { value: '60', label: '1 hour' },
+  { value: '90', label: '1.5 hours' },
+  { value: '120', label: '2 hours' },
+  { value: '180', label: '3 hours' },
+];
+
+// Helper function to format time without timezone conversion
+const formatTimeLocal = (dateString: string): string => {
+  // Parse the ISO string and extract time part directly
+  const date = parseISO(dateString);
+  return format(date, 'HH:mm');
+};
+
+const formatDateTimeLocal = (dateString: string, formatStr: string): string => {
+  const date = parseISO(dateString);
+  return format(date, formatStr);
+};
+
 export default function Appointments() {
   const { profile, isSuperAdmin } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -54,8 +92,19 @@ export default function Appointments() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    appointment_date: '',
+    appointment_time: '',
+    duration_minutes: '60',
+    status: 'scheduled',
+    notes: '',
+  });
 
   // Generate 14 days starting from today
   const generateDays = () => {
@@ -79,11 +128,13 @@ export default function Appointments() {
 
     try {
       setLoading(true);
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
+      // Create date range for the selected date in local timezone
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
       
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      const startOfDayStr = `${year}-${month}-${day}T00:00:00`;
+      const endOfDayStr = `${year}-${month}-${day}T23:59:59`;
 
       let query = supabase
         .from('appointments')
@@ -94,8 +145,8 @@ export default function Appointments() {
           hotels (hotel_name, address, price_per_night),
           transfer_services (company_name, service_type, price)
         `)
-        .gte('appointment_date', startOfDay.toISOString())
-        .lte('appointment_date', endOfDay.toISOString())
+        .gte('appointment_date', startOfDayStr)
+        .lte('appointment_date', endOfDayStr)
         .order('appointment_date');
 
       if (!isSuperAdmin && profile.organization_id) {
@@ -122,10 +173,12 @@ export default function Appointments() {
     if (!profile) return;
 
     try {
-      // Get next 3 upcoming appointments after today
       const tomorrow = new Date(selectedDate);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
+      const year = tomorrow.getFullYear();
+      const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+      const day = String(tomorrow.getDate()).padStart(2, '0');
+      const tomorrowStr = `${year}-${month}-${day}T00:00:00`;
 
       let query = supabase
         .from('appointments')
@@ -136,7 +189,7 @@ export default function Appointments() {
           hotels (hotel_name, address, price_per_night),
           transfer_services (company_name, service_type, price)
         `)
-        .gte('appointment_date', tomorrow.toISOString())
+        .gte('appointment_date', tomorrowStr)
         .eq('status', 'scheduled')
         .order('appointment_date')
         .limit(3);
@@ -156,7 +209,69 @@ export default function Appointments() {
 
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
+    setEditMode(false);
     setDetailsOpen(true);
+  };
+
+  const handleEditClick = () => {
+    if (!selectedAppointment) return;
+    
+    const aptDate = parseISO(selectedAppointment.appointment_date);
+    setEditForm({
+      appointment_date: format(aptDate, 'yyyy-MM-dd'),
+      appointment_time: format(aptDate, 'HH:mm'),
+      duration_minutes: String(selectedAppointment.duration_minutes || 60),
+      status: selectedAppointment.status,
+      notes: selectedAppointment.notes || '',
+    });
+    setEditMode(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedAppointment || !profile) return;
+
+    try {
+      setSaving(true);
+      
+      // Combine date and time into ISO string without timezone conversion
+      const appointmentDateTime = `${editForm.appointment_date}T${editForm.appointment_time}:00`;
+
+      const { error } = await supabase
+        .from('appointments')
+        .update({
+          appointment_date: appointmentDateTime,
+          duration_minutes: parseInt(editForm.duration_minutes),
+          status: editForm.status as 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show',
+          notes: editForm.notes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedAppointment.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Appointment updated successfully",
+      });
+
+      setDetailsOpen(false);
+      setEditMode(false);
+      loadAppointments();
+      loadUpcomingAppointments();
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update appointment",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditMode(false);
   };
 
   return (
@@ -261,7 +376,7 @@ export default function Appointments() {
                       <div className="flex items-center gap-3">
                         <div className="flex flex-col">
                           <span className="text-lg font-semibold">
-                            {format(new Date(apt.appointment_date), 'p')}
+                            {formatTimeLocal(apt.appointment_date)}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {apt.duration_minutes} min
@@ -347,10 +462,10 @@ export default function Appointments() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="text-muted-foreground font-mono">
-                            {format(new Date(apt.appointment_date), 'dd MMM')}
+                            {formatDateTimeLocal(apt.appointment_date, 'dd MMM')}
                           </div>
                           <div className="font-medium">
-                            {format(new Date(apt.appointment_date), 'HH:mm')}
+                            {formatTimeLocal(apt.appointment_date)}
                           </div>
                           <div className="text-muted-foreground">
                             {apt.patients?.first_name} {apt.patients?.last_name}
@@ -377,10 +492,10 @@ export default function Appointments() {
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col">
                             <span className="text-lg font-semibold">
-                              {format(new Date(apt.appointment_date), 'p')}
+                              {formatTimeLocal(apt.appointment_date)}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {format(new Date(apt.appointment_date), 'PPP')}
+                              {formatDateTimeLocal(apt.appointment_date, 'PPP')}
                             </span>
                           </div>
                           <div className="h-12 w-px bg-border" />
@@ -411,24 +526,35 @@ export default function Appointments() {
         )}
       </div>
 
-      {/* Appointment Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      {/* Appointment Details/Edit Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={(open) => {
+        setDetailsOpen(open);
+        if (!open) setEditMode(false);
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Appointment Details</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{editMode ? 'Edit Appointment' : 'Appointment Details'}</span>
+              {!editMode && (
+                <Button variant="outline" size="sm" onClick={handleEditClick}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+            </DialogTitle>
           </DialogHeader>
           
-          {selectedAppointment && (
+          {selectedAppointment && !editMode && (
             <div className="space-y-4">
               {/* Date & Time */}
               <div className="flex items-center gap-2 p-3 bg-accent/10 rounded-lg">
                 <CalendarIcon className="w-5 h-5 text-primary" />
                 <div>
                   <div className="font-semibold">
-                    {format(new Date(selectedAppointment.appointment_date), 'PPP')}
+                    {formatDateTimeLocal(selectedAppointment.appointment_date, 'PPP')}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {format(new Date(selectedAppointment.appointment_date), 'p')} ({selectedAppointment.duration_minutes} minutes)
+                    {formatTimeLocal(selectedAppointment.appointment_date)} ({selectedAppointment.duration_minutes} minutes)
                   </div>
                 </div>
               </div>
@@ -508,6 +634,99 @@ export default function Appointments() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Edit Form */}
+          {selectedAppointment && editMode && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_date">Date</Label>
+                  <Input
+                    id="edit_date"
+                    type="date"
+                    value={editForm.appointment_date}
+                    onChange={(e) => setEditForm({ ...editForm, appointment_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_time">Time</Label>
+                  <TimePicker
+                    value={editForm.appointment_time}
+                    onChange={(value) => setEditForm({ ...editForm, appointment_time: value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_duration">Duration</Label>
+                  <Select
+                    value={editForm.duration_minutes}
+                    onValueChange={(value) => setEditForm({ ...editForm, duration_minutes: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {durationOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_status">Status</Label>
+                  <Select
+                    value={editForm.status}
+                    onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_notes">Notes</Label>
+                <Textarea
+                  id="edit_notes"
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  placeholder="Add notes..."
+                  rows={3}
+                />
+              </div>
+
+              {/* Patient Info (read-only) */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="w-4 h-4" />
+                  <span>Patient: {selectedAppointment.patients?.first_name} {selectedAppointment.patients?.last_name}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {editMode && (
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelEdit} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
