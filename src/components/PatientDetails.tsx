@@ -15,8 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
-import { TimePicker } from '@/components/TimePicker';
+import { format } from 'date-fns';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -1443,9 +1442,12 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="appointment_time">Time *</Label>
-                    <TimePicker
+                    <Input
+                      id="appointment_time"
+                      type="time"
                       value={appointmentForm.appointment_time}
-                      onChange={(value) => setAppointmentForm({...appointmentForm, appointment_time: value})}
+                      onChange={(e) => setAppointmentForm({...appointmentForm, appointment_time: e.target.value})}
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -1518,7 +1520,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   </TableHeader>
                   <TableBody>
                     {appointments.map(apt => {
-                      const aptDate = parseISO(apt.appointment_date);
+                      const aptDate = new Date(apt.appointment_date);
                       return (
                         <TableRow key={apt.id}>
                           <TableCell>{format(aptDate, 'dd.MM.yyyy')}</TableCell>
