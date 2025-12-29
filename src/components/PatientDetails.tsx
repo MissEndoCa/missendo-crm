@@ -124,6 +124,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     notes: ''
   });
 
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentNotes, setDocumentNotes] = useState('');
   const [editingDocument, setEditingDocument] = useState<{ id: string; name: string } | null>(null);
@@ -437,6 +439,58 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       toast({
         title: 'Error',
         description: 'Failed to delete appointment',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleEditAppointment = (apt: Appointment) => {
+    const aptDate = new Date(apt.appointment_date);
+    setEditingAppointment(apt);
+    setAppointmentForm({
+      appointment_date: format(aptDate, 'yyyy-MM-dd'),
+      appointment_time: format(aptDate, 'HH:mm'),
+      duration_minutes: String(apt.duration_minutes || 60),
+      appointment_type: apt.notes?.startsWith('Examination') ? 'Examination' : apt.notes?.startsWith('Procedure') ? 'Procedure' : '',
+      notes: apt.notes?.replace(/^(Examination|Procedure)(: )?/, '') || ''
+    });
+  };
+
+  const handleUpdateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAppointment) return;
+
+    try {
+      const appointmentDateTime = `${appointmentForm.appointment_date}T${appointmentForm.appointment_time}`;
+      
+      const { error } = await supabase.from('appointments').update({
+        appointment_date: appointmentDateTime,
+        duration_minutes: parseInt(appointmentForm.duration_minutes) || 60,
+        notes: appointmentForm.appointment_type ? `${appointmentForm.appointment_type}${appointmentForm.notes ? ': ' + appointmentForm.notes : ''}` : appointmentForm.notes || null,
+      }).eq('id', editingAppointment.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Appointment updated successfully'
+      });
+
+      setEditingAppointment(null);
+      setAppointmentForm({
+        appointment_date: '',
+        appointment_time: '',
+        duration_minutes: '60',
+        appointment_type: '',
+        notes: ''
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update appointment',
         variant: 'destructive'
       });
     }
@@ -1424,11 +1478,11 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Add Appointment
+                {editingAppointment ? 'Edit Appointment' : 'Add Appointment'}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddAppointment} className="space-y-4">
+              <form onSubmit={editingAppointment ? handleUpdateAppointment : handleAddAppointment} className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="appointment_date">Date *</Label>
@@ -1491,10 +1545,39 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                 </div>
-                <Button type="submit">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Appointment
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="submit">
+                    {editingAppointment ? (
+                      <>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Update Appointment
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Appointment
+                      </>
+                    )}
+                  </Button>
+                  {editingAppointment && (
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => {
+                        setEditingAppointment(null);
+                        setAppointmentForm({
+                          appointment_date: '',
+                          appointment_time: '',
+                          duration_minutes: '60',
+                          appointment_type: '',
+                          notes: ''
+                        });
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </form>
             </CardContent>
           </Card>
@@ -1529,16 +1612,28 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                           <TableCell className="capitalize">{apt.status}</TableCell>
                           <TableCell>{apt.notes || '-'}</TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteAppointment(apt.id);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditAppointment(apt);
+                                }}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteAppointment(apt.id);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
