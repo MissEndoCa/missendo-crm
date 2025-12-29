@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimePicker } from '@/components/TimePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -216,8 +217,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const handleAddAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Combine date and time
-      const appointmentDateTime = `${appointmentForm.appointment_date}T${appointmentForm.appointment_time}`;
+      const localDate = new Date(`${appointmentForm.appointment_date}T${appointmentForm.appointment_time}:00`);
+      const appointmentDateTime = localDate.toISOString();
       
       const { error } = await supabase.from('appointments').insert([{
         patient_id: patientId,
@@ -460,20 +461,15 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     e.preventDefault();
     if (!editingAppointment) return;
 
-    console.log('Update appointment - form data:', appointmentForm);
-    console.log('Editing appointment ID:', editingAppointment.id);
-
     try {
-      const appointmentDateTime = `${appointmentForm.appointment_date}T${appointmentForm.appointment_time}:00`;
-      console.log('DateTime to save:', appointmentDateTime);
+      const localDate = new Date(`${appointmentForm.appointment_date}T${appointmentForm.appointment_time}:00`);
+      const appointmentDateTime = localDate.toISOString();
       
-      const { data, error } = await supabase.from('appointments').update({
+      const { error } = await supabase.from('appointments').update({
         appointment_date: appointmentDateTime,
         duration_minutes: parseInt(appointmentForm.duration_minutes) || 60,
         notes: appointmentForm.appointment_type ? `${appointmentForm.appointment_type}${appointmentForm.notes ? ': ' + appointmentForm.notes : ''}` : appointmentForm.notes || null,
-      }).eq('id', editingAppointment.id).select();
-
-      console.log('Update result:', { data, error });
+      }).eq('id', editingAppointment.id);
 
       if (error) throw error;
 
@@ -1502,11 +1498,19 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="appointment_time">Time *</Label>
-                    <Input
-                      id="appointment_time"
-                      type="time"
+                    <TimePicker
                       value={appointmentForm.appointment_time}
-                      onChange={(e) => setAppointmentForm({...appointmentForm, appointment_time: e.target.value})}
+                      onValueChange={(value) => setAppointmentForm({ ...appointmentForm, appointment_time: value })}
+                      stepMinutes={15}
+                      placeholder="Select time"
+                      className="w-full"
+                      contentClassName="max-h-72"
+                    />
+                    {/* Keep native form required validation */}
+                    <input
+                      type="hidden"
+                      name="appointment_time"
+                      value={appointmentForm.appointment_time}
                       required
                     />
                   </div>
