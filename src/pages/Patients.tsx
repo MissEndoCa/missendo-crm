@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, User, Phone, Mail, Upload, X, Building2 } from 'lucide-react';
+import { Plus, Search, User, Phone, Mail, Upload, X, Building2, Pencil, Trash2, FileText } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -79,6 +80,9 @@ export default function Patients() {
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   useEffect(() => {
     loadPatients();
     if (isSuperAdmin) {
@@ -282,6 +286,52 @@ export default function Patients() {
     }
     setIsDialogOpen(true);
   };
+  const handleDeleteClick = (patient: Patient) => {
+    setPatientToDelete(patient);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!patientToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .delete()
+        .eq('id', patientToDelete.id);
+
+      if (error) {
+        if (error.code === '42501') {
+          toast({
+            title: "Yetki Hatası",
+            description: "Bu hastayı silme yetkiniz yok. Yalnızca hastayı ekleyen kullanıcı veya yöneticiler silebilir.",
+            variant: "destructive"
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        toast({
+          title: "Başarılı",
+          description: "Hasta başarıyla silindi"
+        });
+        loadPatients();
+      }
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      toast({
+        title: "Hata",
+        description: "Hasta silinirken bir hata oluştu",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setPatientToDelete(null);
+    }
+  };
+
   const filteredPatients = patients.filter(patient => {
     const searchLower = searchQuery.toLowerCase();
     const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
@@ -566,16 +616,25 @@ export default function Patients() {
                       {format(new Date(patient.created_at), 'MMM dd, yyyy')}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(patient)}>
-                          Edit
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(patient);
+                        }} title="Düzenle">
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={e => {
-                    e.stopPropagation();
-                    setSelectedPatient(patient);
-                    setShowPatientDetails(true);
-                  }}>
-                          Details
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPatient(patient);
+                          setShowPatientDetails(true);
+                        }} title="Detaylar">
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(patient);
+                        }} title="Sil">
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -596,5 +655,28 @@ export default function Patients() {
           {selectedPatient && <PatientDetails patientId={selectedPatient.id} onClose={() => setShowPatientDetails(false)} />}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hastayı Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{patientToDelete?.first_name} {patientToDelete?.last_name}</strong> adlı hastayı silmek istediğinizden emin misiniz? 
+              Bu işlem geri alınamaz ve hastaya ait tüm veriler silinecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>İptal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Siliniyor...' : 'Sil'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>;
 }
