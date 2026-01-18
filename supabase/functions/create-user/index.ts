@@ -22,20 +22,29 @@ serve(async (req) => {
       }
     );
 
+    // Create admin client with service role first (needed for role checks)
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     // Verify the user making the request
     const {
       data: { user },
     } = await supabaseClient.auth.getUser();
 
     if (!user) {
+      console.log('No authenticated user found');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check if user has super_admin or clinic_admin role
-    const { data: userRoles, error: rolesError } = await supabaseClient
+    console.log('Authenticated user:', user.id, user.email);
+
+    // Check if user has super_admin or clinic_admin role using admin client (bypasses RLS)
+    const { data: userRoles, error: rolesError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id);
@@ -47,6 +56,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('User roles:', userRoles);
 
     const isSuperAdmin = userRoles?.some(r => r.role === 'super_admin');
     const isClinicAdmin = userRoles?.some(r => r.role === 'clinic_admin');
@@ -76,11 +87,7 @@ serve(async (req) => {
       );
     }
 
-    // Create admin client with service role
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // supabaseAdmin is already created above for role checks
 
     // Check if user already exists
     const { data: existingProfile } = await supabaseAdmin
