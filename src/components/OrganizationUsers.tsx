@@ -235,42 +235,27 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
     e.preventDefault();
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.first_name,
+          lastName: formData.last_name,
+          phone: formData.phone,
+          role: formData.role,
+          organizationId: organizationId,
+        },
+      });
 
-      // Call edge function to create user
-      const response = await fetch(
-        `https://xzcpxatfzgusrxfreeoi.supabase.co/functions/v1/create-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: formData.email,
-            password: formData.password,
-            firstName: formData.first_name,
-            lastName: formData.last_name,
-            phone: formData.phone,
-            role: formData.role,
-            organizationId: organizationId,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create user');
+      if (error) {
+        // supabase-js wraps edge function failures in a FunctionsHttpError
+        const message = (error as any)?.context?.error || error.message || 'Failed to create user';
+        throw new Error(message);
       }
 
       toast({
-        title: "Success",
-        description: result.message || "User created successfully",
+        title: 'Success',
+        description: (data as any)?.message || 'User created successfully',
       });
 
       setIsDialogOpen(false);
@@ -279,9 +264,9 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to create user",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create user',
+        variant: 'destructive',
       });
     }
   };

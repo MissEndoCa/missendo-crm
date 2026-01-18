@@ -14,12 +14,7 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
     // Create admin client with service role first (needed for role checks)
@@ -28,10 +23,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Verify the user making the request
+    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
+    const jwt = authHeader?.replace(/^Bearer\s+/i, '').trim();
+
+    if (!jwt) {
+      console.log('No Authorization header provided');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify the user making the request (pass JWT explicitly)
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+      error: userError,
+    } = await supabaseClient.auth.getUser(jwt);
+
+    if (userError) {
+      console.error('Auth getUser error:', userError);
+    }
 
     if (!user) {
       console.log('No authenticated user found');
