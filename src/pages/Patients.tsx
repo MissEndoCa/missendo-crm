@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/Layout';
@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PatientDetails } from '@/components/PatientDetails';
+import { ColumnFilter } from '@/components/ColumnFilter';
 interface Patient {
   id: string;
   first_name: string;
@@ -52,6 +53,8 @@ export default function Patients() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [clinicFilter, setClinicFilter] = useState<string[]>([]);
+  const [countryFilter, setCountryFilter] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
@@ -332,16 +335,56 @@ export default function Patients() {
     }
   };
 
-  const filteredPatients = patients.filter(patient => {
-    const searchLower = searchQuery.toLowerCase();
-    const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
-    const clinicName = patient.organizations?.name?.toLowerCase() || '';
-    const treatmentNames = patient.patient_treatments?.map(pt => pt.treatments?.name?.toLowerCase() || '').join(' ') || '';
-    
-    return fullName.includes(searchLower) || 
-           clinicName.includes(searchLower) || 
-           treatmentNames.includes(searchLower);
-  });
+  // Extract unique clinics and countries for filters
+  const clinicOptions = useMemo(() => {
+    const uniqueClinics = new Map<string, string>();
+    patients.forEach(p => {
+      if (p.organization_id && p.organizations?.name) {
+        uniqueClinics.set(p.organization_id, p.organizations.name);
+      }
+    });
+    return Array.from(uniqueClinics.entries()).map(([value, label]) => ({ value, label }));
+  }, [patients]);
+
+  const countryOptions = useMemo(() => {
+    const uniqueCountries = new Set<string>();
+    patients.forEach(p => {
+      if (p.country) uniqueCountries.add(p.country);
+    });
+    return Array.from(uniqueCountries).sort().map(c => ({ value: c, label: c }));
+  }, [patients]);
+
+  const filteredPatients = useMemo(() => {
+    return patients.filter(patient => {
+      const searchLower = searchQuery.toLowerCase().trim();
+      
+      // Search filter - check multiple fields
+      let matchesSearch = true;
+      if (searchLower) {
+        const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
+        const email = patient.email?.toLowerCase() || '';
+        const phone = patient.phone?.toLowerCase() || '';
+        const clinicName = patient.organizations?.name?.toLowerCase() || '';
+        const country = patient.country?.toLowerCase() || '';
+        const treatmentNames = patient.patient_treatments?.map(pt => pt.treatments?.name?.toLowerCase() || '').join(' ') || '';
+        
+        matchesSearch = fullName.includes(searchLower) || 
+                       email.includes(searchLower) ||
+                       phone.includes(searchLower) ||
+                       clinicName.includes(searchLower) || 
+                       country.includes(searchLower) ||
+                       treatmentNames.includes(searchLower);
+      }
+
+      // Clinic filter
+      const matchesClinic = clinicFilter.length === 0 || clinicFilter.includes(patient.organization_id);
+
+      // Country filter
+      const matchesCountry = countryFilter.length === 0 || (patient.country && countryFilter.includes(patient.country));
+
+      return matchesSearch && matchesClinic && matchesCountry;
+    });
+  }, [patients, searchQuery, clinicFilter, countryFilter]);
   return <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -546,22 +589,59 @@ export default function Patients() {
           </Dialog>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input placeholder="Search patients by name, clinic, or service..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+        <div className="flex gap-4 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input 
+              placeholder="İsim, email, telefon, klinik, ülke veya tedavi ile ara..." 
+              value={searchQuery} 
+              onChange={e => setSearchQuery(e.target.value)} 
+              className="pl-10" 
+            />
+          </div>
+          {(clinicFilter.length > 0 || countryFilter.length > 0) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setClinicFilter([]);
+                setCountryFilter([]);
+              }}
+              className="text-destructive hover:text-destructive"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Filtreleri Temizle
+            </Button>
+          )}
         </div>
 
         <div className="bg-card rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Patient</TableHead>
-                <TableHead>Contact</TableHead>
-                {isSuperAdmin && <TableHead>Clinic</TableHead>}
-                <TableHead>Birth Date</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Registered</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Hasta</TableHead>
+                <TableHead>İletişim</TableHead>
+                {isSuperAdmin && (
+                  <TableHead className="p-0">
+                    <ColumnFilter
+                      title="Klinik"
+                      options={clinicOptions}
+                      selectedValues={clinicFilter}
+                      onFilterChange={setClinicFilter}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Doğum Tarihi</TableHead>
+                <TableHead className="p-0">
+                  <ColumnFilter
+                    title="Ülke"
+                    options={countryOptions}
+                    selectedValues={countryFilter}
+                    onFilterChange={setCountryFilter}
+                  />
+                </TableHead>
+                <TableHead>Kayıt Tarihi</TableHead>
+                <TableHead>İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
