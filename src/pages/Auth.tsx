@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { Building2, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
+import missEndoLogo from '@/assets/miss-endo-logo.webp';
 
 const signupSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }),
@@ -142,10 +143,9 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted to-background p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-3 text-center">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
-            <Building2 className="w-8 h-8 text-primary-foreground" />
+          <div className="mx-auto">
+            <img src={missEndoLogo} alt="Miss Endo" className="h-20 w-auto" />
           </div>
-          <CardTitle className="text-2xl font-bold">Miss Endo LLC</CardTitle>
           <CardDescription className="text-base">
             {isSignUp ? 'Create your account' : 'Sign in to your account'}
           </CardDescription>

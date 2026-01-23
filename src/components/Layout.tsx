@@ -28,6 +28,7 @@ import {
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
+import missEndoLogo from '@/assets/miss-endo-logo.webp';
 
 interface LayoutProps {
   children: ReactNode;
@@ -70,15 +71,9 @@ export default function Layout({ children }: LayoutProps) {
       <aside className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r border-sidebar-border">
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-sidebar-border">
-            <Link to="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-sidebar-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-bold text-sidebar-foreground">Miss Endo</h1>
-                <p className="text-xs text-sidebar-foreground/60">Healthcare CRM</p>
-              </div>
+          <div className="p-4 border-b border-sidebar-border">
+            <Link to="/dashboard" className="flex items-center justify-center">
+              <img src={missEndoLogo} alt="Miss Endo" className="h-14 w-auto" />
             </Link>
           </div>
 
