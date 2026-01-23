@@ -815,6 +815,7 @@ export type Database = {
         Row: {
           address: string | null
           allergies: string | null
+          clinic_payment: number | null
           companion_first_name: string | null
           companion_id_number: string | null
           companion_last_name: string | null
@@ -823,7 +824,10 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           date_of_birth: string | null
+          downpayment: number | null
           email: string | null
+          estimated_price: number | null
+          final_price: number | null
           first_name: string
           gender: string | null
           has_companion: boolean | null
@@ -842,6 +846,7 @@ export type Database = {
         Insert: {
           address?: string | null
           allergies?: string | null
+          clinic_payment?: number | null
           companion_first_name?: string | null
           companion_id_number?: string | null
           companion_last_name?: string | null
@@ -850,7 +855,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           date_of_birth?: string | null
+          downpayment?: number | null
           email?: string | null
+          estimated_price?: number | null
+          final_price?: number | null
           first_name: string
           gender?: string | null
           has_companion?: boolean | null
@@ -869,6 +877,7 @@ export type Database = {
         Update: {
           address?: string | null
           allergies?: string | null
+          clinic_payment?: number | null
           companion_first_name?: string | null
           companion_id_number?: string | null
           companion_last_name?: string | null
@@ -877,7 +886,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           date_of_birth?: string | null
+          downpayment?: number | null
           email?: string | null
+          estimated_price?: number | null
+          final_price?: number | null
           first_name?: string
           gender?: string | null
           has_companion?: boolean | null

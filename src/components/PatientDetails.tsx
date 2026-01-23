@@ -98,6 +98,10 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const [patientInfo, setPatientInfo] = useState<{ 
     total_cost: number; 
     total_paid: number;
+    estimated_price: number;
+    final_price: number;
+    downpayment: number;
+    clinic_payment: number;
     first_name?: string;
     last_name?: string;
     email?: string;
@@ -148,6 +152,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: '',
+    payment_type: 'downpayment' as 'downpayment' | 'clinic_payment',
     notes: ''
   });
 
@@ -205,12 +210,19 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       setPayments(paymentsRes.data || []);
       setPatientTransfers(patientTransfersRes.data || []);
       // Use calculated treatment total if total_cost is 0 or null
-      const patientData = patientRes.data;
+      const patientData = patientRes.data as any;
       if (patientData) {
         const dbTotalCost = patientData.total_cost || 0;
-        patientData.total_cost = dbTotalCost > 0 ? dbTotalCost : treatmentTotal;
+        setPatientInfo({
+          ...patientData,
+          total_cost: dbTotalCost > 0 ? dbTotalCost : treatmentTotal,
+          estimated_price: patientData.estimated_price || 0,
+          final_price: patientData.final_price || 0,
+          downpayment: patientData.downpayment || 0,
+          clinic_payment: patientData.clinic_payment || 0,
+          total_paid: patientData.total_paid || 0
+        });
       }
-      setPatientInfo(patientData);
       setHotels(hotelsRes.data || []);
       setTransfers(transfersRes.data || []);
       setTreatments(treatmentsRes.data || []);
@@ -655,25 +667,34 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         amount: paymentAmount,
         payment_date: paymentForm.payment_date,
         payment_method: paymentForm.payment_method || null,
-        notes: paymentForm.notes || null,
+        notes: paymentForm.notes ? `[${paymentForm.payment_type === 'downpayment' ? 'Kapora' : 'Klinik Ödemesi'}] ${paymentForm.notes}` : `[${paymentForm.payment_type === 'downpayment' ? 'Kapora' : 'Klinik Ödemesi'}]`,
         created_by: profile?.id
       }]);
 
       if (error) throw error;
 
-      // Update total_paid in patients table
-      const newTotalPaid = (patientInfo?.total_paid || 0) + paymentAmount;
-      await supabase.from('patients').update({ total_paid: newTotalPaid }).eq('id', patientId);
+      // Update the appropriate payment field based on payment type
+      const updateData: any = {
+        total_paid: (patientInfo?.total_paid || 0) + paymentAmount
+      };
+      
+      if (paymentForm.payment_type === 'downpayment') {
+        updateData.downpayment = (patientInfo?.downpayment || 0) + paymentAmount;
+      } else {
+        updateData.clinic_payment = (patientInfo?.clinic_payment || 0) + paymentAmount;
+      }
+
+      await supabase.from('patients').update(updateData).eq('id', patientId);
 
       // Also add to income_expenses for accounting
       const patientFullName = `${patientInfo?.first_name || ''} ${patientInfo?.last_name || ''}`.trim();
       await supabase.from('income_expenses').insert([{
         organization_id: profile?.organization_id,
         type: 'income',
-        category: 'Patient Payment',
+        category: paymentForm.payment_type === 'downpayment' ? 'Kapora' : 'Klinik Ödemesi',
         amount: paymentAmount,
         currency: 'USD',
-        description: `Payment from ${patientFullName}`,
+        description: `${paymentForm.payment_type === 'downpayment' ? 'Kapora' : 'Klinik ödemesi'}: ${patientFullName}`,
         reference_type: 'patient_payment',
         reference_id: patientId,
         patient_id: patientId,
@@ -683,14 +704,15 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       }]);
 
       toast({
-        title: 'Success',
-        description: 'Payment recorded'
+        title: 'Başarılı',
+        description: 'Ödeme kaydedildi'
       });
 
       setPaymentForm({
         amount: '',
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: '',
+        payment_type: 'downpayment',
         notes: ''
       });
 
@@ -698,8 +720,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     } catch (error) {
       console.error('Error adding payment:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to record payment',
+        title: 'Hata',
+        description: 'Ödeme kaydedilemedi',
         variant: 'destructive'
       });
     }
@@ -904,9 +926,13 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
-  const totalCost = patientInfo?.total_cost || 0;
-  const totalPaid = patientInfo?.total_paid || 0;
-  const remainingDebt = totalCost - totalPaid;
+  // New pricing structure
+  const estimatedPrice = patientInfo?.estimated_price || 0;
+  const finalPrice = patientInfo?.final_price || 0;
+  const downpayment = patientInfo?.downpayment || 0;
+  const clinicPayment = patientInfo?.clinic_payment || 0;
+  const totalPaid = downpayment + clinicPayment;
+  const remainingDebt = finalPrice - totalPaid;
 
   return (
     <div className="space-y-6">
@@ -1083,23 +1109,31 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4">
-          {/* Payment Summary Card */}
+          {/* Payment Summary Card - New Structure */}
           <Card className="border-l-4 border-l-primary">
             <CardContent className="pt-6">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Paid</p>
-                  <p className="text-2xl font-bold text-green-600">${totalPaid.toLocaleString()}</p>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 text-center">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Tahmini Fiyat</p>
+                  <p className="text-lg font-semibold text-muted-foreground">${estimatedPrice.toLocaleString()}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Debt</p>
-                  <p className={`text-2xl font-bold ${remainingDebt > 0 ? 'text-destructive' : 'text-foreground'}`}>
+                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-xs text-muted-foreground mb-1">Final Fiyat</p>
+                  <p className="text-lg font-bold text-primary">${finalPrice.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-muted-foreground mb-1">Kapora</p>
+                  <p className="text-lg font-semibold text-blue-600">${downpayment.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                  <p className="text-xs text-muted-foreground mb-1">Klinik Ödemesi</p>
+                  <p className="text-lg font-semibold text-green-600">${clinicPayment.toLocaleString()}</p>
+                </div>
+                <div className={`p-3 rounded-lg border ${remainingDebt > 0 ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'}`}>
+                  <p className="text-xs text-muted-foreground mb-1">Kalan Borç</p>
+                  <p className={`text-lg font-bold ${remainingDebt > 0 ? 'text-destructive' : 'text-green-600'}`}>
                     ${remainingDebt > 0 ? remainingDebt.toLocaleString() : '0'}
                   </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Amount</p>
-                  <p className="text-2xl font-bold text-foreground">${totalCost.toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
@@ -1109,14 +1143,26 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Add New Payment
+                Yeni Ödeme Ekle
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddPayment} className="space-y-4">
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="payment_amount">Amount *</Label>
+                    <Label htmlFor="payment_type">Ödeme Türü *</Label>
+                    <Select value={paymentForm.payment_type} onValueChange={(value: 'downpayment' | 'clinic_payment') => setPaymentForm({...paymentForm, payment_type: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="downpayment">Kapora</SelectItem>
+                        <SelectItem value="clinic_payment">Klinik Ödemesi</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_amount">Tutar *</Label>
                     <Input
                       id="payment_amount"
                       type="number"
@@ -1128,7 +1174,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="payment_date">Date *</Label>
+                    <Label htmlFor="payment_date">Tarih *</Label>
                     <Input
                       id="payment_date"
                       type="date"
@@ -1138,33 +1184,33 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="payment_method">Payment Method</Label>
+                    <Label htmlFor="payment_method">Ödeme Yöntemi</Label>
                     <Select value={paymentForm.payment_method} onValueChange={(value) => setPaymentForm({...paymentForm, payment_method: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder="Seçin" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="credit_card">Credit Card</SelectItem>
-                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="cash">Nakit</SelectItem>
+                        <SelectItem value="credit_card">Kredi Kartı</SelectItem>
+                        <SelectItem value="bank_transfer">Havale/EFT</SelectItem>
                         <SelectItem value="zelle">Zelle</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="other">Diğer</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="payment_notes">Note</Label>
+                    <Label htmlFor="payment_notes">Not</Label>
                     <Input
                       id="payment_notes"
                       value={paymentForm.notes}
                       onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
-                      placeholder="Description..."
+                      placeholder="Açıklama..."
                     />
                   </div>
                 </div>
                 <Button type="submit">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Payment
+                  Ödeme Ekle
                 </Button>
               </form>
             </CardContent>
