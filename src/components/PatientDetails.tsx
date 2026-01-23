@@ -133,9 +133,11 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [documentNotes, setDocumentNotes] = useState('');
   const [editingDocument, setEditingDocument] = useState<{ id: string; name: string } | null>(null);
+  const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const [documentThumbnails, setDocumentThumbnails] = useState<Record<string, string>>({});
 
   const [noteForm, setNoteForm] = useState({
     note_date: new Date().toISOString().split('T')[0],
@@ -262,50 +264,125 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
-  const handleUploadDocument = async (e: React.FormEvent) => {
+  const handleUploadDocuments = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!documentFile) return;
+    if (documentFiles.length === 0) return;
+
+    setUploadingDocuments(true);
+    let successCount = 0;
+    let errorCount = 0;
 
     try {
-      const fileExt = documentFile.name.split('.').pop();
-      const fileName = `${patientId}/${Date.now()}.${fileExt}`;
+      for (const file of documentFiles) {
+        try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${patientId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('patient-documents')
-        .upload(fileName, documentFile);
+          const { error: uploadError } = await supabase.storage
+            .from('patient-documents')
+            .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-      const { error: dbError } = await supabase.from('patient_documents').insert([{
-        patient_id: patientId,
-        organization_id: profile?.organization_id,
-        document_name: documentFile.name,
-        document_type: documentFile.type,
-        file_path: fileName,
-        file_size: documentFile.size,
-        uploaded_by: profile?.id,
-        notes: documentNotes || null
-      }]);
+          const { error: dbError } = await supabase.from('patient_documents').insert([{
+            patient_id: patientId,
+            organization_id: profile?.organization_id,
+            document_name: file.name,
+            document_type: file.type,
+            file_path: fileName,
+            file_size: file.size,
+            uploaded_by: profile?.id,
+            notes: documentNotes || null
+          }]);
 
-      if (dbError) throw dbError;
+          if (dbError) throw dbError;
+          successCount++;
+        } catch (err) {
+          console.error('Error uploading file:', file.name, err);
+          errorCount++;
+        }
+      }
 
-      toast({
-        title: 'Success',
-        description: 'Document uploaded successfully'
-      });
+      if (successCount > 0) {
+        toast({
+          title: 'Başarılı',
+          description: `${successCount} dosya yüklendi${errorCount > 0 ? `, ${errorCount} dosya başarısız` : ''}`
+        });
+      } else {
+        toast({
+          title: 'Hata',
+          description: 'Dosyalar yüklenemedi',
+          variant: 'destructive'
+        });
+      }
 
-      setDocumentFile(null);
+      setDocumentFiles([]);
       setDocumentNotes('');
       loadData();
     } catch (error) {
-      console.error('Error uploading document:', error);
+      console.error('Error uploading documents:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to upload document',
+        title: 'Hata',
+        description: 'Dosyalar yüklenirken bir hata oluştu',
         variant: 'destructive'
       });
+    } finally {
+      setUploadingDocuments(false);
     }
   };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setDocumentFiles(Array.from(files));
+    }
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setDocumentFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Load thumbnails for image documents
+  useEffect(() => {
+    const loadThumbnails = async () => {
+      const imageDocuments = documents.filter(doc => 
+        doc.document_type.includes('image')
+      );
+      
+      const newThumbnails: Record<string, string> = {};
+      
+      for (const doc of imageDocuments) {
+        if (!documentThumbnails[doc.id]) {
+          try {
+            const { data } = await supabase.storage
+              .from('patient-documents')
+              .download(doc.file_path);
+            
+            if (data) {
+              newThumbnails[doc.id] = URL.createObjectURL(data);
+            }
+          } catch (err) {
+            console.error('Error loading thumbnail:', err);
+          }
+        }
+      }
+      
+      if (Object.keys(newThumbnails).length > 0) {
+        setDocumentThumbnails(prev => ({ ...prev, ...newThumbnails }));
+      }
+    };
+
+    if (documents.length > 0) {
+      loadThumbnails();
+    }
+
+    // Cleanup blob URLs on unmount
+    return () => {
+      Object.values(documentThumbnails).forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, [documents]);
 
   const handleViewDocument = async (filePath: string, fileName: string, fileType: string) => {
     try {
@@ -1663,57 +1740,172 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Upload Document
+                Dosya Yükle
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleUploadDocument} className="space-y-4">
+              <form onSubmit={handleUploadDocuments} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="document">File (PDF, PNG, JPEG, STL, MP4, MOV) *</Label>
+                  <Label htmlFor="document">Dosyalar (PDF, PNG, JPEG, STL, MP4, MOV) - Birden fazla seçebilirsiniz *</Label>
                   <Input
                     id="document"
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg,.stl,.mp4,.mov,.avi,.webm"
-                    onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
-                    required
+                    onChange={handleFileSelect}
+                    multiple
+                    required={documentFiles.length === 0}
                   />
                 </div>
+                
+                {/* Selected files preview */}
+                {documentFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Seçilen Dosyalar ({documentFiles.length})</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {documentFiles.map((file, index) => (
+                        <Badge key={index} variant="secondary" className="flex items-center gap-1 py-1 px-2">
+                          {file.type.includes('image') && (
+                            <img 
+                              src={URL.createObjectURL(file)} 
+                              alt="" 
+                              className="w-6 h-6 object-cover rounded"
+                            />
+                          )}
+                          <span className="max-w-32 truncate text-xs">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 hover:bg-destructive/20"
+                            onClick={() => removeSelectedFile(index)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="doc-notes">Notes</Label>
+                  <Label htmlFor="doc-notes">Notlar</Label>
                   <Textarea
                     id="doc-notes"
                     value={documentNotes}
                     onChange={(e) => setDocumentNotes(e.target.value)}
                     rows={2}
+                    placeholder="Tüm dosyalara eklenecek not..."
                   />
                 </div>
-                <Button type="submit" disabled={!documentFile}>
+                <Button type="submit" disabled={documentFiles.length === 0 || uploadingDocuments}>
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload Document
+                  {uploadingDocuments ? 'Yükleniyor...' : `${documentFiles.length > 1 ? `${documentFiles.length} Dosya` : 'Dosya'} Yükle`}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
+          {/* Image Gallery */}
+          {documents.filter(doc => doc.document_type.includes('image')).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5" />
+                  Fotoğraflar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {documents
+                    .filter(doc => doc.document_type.includes('image'))
+                    .map(doc => (
+                      <div 
+                        key={doc.id} 
+                        className="group relative aspect-square rounded-lg overflow-hidden border bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                        onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}
+                      >
+                        {documentThumbnails[doc.id] ? (
+                          <img
+                            src={documentThumbnails[doc.id]}
+                            alt={doc.document_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                          </div>
+                        )}
+                        {/* Overlay with actions */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                          <p className="text-white text-xs text-center px-2 truncate max-w-full">{doc.document_name}</p>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 w-7 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadDocument(doc.file_path, doc.document_name);
+                              }}
+                              title="İndir"
+                            >
+                              <Download className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 w-7 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingDocument({ id: doc.id, name: doc.document_name });
+                              }}
+                              title="Yeniden Adlandır"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="h-7 w-7 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteDocument(doc.id, doc.file_path);
+                              }}
+                              title="Sil"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Other Documents (PDFs, videos, etc.) */}
           <Card>
             <CardHeader>
-              <CardTitle>Documents</CardTitle>
+              <CardTitle>Diğer Dökümanlar</CardTitle>
             </CardHeader>
             <CardContent>
-              {documents.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No documents uploaded</p>
+              {documents.filter(doc => !doc.document_type.includes('image')).length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">Henüz döküman yüklenmedi</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>İsim</TableHead>
+                      <TableHead>Notlar</TableHead>
+                      <TableHead>Tarih</TableHead>
+                      <TableHead>İşlemler</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {documents.map(doc => (
+                    {documents
+                      .filter(doc => !doc.document_type.includes('image'))
+                      .map(doc => (
                       <TableRow key={doc.id}>
                         <TableCell className="font-medium">
                           {editingDocument?.id === doc.id ? (
@@ -1728,32 +1920,33 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                                 variant="ghost"
                                 onClick={() => handleRenameDocument(doc.id, editingDocument.name)}
                               >
-                                Save
+                                Kaydet
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setEditingDocument(null)}
                               >
-                                Cancel
+                                İptal
                               </Button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
                               {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary" />}
+                              {doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-red-500" />}
                               {doc.document_name}
                             </div>
                           )}
                         </TableCell>
                         <TableCell>{doc.notes || '-'}</TableCell>
-                        <TableCell>{format(new Date(doc.created_at), 'PPP')}</TableCell>
+                        <TableCell>{format(new Date(doc.created_at), 'dd.MM.yyyy')}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => setEditingDocument({ id: doc.id, name: doc.document_name })}
-                              title="Rename"
+                              title="Yeniden Adlandır"
                             >
                               <Pencil className="w-4 h-4" />
                             </Button>
@@ -1761,7 +1954,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}
-                              title="View"
+                              title="Görüntüle"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -1769,7 +1962,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}
-                              title="Download"
+                              title="İndir"
                             >
                               <Download className="w-4 h-4" />
                             </Button>
@@ -1777,7 +1970,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDeleteDocument(doc.id, doc.file_path)}
-                              title="Delete"
+                              title="Sil"
                             >
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
