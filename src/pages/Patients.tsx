@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, User, Phone, Mail, Upload, X, Building2, Pencil, Trash2, FileText } from 'lucide-react';
+import { Plus, Search, User, Phone, Mail, Upload, X, Building2, Pencil, Trash2, FileText, DollarSign } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -79,7 +79,9 @@ export default function Patients() {
     companion_last_name: '',
     companion_phone: '',
     companion_id_number: '',
-    organization_id: ''
+    organization_id: '',
+    estimated_price: '',
+    final_price: ''
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
@@ -180,7 +182,7 @@ export default function Patients() {
         } = supabase.storage.from('patient-photos').getPublicUrl(fileName);
         photoUrl = publicUrl;
       }
-      const patientData = {
+      const patientData: any = {
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone: formData.phone,
@@ -199,7 +201,9 @@ export default function Patients() {
         companion_first_name: formData.has_companion ? formData.companion_first_name : null,
         companion_last_name: formData.has_companion ? formData.companion_last_name : null,
         companion_phone: formData.has_companion ? formData.companion_phone : null,
-        companion_id_number: formData.has_companion ? formData.companion_id_number : null
+        companion_id_number: formData.has_companion ? formData.companion_id_number : null,
+        estimated_price: formData.estimated_price ? parseFloat(formData.estimated_price) : 0,
+        final_price: formData.final_price ? parseFloat(formData.final_price) : 0
       };
       if (selectedPatient) {
         const {
@@ -251,7 +255,9 @@ export default function Patients() {
       companion_last_name: '',
       companion_phone: '',
       companion_id_number: '',
-      organization_id: profile?.organization_id || ''
+      organization_id: profile?.organization_id || '',
+      estimated_price: '',
+      final_price: ''
     });
     setPhotoFile(null);
     setPhotoPreview('');
@@ -265,27 +271,30 @@ export default function Patients() {
       data
     } = await supabase.from('patients').select('*').eq('id', patient.id).single();
     if (data) {
+      const patientData = data as any;
       setFormData({
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email || '',
-        phone: data.phone,
-        date_of_birth: data.date_of_birth || '',
-        gender: data.gender || '',
-        country: data.country || '',
-        address: data.address || '',
-        medical_condition: data.medical_condition || '',
-        allergies: data.allergies || '',
-        notes: data.notes || '',
-        photo_url: data.photo_url || '',
-        has_companion: data.has_companion || false,
-        companion_first_name: data.companion_first_name || '',
-        companion_last_name: data.companion_last_name || '',
-        companion_phone: data.companion_phone || '',
-        companion_id_number: data.companion_id_number || '',
-        organization_id: data.organization_id || ''
+        first_name: patientData.first_name,
+        last_name: patientData.last_name,
+        email: patientData.email || '',
+        phone: patientData.phone,
+        date_of_birth: patientData.date_of_birth || '',
+        gender: patientData.gender || '',
+        country: patientData.country || '',
+        address: patientData.address || '',
+        medical_condition: patientData.medical_condition || '',
+        allergies: patientData.allergies || '',
+        notes: patientData.notes || '',
+        photo_url: patientData.photo_url || '',
+        has_companion: patientData.has_companion || false,
+        companion_first_name: patientData.companion_first_name || '',
+        companion_last_name: patientData.companion_last_name || '',
+        companion_phone: patientData.companion_phone || '',
+        companion_id_number: patientData.companion_id_number || '',
+        organization_id: patientData.organization_id || '',
+        estimated_price: patientData.estimated_price ? String(patientData.estimated_price) : '',
+        final_price: patientData.final_price ? String(patientData.final_price) : ''
       });
-      setPhotoPreview(data.photo_url || '');
+      setPhotoPreview(patientData.photo_url || '');
     }
     setIsDialogOpen(true);
   };
@@ -528,6 +537,45 @@ export default function Patients() {
                 })} rows={2} />
                 </div>
 
+                {/* Pricing Section */}
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Fiyatlandırma
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="estimated_price">Tahmini Fiyat ($)</Label>
+                      <Input
+                        id="estimated_price"
+                        type="number"
+                        step="0.01"
+                        value={formData.estimated_price}
+                        onChange={e => setFormData({
+                          ...formData,
+                          estimated_price: e.target.value
+                        })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="final_price">Final Fiyat ($)</Label>
+                      <Input
+                        id="final_price"
+                        type="number"
+                        step="0.01"
+                        value={formData.final_price}
+                        onChange={e => setFormData({
+                          ...formData,
+                          final_price: e.target.value
+                        })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Companion Section */}
                 <div className="border-t pt-4 space-y-4">
                   <div className="flex items-center space-x-2">
                     <Checkbox id="has_companion" checked={formData.has_companion} onCheckedChange={checked => setFormData({
@@ -535,22 +583,22 @@ export default function Patients() {
                     has_companion: checked as boolean
                   })} />
                     <Label htmlFor="has_companion" className="font-medium cursor-pointer">
-                      Patient has a companion
+                      Refakatçi Var
                     </Label>
                   </div>
 
                   {formData.has_companion && <div className="pl-6 space-y-4 border-l-2 border-primary/20">
-                      <h4 className="font-medium text-sm">Companion Information</h4>
+                      <h4 className="font-medium text-sm">Refakatçi Bilgileri</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="companion_first_name">First Name</Label>
+                          <Label htmlFor="companion_first_name">Ad</Label>
                           <Input id="companion_first_name" value={formData.companion_first_name} onChange={e => setFormData({
                         ...formData,
                         companion_first_name: e.target.value
                       })} />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="companion_last_name">Last Name</Label>
+                          <Label htmlFor="companion_last_name">Soyad</Label>
                           <Input id="companion_last_name" value={formData.companion_last_name} onChange={e => setFormData({
                         ...formData,
                         companion_last_name: e.target.value
@@ -559,14 +607,14 @@ export default function Patients() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="companion_phone">Phone</Label>
+                          <Label htmlFor="companion_phone">Telefon</Label>
                           <Input id="companion_phone" value={formData.companion_phone} onChange={e => setFormData({
                         ...formData,
                         companion_phone: e.target.value
                       })} />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="companion_id_number">ID Number</Label>
+                          <Label htmlFor="companion_id_number">Kimlik No</Label>
                           <Input id="companion_id_number" value={formData.companion_id_number} onChange={e => setFormData({
                         ...formData,
                         companion_id_number: e.target.value
