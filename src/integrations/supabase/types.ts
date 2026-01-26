@@ -988,6 +988,7 @@ export type Database = {
           id: string
           lead_id: string | null
           notes: string | null
+          notify_all_admins: boolean | null
           organization_id: string
           patient_id: string | null
           reminder_date: string
@@ -1004,6 +1005,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          notify_all_admins?: boolean | null
           organization_id: string
           patient_id?: string | null
           reminder_date: string
@@ -1020,6 +1022,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          notify_all_admins?: boolean | null
           organization_id?: string
           patient_id?: string | null
           reminder_date?: string

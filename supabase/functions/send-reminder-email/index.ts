@@ -109,10 +109,43 @@ serve(async (req: Request) => {
 
         const targetType = reminder.patient ? "Patient" : "Lead";
         const targetPhone = reminder.patient?.phone || reminder.lead?.phone || "N/A";
-        const creatorEmail = reminder.creator?.email;
+        
+        // Determine recipients based on notify_all_admins flag
+        let recipientEmails: string[] = [];
+        
+        if (reminder.notify_all_admins) {
+          // Get all super admin emails
+          const { data: superAdmins, error: adminError } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("role", "super_admin");
+          
+          if (adminError) {
+            console.error("Error fetching super admins:", adminError);
+          } else if (superAdmins && superAdmins.length > 0) {
+            const userIds = superAdmins.map(sa => sa.user_id);
+            const { data: profiles, error: profileError } = await supabase
+              .from("profiles")
+              .select("email")
+              .in("id", userIds);
+            
+            if (profileError) {
+              console.error("Error fetching admin profiles:", profileError);
+            } else if (profiles) {
+              recipientEmails = profiles.map(p => p.email).filter(Boolean);
+            }
+          }
+          console.log(`Sending to all super admins: ${recipientEmails.length} recipients`);
+        } else {
+          // Send only to creator
+          const creatorEmail = reminder.creator?.email;
+          if (creatorEmail) {
+            recipientEmails = [creatorEmail];
+          }
+        }
 
-        if (!creatorEmail) {
-          console.error(`No email found for reminder creator: ${reminder.id}`);
+        if (recipientEmails.length === 0) {
+          console.error(`No recipients found for reminder: ${reminder.id}`);
           errorCount++;
           continue;
         }
@@ -201,12 +234,16 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
 </body>
 </html>`;
 
-        await client.send({
-          from: `${fromName} <${fromEmail}>`,
-          to: creatorEmail,
-          subject: `Reminder: ${reminder.title} - ${targetName}`,
-          html: emailHtml,
-        });
+        // Send email to all recipients
+        for (const recipientEmail of recipientEmails) {
+          await client.send({
+            from: `${fromName} <${fromEmail}>`,
+            to: recipientEmail,
+            subject: `Reminder: ${reminder.title} - ${targetName}`,
+            html: emailHtml,
+          });
+          console.log(`Email sent to: ${recipientEmail}`);
+        }
 
         // Update reminder status
         await supabase

@@ -33,7 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, Bell, Plus, Phone, Calendar, CheckCircle, Clock, 
-  User, Users, PhoneOff, AlertCircle, Trash2, Eye 
+  User, Users, PhoneOff, AlertCircle, Trash2, Eye, Mail 
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -116,6 +116,7 @@ export default function Reminders() {
     reminder_time: '09:00',
     title: '',
     notes: '',
+    notify_all_admins: false,
   });
 
   useEffect(() => {
@@ -194,6 +195,7 @@ export default function Reminders() {
         reminder_date: reminderDateTime,
         title: form.title,
         notes: form.notes || null,
+        notify_all_admins: form.notify_all_admins,
       }]);
 
       if (error) throw error;
@@ -212,6 +214,7 @@ export default function Reminders() {
         reminder_time: '09:00',
         title: '',
         notes: '',
+        notify_all_admins: false,
       });
       fetchData();
     } catch (error) {
@@ -315,6 +318,7 @@ export default function Reminders() {
       reminder_time: '09:00',
       title: `${typeLabel} - ${targetName}`,
       notes: '',
+      notify_all_admins: false,
     });
     setIsDialogOpen(true);
   };
@@ -430,17 +434,46 @@ export default function Reminders() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Notlar</Label>
+                  <Label>Notes</Label>
                   <Textarea
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Ek notlar..."
+                    placeholder="Additional notes..."
                     rows={3}
                   />
                 </div>
 
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                  <Label className="flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Email Notification
+                  </Label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="notify_type"
+                        checked={!form.notify_all_admins}
+                        onChange={() => setForm({ ...form, notify_all_admins: false })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">Only me (creator)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="notify_type"
+                        checked={form.notify_all_admins}
+                        onChange={() => setForm({ ...form, notify_all_admins: true })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">All Super Admins</span>
+                    </label>
+                  </div>
+                </div>
+
                 <Button type="submit" className="w-full">
-                  Hatırlatma Oluştur
+                  Create Reminder
                 </Button>
               </form>
             </DialogContent>
