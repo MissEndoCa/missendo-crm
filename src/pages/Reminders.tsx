@@ -181,7 +181,9 @@ export default function Reminders() {
     }
 
     try {
-      const reminderDateTime = `${form.reminder_date}T${form.reminder_time}:00`;
+      // Create a proper local date and convert to ISO string
+      const localDate = new Date(`${form.reminder_date}T${form.reminder_time}:00`);
+      const reminderDateTime = localDate.toISOString();
       
       const { error } = await supabase.from('reminders').insert([{
         organization_id: profile?.organization_id,
@@ -727,7 +729,13 @@ function ReminderCard({
             </p>
             <p className="text-sm text-muted-foreground">{targetPhone}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(new Date(reminder.reminder_date), 'dd.MM.yyyy HH:mm')}
+              {new Date(reminder.reminder_date).toLocaleString('tr-TR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
               {reminder.creator && ` • ${reminder.creator.first_name} ${reminder.creator.last_name}`}
             </p>
             {reminder.notes && (
