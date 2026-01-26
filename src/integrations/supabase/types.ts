@@ -582,6 +582,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "patient_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "patient_notes_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false

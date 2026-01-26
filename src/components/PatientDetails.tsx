@@ -58,6 +58,10 @@ interface PatientNote {
   content: string;
   created_at: string;
   created_by: string | null;
+  creator?: {
+    first_name: string;
+    last_name: string;
+  } | null;
 }
 
 interface PatientPayment {
@@ -197,7 +201,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes, organizationsRes] = await Promise.all([
         supabase.from('appointments').select('*, treatments(name), hotels(hotel_name), transfer_services(company_name)').eq('patient_id', patientId),
         supabase.from('patient_documents').select('*').eq('patient_id', patientId),
-        supabase.from('patient_notes').select('*').eq('patient_id', patientId).order('note_date', { ascending: false }),
+        supabase.from('patient_notes').select('*, creator:profiles!patient_notes_created_by_fkey(first_name, last_name)').eq('patient_id', patientId).order('note_date', { ascending: false }),
         supabase.from('patient_payments').select('*').eq('patient_id', patientId).order('payment_date', { ascending: false }),
         supabase.from('patient_transfers').select('*, hotels(hotel_name)').eq('patient_id', patientId).order('transfer_datetime', { ascending: false }),
         supabase.from('patients').select('total_cost, total_paid, first_name, last_name, email, phone, date_of_birth, gender, country, address, medical_condition, allergies, notes, photo_url, has_companion, companion_first_name, companion_last_name, companion_phone').eq('id', patientId).maybeSingle(),
@@ -216,7 +220,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         ...doc,
         category: (doc.category as 'photo' | 'xray' | 'document') || 'document'
       })));
-      setNotes(notesRes.data || []);
+      setNotes((notesRes.data || []) as PatientNote[]);
       setPayments(paymentsRes.data || []);
       setPatientTransfers(patientTransfersRes.data || []);
       // Use calculated treatment total if total_cost is 0 or null
@@ -1199,7 +1203,11 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       <div className="flex-1">
                         <p className="text-sm whitespace-pre-wrap">{note.content}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Added: {format(new Date(note.created_at), 'dd.MM.yyyy HH:mm')}
+                          {note.creator && (
+                            <span className="font-medium">{note.creator.first_name} {note.creator.last_name}</span>
+                          )}
+                          {note.creator && ' • '}
+                          {format(new Date(note.created_at), 'dd.MM.yyyy HH:mm')}
                         </p>
                       </div>
                       <Button
