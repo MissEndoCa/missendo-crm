@@ -251,16 +251,16 @@ export default function Leads() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Leads Management</h1>
-            <p className="text-muted-foreground mt-2">Track and manage your potential patients</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Leads Management</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Track and manage your potential patients</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button onClick={resetForm} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Lead
               </Button>
@@ -451,8 +451,8 @@ export default function Leads() {
         </div>
 
         {/* Table */}
-        <div className="bg-card rounded-lg border">
-          <Table>
+        <div className="bg-card rounded-lg border overflow-x-auto">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>

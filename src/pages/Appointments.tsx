@@ -161,19 +161,20 @@ export default function Appointments() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Appointments</h1>
-            <p className="text-muted-foreground mt-2">Schedule and manage patient appointments</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Appointments</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Schedule and manage patient appointments</p>
           </div>
           
           {/* Date Picker */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 w-full sm:w-auto">
                 <CalendarIcon className="w-4 h-4" />
-                {format(selectedDate, 'PPP')}
+                <span className="hidden sm:inline">{format(selectedDate, 'PPP')}</span>
+                <span className="sm:hidden">{format(selectedDate, 'PP')}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">

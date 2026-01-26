@@ -308,20 +308,20 @@ export default function Organizations() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Organizations</h1>
-            <p className="text-muted-foreground mt-2">Manage dental clinics and their settings</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Organizations</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage dental clinics and their settings</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button onClick={resetForm} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Organization
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{selectedOrg ? 'Edit Organization' : 'Add New Organization'}</DialogTitle>
               </DialogHeader>
@@ -435,8 +435,8 @@ export default function Organizations() {
           />
         </div>
 
-        <div className="bg-card rounded-lg border">
-          <Table>
+        <div className="bg-card rounded-lg border overflow-x-auto">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Organization</TableHead>

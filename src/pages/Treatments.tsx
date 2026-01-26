@@ -527,23 +527,23 @@ export default function Treatments() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Treatments</h1>
-            <p className="text-muted-foreground mt-2">Manage dental treatments and patient treatment plans</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Treatments</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage dental treatments and patient treatment plans</p>
           </div>
         </div>
 
-        <Tabs defaultValue="treatments" className="space-y-6">
-          <TabsList>
+        <Tabs defaultValue="treatments" className="space-y-4 md:space-y-6">
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="treatments">Treatment List</TabsTrigger>
             <TabsTrigger value="patient-treatments">Patient Treatments</TabsTrigger>
           </TabsList>
 
           {/* Treatments Tab */}
           <TabsContent value="treatments" className="space-y-4">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input

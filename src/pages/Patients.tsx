@@ -395,15 +395,15 @@ export default function Patients() {
     });
   }, [patients, searchQuery, clinicFilter, countryFilter]);
   return <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Patients</h1>
-            <p className="text-muted-foreground mt-2">Manage patient records and treatment history</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Patients</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage patient records and treatment history</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button onClick={resetForm} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Patient
               </Button>
@@ -663,8 +663,8 @@ export default function Patients() {
           )}
         </div>
 
-        <div className="bg-card rounded-lg border">
-          <Table>
+        <div className="bg-card rounded-lg border overflow-x-auto">
+          <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Patient</TableHead>
