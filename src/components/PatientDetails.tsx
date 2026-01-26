@@ -1584,7 +1584,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddHotelBooking} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="booking_hotel">Hotel *</Label>
                     <Select 
@@ -1611,7 +1611,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       onValueChange={(value) => setHotelBookingForm({...hotelBookingForm, room_type: value})}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select room type" />
+                        <SelectValue placeholder="Room type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="single">Single Room</SelectItem>
@@ -1631,7 +1631,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="booking_check_in">Check-in Date *</Label>
                     <Input
@@ -1643,13 +1643,14 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="booking_nights">Number of Nights *</Label>
+                    <Label htmlFor="booking_nights">Nights *</Label>
                     <Input
                       id="booking_nights"
                       type="number"
                       min="1"
                       value={hotelBookingForm.nights_count}
                       onChange={(e) => setHotelBookingForm({...hotelBookingForm, nights_count: e.target.value})}
+                      placeholder="1"
                       required
                     />
                   </div>
@@ -1698,50 +1699,77 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               {patientTransfers.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No transfer records yet</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Departure → Arrival</TableHead>
-                      <TableHead>Airline</TableHead>
-                      <TableHead>Flight No</TableHead>
-                      <TableHead>Times</TableHead>
-                      <TableHead>Pickup</TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
                     {patientTransfers.map(transfer => (
-                      <TableRow key={transfer.id}>
-                        <TableCell>
-                          <Badge variant={transfer.transfer_type === 'departure' ? "secondary" : "default"} className={transfer.transfer_type === 'departure' ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
-                            {transfer.transfer_type === 'departure' ? 'Departure' : 'Arrival'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{format(new Date(transfer.transfer_datetime), 'dd.MM.yyyy')}</TableCell>
-                        <TableCell className="font-mono">
-                          {transfer.departure_airport || transfer.origin || '?'} → {transfer.arrival_airport || transfer.destination || '?'}
-                        </TableCell>
-                        <TableCell>{transfer.airline || '-'}</TableCell>
-                        <TableCell className="font-mono">{transfer.flight_info || '-'}</TableCell>
-                        <TableCell className="text-sm">
-                          {transfer.departure_time?.slice(0, 5) || '-'} - {transfer.arrival_time?.slice(0, 5) || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{transfer.airport_pickup_info || '-'}</TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteTransfer(transfer.id)}
-                          >
+                      <div key={transfer.id} className="p-3 border rounded-lg bg-muted/30">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <Badge variant={transfer.transfer_type === 'departure' ? "secondary" : "default"} className={transfer.transfer_type === 'departure' ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
+                              {transfer.transfer_type === 'departure' ? 'Departure' : 'Arrival'}
+                            </Badge>
+                            <p className="text-sm font-semibold mt-1">{format(new Date(transfer.transfer_datetime), 'dd.MM.yyyy')}</p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDeleteTransfer(transfer.id)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                        <div className="text-sm space-y-1">
+                          <p className="font-mono">{transfer.departure_airport || transfer.origin || '?'} → {transfer.arrival_airport || transfer.destination || '?'}</p>
+                          {transfer.airline && <p className="text-muted-foreground">{transfer.airline} • {transfer.flight_info || '-'}</p>}
+                          <p className="text-xs text-muted-foreground">
+                            {transfer.departure_time?.slice(0, 5) || '-'} - {transfer.arrival_time?.slice(0, 5) || '-'}
+                          </p>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                  
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Departure → Arrival</TableHead>
+                          <TableHead>Airline</TableHead>
+                          <TableHead>Flight No</TableHead>
+                          <TableHead>Times</TableHead>
+                          <TableHead>Pickup</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patientTransfers.map(transfer => (
+                          <TableRow key={transfer.id}>
+                            <TableCell>
+                              <Badge variant={transfer.transfer_type === 'departure' ? "secondary" : "default"} className={transfer.transfer_type === 'departure' ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
+                                {transfer.transfer_type === 'departure' ? 'Departure' : 'Arrival'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{format(new Date(transfer.transfer_datetime), 'dd.MM.yyyy')}</TableCell>
+                            <TableCell className="font-mono">
+                              {transfer.departure_airport || transfer.origin || '?'} → {transfer.arrival_airport || transfer.destination || '?'}
+                            </TableCell>
+                            <TableCell>{transfer.airline || '-'}</TableCell>
+                            <TableCell className="font-mono">{transfer.flight_info || '-'}</TableCell>
+                            <TableCell className="text-sm">
+                              {transfer.departure_time?.slice(0, 5) || '-'} - {transfer.arrival_time?.slice(0, 5) || '-'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{transfer.airport_pickup_info || '-'}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeleteTransfer(transfer.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -1757,7 +1785,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             </CardHeader>
             <CardContent>
               <form onSubmit={editingAppointment ? handleUpdateAppointment : handleAddAppointment} className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="appointment_date">Date *</Label>
                     <Input
@@ -1778,7 +1806,6 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       className="w-full"
                       contentClassName="max-h-72"
                     />
-                    {/* Keep native form required validation */}
                     <input
                       type="hidden"
                       name="appointment_time"
@@ -1787,10 +1814,10 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="duration_minutes">Duration (minutes)</Label>
+                    <Label htmlFor="duration_minutes">Duration</Label>
                     <Select value={appointmentForm.duration_minutes} onValueChange={(value) => setAppointmentForm({...appointmentForm, duration_minutes: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select duration" />
+                        <SelectValue placeholder="Duration" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="15">15 min</SelectItem>
@@ -1804,7 +1831,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="appointment_type">Type *</Label>
                     <Select value={appointmentForm.appointment_type} onValueChange={(value) => setAppointmentForm({...appointmentForm, appointment_type: value})}>
@@ -1872,56 +1899,74 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               {appointments.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No appointments yet</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
                     {appointments.map(apt => {
                       const aptDate = new Date(apt.appointment_date);
                       return (
-                        <TableRow key={apt.id}>
-                          <TableCell>{format(aptDate, 'dd.MM.yyyy')}</TableCell>
-                          <TableCell>{format(aptDate, 'HH:mm')}</TableCell>
-                          <TableCell>{apt.duration_minutes || 60} min</TableCell>
-                          <TableCell className="capitalize">{apt.status}</TableCell>
-                          <TableCell>{apt.notes || '-'}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditAppointment(apt);
-                                }}
-                              >
+                        <div key={apt.id} className="p-3 border rounded-lg bg-muted/30">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-semibold">{format(aptDate, 'dd.MM.yyyy')}</p>
+                              <p className="text-sm text-muted-foreground">{format(aptDate, 'HH:mm')} • {apt.duration_minutes || 60} min</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Badge variant="outline" className="capitalize text-xs">{apt.status}</Badge>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleEditAppointment(apt)}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteAppointment(apt.id);
-                                }}
-                              >
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDeleteAppointment(apt.id)}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          </div>
+                          {apt.notes && <p className="text-xs text-muted-foreground">{apt.notes}</p>}
+                        </div>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </div>
+                  
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Duration</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {appointments.map(apt => {
+                          const aptDate = new Date(apt.appointment_date);
+                          return (
+                            <TableRow key={apt.id}>
+                              <TableCell>{format(aptDate, 'dd.MM.yyyy')}</TableCell>
+                              <TableCell>{format(aptDate, 'HH:mm')}</TableCell>
+                              <TableCell>{apt.duration_minutes || 60} min</TableCell>
+                              <TableCell className="capitalize">{apt.status}</TableCell>
+                              <TableCell>{apt.notes || '-'}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="ghost" onClick={() => handleEditAppointment(apt)}>
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => handleDeleteAppointment(apt.id)}>
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -2071,61 +2116,98 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               {documents.filter(doc => doc.category === 'document').length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No documents uploaded yet</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
                     {documents
                       .filter(doc => doc.category === 'document')
                       .map(doc => (
-                      <TableRow key={doc.id}>
-                        <TableCell className="font-medium">
-                          {editingDocument?.id === doc.id ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={editingDocument.name}
-                                onChange={(e) => setEditingDocument({ ...editingDocument, name: e.target.value })}
-                                className="h-8 w-48"
-                              />
-                              <Button size="sm" variant="ghost" onClick={() => handleRenameDocument(doc.id, editingDocument.name)}>Save</Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingDocument(null)}>Cancel</Button>
+                        <div key={doc.id} className="p-3 border rounded-lg bg-muted/30">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary flex-shrink-0" />}
+                                {doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-destructive flex-shrink-0" />}
+                                <p className="font-medium text-sm truncate">{doc.document_name}</p>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{format(new Date(doc.created_at), 'dd.MM.yyyy')}</p>
+                              {doc.notes && <p className="text-xs text-muted-foreground mt-1">{doc.notes}</p>}
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary" />}
-                              {doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-destructive" />}
-                              {doc.document_name}
+                            <div className="flex gap-1 flex-shrink-0 ml-2">
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}>
+                                <Download className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDeleteDocument(doc.id, doc.file_path)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell>{doc.notes || '-'}</TableCell>
-                        <TableCell>{format(new Date(doc.created_at), 'dd.MM.yyyy')}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => setEditingDocument({ id: doc.id, name: doc.document_name })} title="Rename">
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)} title="View">
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)} title="Download">
-                              <Download className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteDocument(doc.id, doc.file_path)} title="Delete">
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                      ))}
+                  </div>
+                  
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {documents
+                          .filter(doc => doc.category === 'document')
+                          .map(doc => (
+                          <TableRow key={doc.id}>
+                            <TableCell className="font-medium">
+                              {editingDocument?.id === doc.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    value={editingDocument.name}
+                                    onChange={(e) => setEditingDocument({ ...editingDocument, name: e.target.value })}
+                                    className="h-8 w-48"
+                                  />
+                                  <Button size="sm" variant="ghost" onClick={() => handleRenameDocument(doc.id, editingDocument.name)}>Save</Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingDocument(null)}>Cancel</Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary" />}
+                                  {doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-destructive" />}
+                                  {doc.document_name}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>{doc.notes || '-'}</TableCell>
+                            <TableCell>{format(new Date(doc.created_at), 'dd.MM.yyyy')}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => setEditingDocument({ id: doc.id, name: doc.document_name })} title="Rename">
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)} title="View">
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)} title="Download">
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleDeleteDocument(doc.id, doc.file_path)} title="Delete">
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
