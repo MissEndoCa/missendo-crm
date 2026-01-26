@@ -94,7 +94,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function Reminders() {
-  const { profile } = useAuth();
+  const { profile, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -119,14 +119,15 @@ export default function Reminders() {
   });
 
   useEffect(() => {
-    if (profile?.organization_id) {
+    if (isSuperAdmin) {
       fetchData();
     }
-  }, [profile?.organization_id]);
+  }, [isSuperAdmin]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      // Super admin sees ALL data across all organizations
       const [remindersRes, patientsRes, leadsRes] = await Promise.all([
         supabase
           .from('reminders')
@@ -136,17 +137,14 @@ export default function Reminders() {
             lead:leads(first_name, last_name, phone),
             creator:profiles!reminders_created_by_fkey(first_name, last_name)
           `)
-          .eq('organization_id', profile?.organization_id)
           .order('reminder_date', { ascending: true }),
         supabase
           .from('patients')
           .select('id, first_name, last_name, phone')
-          .eq('organization_id', profile?.organization_id)
           .order('first_name'),
         supabase
           .from('leads')
           .select('id, first_name, last_name, phone, status')
-          .eq('organization_id', profile?.organization_id)
           .not('status', 'eq', 'converted_to_patient')
           .order('first_name'),
       ]);
