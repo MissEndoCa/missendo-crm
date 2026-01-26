@@ -117,7 +117,7 @@ serve(async (req: Request) => {
           continue;
         }
 
-        const reminderDate = new Date(reminder.reminder_date).toLocaleString("tr-TR", {
+        const reminderDate = new Date(reminder.reminder_date).toLocaleString("en-US", {
           dateStyle: "long",
           timeStyle: "short",
         });
@@ -137,7 +137,7 @@ serve(async (req: Request) => {
 <tr>
 <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
 <img src="https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/email-assets/miss-endo-logo.webp?v=1" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
-<h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Hatirlatma</h1>
+<h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Reminder</h1>
 <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">${reminder.title}</p>
 </td>
 </tr>
@@ -148,16 +148,16 @@ serve(async (req: Request) => {
 <!-- Person Info -->
 <tr>
 <td style="padding: 15px; background-color: #f9fafb; border-radius: 8px; margin-bottom: 12px;">
-<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Kisi</p>
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Contact</p>
 <p style="margin: 5px 0 0 0; color: #111827; font-size: 18px; font-weight: 600;">${targetName}</p>
-<span style="display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; ${targetType === 'Patient' ? 'background-color: #dbeafe; color: #1d4ed8;' : 'background-color: #fef3c7; color: #b45309;'}">${targetType === 'Patient' ? 'Hasta' : 'Lead'}</span>
+<span style="display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; ${targetType === 'Patient' ? 'background-color: #dbeafe; color: #1d4ed8;' : 'background-color: #fef3c7; color: #b45309;'}">${targetType}</span>
 </td>
 </tr>
 <tr><td style="height: 12px;"></td></tr>
 <!-- Phone -->
 <tr>
 <td style="padding: 15px; background-color: #f9fafb; border-radius: 8px;">
-<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Telefon</p>
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Phone</p>
 <p style="margin: 5px 0 0 0; color: #111827; font-size: 16px; font-weight: 500;">${targetPhone}</p>
 </td>
 </tr>
@@ -165,7 +165,7 @@ serve(async (req: Request) => {
 <!-- Date -->
 <tr>
 <td style="padding: 15px; background-color: #f9fafb; border-radius: 8px;">
-<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Hatirlatma Tarihi</p>
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Reminder Date</p>
 <p style="margin: 5px 0 0 0; color: #111827; font-size: 16px; font-weight: 500;">${reminderDate}</p>
 </td>
 </tr>
@@ -173,14 +173,14 @@ serve(async (req: Request) => {
 <!-- Type -->
 <tr>
 <td style="padding: 15px; background-color: #f9fafb; border-radius: 8px;">
-<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Tip</p>
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Type</p>
 <p style="margin: 5px 0 0 0; color: #111827; font-size: 16px; font-weight: 500;">${getReminderTypeLabel(reminder.reminder_type)}</p>
 </td>
 </tr>
 ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
 <tr>
 <td style="padding: 15px; background-color: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
-<p style="margin: 0; color: #92400e; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Notlar</p>
+<p style="margin: 0; color: #92400e; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Notes</p>
 <p style="margin: 5px 0 0 0; color: #78350f; font-size: 14px;">${reminder.notes}</p>
 </td>
 </tr>` : ''}
@@ -190,8 +190,8 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
 <!-- Footer -->
 <tr>
 <td style="background-color: #1f2937; padding: 25px; text-align: center;">
-<p style="margin: 0; color: #9ca3af; font-size: 12px;">Miss Endo CRM - Hatirlatma Sistemi</p>
-<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 11px;">Bu email otomatik olarak gonderilmistir.</p>
+<p style="margin: 0; color: #9ca3af; font-size: 12px;">Miss Endo CRM - Reminder System</p>
+<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 11px;">This email was sent automatically.</p>
 </td>
 </tr>
 </table>
@@ -204,7 +204,7 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
         await client.send({
           from: `${fromName} <${fromEmail}>`,
           to: creatorEmail,
-          subject: `🔔 Hatırlatma: ${reminder.title} - ${targetName}`,
+          subject: `Reminder: ${reminder.title} - ${targetName}`,
           html: emailHtml,
         });
 
@@ -248,11 +248,11 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
 
 function getReminderTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    call_back: "Geri Ara",
-    follow_up: "Takip",
-    appointment: "Randevu",
-    unreachable: "Ulaşılamadı",
-    custom: "Özel",
+    call_back: "Call Back",
+    follow_up: "Follow Up",
+    appointment: "Appointment",
+    unreachable: "Unreachable",
+    custom: "Custom",
   };
   return labels[type] || type;
 }
