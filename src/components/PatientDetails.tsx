@@ -167,6 +167,13 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     notes: ''
   });
 
+  const [pricingForm, setPricingForm] = useState({
+    estimated_price: '',
+    final_price: ''
+  });
+  const [isEditingPricing, setIsEditingPricing] = useState(false);
+  const [savingPricing, setSavingPricing] = useState(false);
+
   const [transferForm, setTransferForm] = useState({
     transfer_type: 'arrival' as 'arrival' | 'departure',
     transfer_date: '',
@@ -204,7 +211,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         supabase.from('patient_notes').select('*, creator:profiles!patient_notes_created_by_fkey(first_name, last_name)').eq('patient_id', patientId).order('note_date', { ascending: false }),
         supabase.from('patient_payments').select('*').eq('patient_id', patientId).order('payment_date', { ascending: false }),
         supabase.from('patient_transfers').select('*, hotels(hotel_name)').eq('patient_id', patientId).order('transfer_datetime', { ascending: false }),
-        supabase.from('patients').select('total_cost, total_paid, first_name, last_name, email, phone, date_of_birth, gender, country, address, medical_condition, allergies, notes, photo_url, has_companion, companion_first_name, companion_last_name, companion_phone').eq('id', patientId).maybeSingle(),
+        supabase.from('patients').select('total_cost, total_paid, estimated_price, final_price, downpayment, clinic_payment, first_name, last_name, email, phone, date_of_birth, gender, country, address, medical_condition, allergies, notes, photo_url, has_companion, companion_first_name, companion_last_name, companion_phone').eq('id', patientId).maybeSingle(),
         supabase.from('hotels').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('transfer_services').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id),
@@ -787,6 +794,48 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
+  const handleSavePricing = async () => {
+    setSavingPricing(true);
+    try {
+      const updateData = {
+        estimated_price: pricingForm.estimated_price ? parseFloat(pricingForm.estimated_price) : 0,
+        final_price: pricingForm.final_price ? parseFloat(pricingForm.final_price) : 0
+      };
+
+      const { error } = await supabase
+        .from('patients')
+        .update(updateData)
+        .eq('id', patientId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Pricing updated successfully'
+      });
+
+      setIsEditingPricing(false);
+      loadData();
+    } catch (error) {
+      console.error('Error updating pricing:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update pricing',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
+  const handleStartEditPricing = () => {
+    setPricingForm({
+      estimated_price: String(patientInfo?.estimated_price || ''),
+      final_price: String(patientInfo?.final_price || '')
+    });
+    setIsEditingPricing(true);
+  };
+
   const handleAddTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!transferForm.transfer_date) return;
@@ -1227,9 +1276,58 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4 mt-4">
-          {/* Payment Summary Card - New Structure */}
+          {/* Payment Summary Card - Editable Pricing */}
           <Card className="border-l-4 border-l-primary">
-            <CardContent className="pt-4 md:pt-6">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Financial Summary
+                </CardTitle>
+                {!isEditingPricing ? (
+                  <Button variant="outline" size="sm" onClick={handleStartEditPricing}>
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit Pricing
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingPricing(false)} disabled={savingPricing}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSavePricing} disabled={savingPricing}>
+                      {savingPricing ? 'Saving...' : 'Save'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              {isEditingPricing ? (
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_estimated_price">Estimated Price ($)</Label>
+                    <Input
+                      id="edit_estimated_price"
+                      type="number"
+                      step="0.01"
+                      value={pricingForm.estimated_price}
+                      onChange={(e) => setPricingForm({...pricingForm, estimated_price: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_final_price">Final Price ($)</Label>
+                    <Input
+                      id="edit_final_price"
+                      type="number"
+                      step="0.01"
+                      value={pricingForm.final_price}
+                      onChange={(e) => setPricingForm({...pricingForm, final_price: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              ) : null}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 text-center">
                 <div className="p-2 md:p-3 bg-muted/50 rounded-lg">
                   <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Estimated</p>
