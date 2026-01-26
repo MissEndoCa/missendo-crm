@@ -21,6 +21,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -28,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Building2, CheckCircle, XCircle, Settings } from 'lucide-react';
+import { Plus, Search, Building2, CheckCircle, XCircle, Settings, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import OrganizationUsers from '@/components/OrganizationUsers';
@@ -52,9 +62,9 @@ interface Organization {
 }
 
 const categoryLabels: Record<string, string> = {
-  hair: 'Saç',
-  dental: 'Diş',
-  aesthetic: 'Estetik',
+  hair: 'Hair',
+  dental: 'Dental',
+  aesthetic: 'Aesthetic',
 };
 
 const categoryColors: Record<string, string> = {
@@ -70,6 +80,8 @@ export default function Organizations() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isApiDialogOpen, setIsApiDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const { toast } = useToast();
 
@@ -230,6 +242,41 @@ export default function Organizations() {
     }
   };
 
+  const handleDeleteClick = (org: Organization, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOrgToDelete(org);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!orgToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .delete()
+        .eq('id', orgToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Organization deleted successfully",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setOrgToDelete(null);
+      loadOrganizations();
+    } catch (error: any) {
+      console.error('Error deleting organization:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete organization. It may have associated data.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredOrganizations = organizations.filter(org =>
     `${org.name} ${org.email} ${org.city}`
       .toLowerCase()
@@ -338,18 +385,18 @@ export default function Organizations() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Kategori *</Label>
+                  <Label htmlFor="category">Category *</Label>
                   <Select
                     value={formData.category}
                     onValueChange={(value) => setFormData({ ...formData, category: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Kategori seçin" />
+                      <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="hair">Saç</SelectItem>
-                      <SelectItem value="dental">Diş</SelectItem>
-                      <SelectItem value="aesthetic">Estetik</SelectItem>
+                      <SelectItem value="hair">Hair</SelectItem>
+                      <SelectItem value="dental">Dental</SelectItem>
+                      <SelectItem value="aesthetic">Aesthetic</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -393,7 +440,7 @@ export default function Organizations() {
             <TableHeader>
               <TableRow>
                 <TableHead>Organization</TableHead>
-                <TableHead>Kategori</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
@@ -482,6 +529,14 @@ export default function Organizations() {
                         >
                           Edit
                         </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => handleDeleteClick(org, e)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -561,6 +616,28 @@ export default function Organizations() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{orgToDelete?.name}"? This action cannot be undone. 
+                All associated data (patients, appointments, leads, etc.) may also be affected.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setOrgToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
