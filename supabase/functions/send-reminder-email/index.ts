@@ -122,59 +122,84 @@ serve(async (req: Request) => {
           timeStyle: "short",
         });
 
-        const emailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: #6366f1; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-              .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
-              .footer { background: #f3f4f6; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; color: #6b7280; }
-              .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
-              .badge-patient { background: #dbeafe; color: #1d4ed8; }
-              .badge-lead { background: #fef3c7; color: #b45309; }
-              .info-row { margin: 10px 0; padding: 10px; background: white; border-radius: 6px; }
-              .label { font-weight: 600; color: #6b7280; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1 style="margin: 0;">🔔 Hatırlatma</h1>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">${reminder.title}</p>
-              </div>
-              <div class="content">
-                <div class="info-row">
-                  <span class="label">Kişi:</span> 
-                  <strong>${targetName}</strong>
-                  <span class="badge ${targetType === 'Patient' ? 'badge-patient' : 'badge-lead'}">${targetType}</span>
-                </div>
-                <div class="info-row">
-                  <span class="label">Telefon:</span> ${targetPhone}
-                </div>
-                <div class="info-row">
-                  <span class="label">Hatırlatma Tarihi:</span> ${reminderDate}
-                </div>
-                <div class="info-row">
-                  <span class="label">Tip:</span> ${getReminderTypeLabel(reminder.reminder_type)}
-                </div>
-                ${reminder.notes ? `
-                <div class="info-row">
-                  <span class="label">Notlar:</span><br>
-                  <p style="margin: 5px 0 0 0;">${reminder.notes}</p>
-                </div>
-                ` : ''}
-              </div>
-              <div class="footer">
-                Miss Endo CRM - Hatırlatma Sistemi
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: Arial, sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+<tr>
+<td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+<!-- Header with Logo -->
+<tr>
+<td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
+<img src="https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/email-assets/miss-endo-logo.webp?v=1" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
+<h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Hatirlatma</h1>
+<p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">${reminder.title}</p>
+</td>
+</tr>
+<!-- Content -->
+<tr>
+<td style="padding: 30px;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<!-- Person Info -->
+<tr>
+<td style="padding: 15px; background-color: #f9fafb; border-radius: 8px; margin-bottom: 12px;">
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Kisi</p>
+<p style="margin: 5px 0 0 0; color: #111827; font-size: 18px; font-weight: 600;">${targetName}</p>
+<span style="display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; ${targetType === 'Patient' ? 'background-color: #dbeafe; color: #1d4ed8;' : 'background-color: #fef3c7; color: #b45309;'}">${targetType === 'Patient' ? 'Hasta' : 'Lead'}</span>
+</td>
+</tr>
+<tr><td style="height: 12px;"></td></tr>
+<!-- Phone -->
+<tr>
+<td style="padding: 15px; background-color: #f9fafb; border-radius: 8px;">
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Telefon</p>
+<p style="margin: 5px 0 0 0; color: #111827; font-size: 16px; font-weight: 500;">${targetPhone}</p>
+</td>
+</tr>
+<tr><td style="height: 12px;"></td></tr>
+<!-- Date -->
+<tr>
+<td style="padding: 15px; background-color: #f9fafb; border-radius: 8px;">
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Hatirlatma Tarihi</p>
+<p style="margin: 5px 0 0 0; color: #111827; font-size: 16px; font-weight: 500;">${reminderDate}</p>
+</td>
+</tr>
+<tr><td style="height: 12px;"></td></tr>
+<!-- Type -->
+<tr>
+<td style="padding: 15px; background-color: #f9fafb; border-radius: 8px;">
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Tip</p>
+<p style="margin: 5px 0 0 0; color: #111827; font-size: 16px; font-weight: 500;">${getReminderTypeLabel(reminder.reminder_type)}</p>
+</td>
+</tr>
+${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
+<tr>
+<td style="padding: 15px; background-color: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+<p style="margin: 0; color: #92400e; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Notlar</p>
+<p style="margin: 5px 0 0 0; color: #78350f; font-size: 14px;">${reminder.notes}</p>
+</td>
+</tr>` : ''}
+</table>
+</td>
+</tr>
+<!-- Footer -->
+<tr>
+<td style="background-color: #1f2937; padding: 25px; text-align: center;">
+<p style="margin: 0; color: #9ca3af; font-size: 12px;">Miss Endo CRM - Hatirlatma Sistemi</p>
+<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 11px;">Bu email otomatik olarak gonderilmistir.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
 
         await client.send({
           from: `${fromName} <${fromEmail}>`,
