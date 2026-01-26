@@ -18,6 +18,8 @@ import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PatientDetails } from '@/components/PatientDetails';
 import { ColumnFilter } from '@/components/ColumnFilter';
+import { PatientCard } from '@/components/PatientCard';
+import { useIsMobile } from '@/hooks/use-mobile';
 interface Patient {
   id: string;
   first_name: string;
@@ -49,6 +51,7 @@ export default function Patients() {
     profile,
     isSuperAdmin
   } = useAuth();
+  const isMobile = useIsMobile();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -663,113 +666,143 @@ export default function Patients() {
           )}
         </div>
 
-        <div className="bg-card rounded-lg border overflow-x-auto">
-          <Table className="min-w-[900px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Patient</TableHead>
-                <TableHead>Contact</TableHead>
-                {isSuperAdmin && (
+        {/* Mobile Card View */}
+        {isMobile ? (
+          <div className="space-y-3">
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading patients...
+              </div>
+            ) : filteredPatients.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No patients found
+              </div>
+            ) : (
+              filteredPatients.map(patient => (
+                <PatientCard
+                  key={patient.id}
+                  patient={patient}
+                  isSuperAdmin={isSuperAdmin}
+                  onEdit={() => handleEdit(patient)}
+                  onDetails={() => {
+                    setSelectedPatient(patient);
+                    setShowPatientDetails(true);
+                  }}
+                  onDelete={() => handleDeleteClick(patient)}
+                />
+              ))
+            )}
+          </div>
+        ) : (
+          /* Desktop Table View */
+          <div className="bg-card rounded-lg border overflow-x-auto">
+            <Table className="min-w-[900px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Contact</TableHead>
+                  {isSuperAdmin && (
+                    <TableHead className="p-0">
+                      <ColumnFilter
+                        title="Clinic"
+                        options={clinicOptions}
+                        selectedValues={clinicFilter}
+                        onFilterChange={setClinicFilter}
+                      />
+                    </TableHead>
+                  )}
+                  <TableHead>Birth Date</TableHead>
                   <TableHead className="p-0">
                     <ColumnFilter
-                      title="Clinic"
-                      options={clinicOptions}
-                      selectedValues={clinicFilter}
-                      onFilterChange={setClinicFilter}
+                      title="Country"
+                      options={countryOptions}
+                      selectedValues={countryFilter}
+                      onFilterChange={setCountryFilter}
                     />
                   </TableHead>
-                )}
-                <TableHead>Birth Date</TableHead>
-                <TableHead className="p-0">
-                  <ColumnFilter
-                    title="Country"
-                    options={countryOptions}
-                    selectedValues={countryFilter}
-                    onFilterChange={setCountryFilter}
-                  />
-                </TableHead>
-                <TableHead>Registered</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? <TableRow>
-                  <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8">
-                    Loading patients...
-                  </TableCell>
-                </TableRow> : filteredPatients.length === 0 ? <TableRow>
-                  <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8 text-muted-foreground">
-                    No patients found
-                  </TableCell>
-                </TableRow> : filteredPatients.map(patient => <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell onClick={() => handleEdit(patient)}>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={patient.photo_url || ''} />
-                          <AvatarFallback className="bg-primary/10">
-                            <User className="w-4 h-4 text-primary" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{patient.first_name} {patient.last_name}</div>
-                          {patient.gender && <div className="text-xs text-muted-foreground">{patient.gender}</div>}
+                  <TableHead>Registered</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? <TableRow>
+                    <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8">
+                      Loading patients...
+                    </TableCell>
+                  </TableRow> : filteredPatients.length === 0 ? <TableRow>
+                    <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                      No patients found
+                    </TableCell>
+                  </TableRow> : filteredPatients.map(patient => <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell onClick={() => handleEdit(patient)}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={patient.photo_url || ''} />
+                            <AvatarFallback className="bg-primary/10">
+                              <User className="w-4 h-4 text-primary" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{patient.first_name} {patient.last_name}</div>
+                            {patient.gender && <div className="text-xs text-muted-foreground">{patient.gender}</div>}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell onClick={() => handleEdit(patient)}>
-                      <div className="space-y-1">
-                        {patient.email && <div className="flex items-center gap-1 text-sm">
-                            <Mail className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">{patient.email}</span>
-                          </div>}
-                        <div className="flex items-center gap-1 text-sm">
-                          <Phone className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{patient.phone}</span>
+                      </TableCell>
+                      <TableCell onClick={() => handleEdit(patient)}>
+                        <div className="space-y-1">
+                          {patient.email && <div className="flex items-center gap-1 text-sm">
+                              <Mail className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-muted-foreground">{patient.email}</span>
+                            </div>}
+                          <div className="flex items-center gap-1 text-sm">
+                            <Phone className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">{patient.phone}</span>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    {isSuperAdmin && <TableCell onClick={() => handleEdit(patient)}>
-                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                          <Building2 className="w-3 h-3" />
-                          {patient.organizations?.name || '-'}
-                        </Badge>
-                      </TableCell>}
-                    <TableCell onClick={() => handleEdit(patient)} className="text-sm text-muted-foreground">
-                      {patient.date_of_birth ? format(new Date(patient.date_of_birth), 'MMM dd, yyyy') : '-'}
-                    </TableCell>
-                    <TableCell onClick={() => handleEdit(patient)} className="text-sm">
-                      {patient.country || '-'}
-                    </TableCell>
-                    <TableCell onClick={() => handleEdit(patient)} className="text-sm text-muted-foreground">
-                      {format(new Date(patient.created_at), 'MMM dd, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(patient);
-                        }} title="Edit">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedPatient(patient);
-                          setShowPatientDetails(true);
-                        }} title="Details">
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteClick(patient);
-                        }} title="Delete">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>)}
-            </TableBody>
-          </Table>
-        </div>
+                      </TableCell>
+                      {isSuperAdmin && <TableCell onClick={() => handleEdit(patient)}>
+                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                            <Building2 className="w-3 h-3" />
+                            {patient.organizations?.name || '-'}
+                          </Badge>
+                        </TableCell>}
+                      <TableCell onClick={() => handleEdit(patient)} className="text-sm text-muted-foreground">
+                        {patient.date_of_birth ? format(new Date(patient.date_of_birth), 'MMM dd, yyyy') : '-'}
+                      </TableCell>
+                      <TableCell onClick={() => handleEdit(patient)} className="text-sm">
+                        {patient.country || '-'}
+                      </TableCell>
+                      <TableCell onClick={() => handleEdit(patient)} className="text-sm text-muted-foreground">
+                        {format(new Date(patient.created_at), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(patient);
+                          }} title="Edit">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPatient(patient);
+                            setShowPatientDetails(true);
+                          }} title="Details">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(patient);
+                          }} title="Delete">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>)}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {/* Patient Details Dialog */}
