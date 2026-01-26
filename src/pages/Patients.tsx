@@ -807,11 +807,14 @@ export default function Patients() {
 
       {/* Patient Details Dialog */}
       <Dialog open={showPatientDetails} onOpenChange={setShowPatientDetails}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Patient Details - {selectedPatient?.first_name} {selectedPatient?.last_name}
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-lg md:text-xl">
+              Patient Details
             </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {selectedPatient?.first_name} {selectedPatient?.last_name}
+            </p>
           </DialogHeader>
           {selectedPatient && <PatientDetails patientId={selectedPatient.id} onClose={() => setShowPatientDetails(false)} />}
         </DialogContent>

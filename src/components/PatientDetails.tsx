@@ -13,7 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video, Image, Scan } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -91,6 +93,7 @@ interface PatientTransfer {
 export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [notes, setNotes] = useState<PatientNote[]>([]);
@@ -1042,25 +1045,48 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       )}
 
       <Tabs defaultValue="notes" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
-          <TabsTrigger value="transfers">Transfers</TabsTrigger>
-          <TabsTrigger value="appointments">Appointments</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex w-max min-w-full md:grid md:w-full md:grid-cols-5">
+            <TabsTrigger value="notes" className="flex-shrink-0 px-4">
+              <MessageSquare className="w-4 h-4 md:hidden" />
+              <span className="hidden md:inline">Notes</span>
+              <span className="md:hidden ml-1">Notes</span>
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex-shrink-0 px-4">
+              <CreditCard className="w-4 h-4 md:hidden" />
+              <span className="hidden md:inline">Payments</span>
+              <span className="md:hidden ml-1">Payments</span>
+            </TabsTrigger>
+            <TabsTrigger value="transfers" className="flex-shrink-0 px-4">
+              <Plane className="w-4 h-4 md:hidden" />
+              <span className="hidden md:inline">Transfers</span>
+              <span className="md:hidden ml-1">Transfers</span>
+            </TabsTrigger>
+            <TabsTrigger value="appointments" className="flex-shrink-0 px-4">
+              <Calendar className="w-4 h-4 md:hidden" />
+              <span className="hidden md:inline">Appointments</span>
+              <span className="md:hidden ml-1">Appts</span>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="flex-shrink-0 px-4">
+              <FileText className="w-4 h-4 md:hidden" />
+              <span className="hidden md:inline">Documents</span>
+              <span className="md:hidden ml-1">Docs</span>
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" className="md:hidden" />
+        </ScrollArea>
 
-        <TabsContent value="notes" className="space-y-4">
+        <TabsContent value="notes" className="space-y-4 mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <MessageSquare className="h-5 w-5" />
                 Add New Note
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddNote} className="space-y-4">
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="note_date">Date *</Label>
                     <Input
@@ -1071,7 +1097,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       required
                     />
                   </div>
-                  <div className="col-span-3 space-y-2">
+                  <div className="md:col-span-3 space-y-2">
                     <Label htmlFor="note_content">Note *</Label>
                     <Textarea
                       id="note_content"
@@ -1083,7 +1109,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                 </div>
-                <Button type="submit">
+                <Button type="submit" className="w-full md:w-auto">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Note
                 </Button>
@@ -1099,16 +1125,26 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               {notes.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No notes yet</p>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {notes.map(note => (
-                    <div key={note.id} className="flex gap-4 p-4 border rounded-lg bg-muted/30">
-                      <div className="flex-shrink-0 w-24 text-center">
-                        <div className="text-sm font-semibold text-primary">
-                          {format(new Date(note.note_date), 'dd MMM')}
+                    <div key={note.id} className="flex flex-col md:flex-row gap-3 p-3 md:p-4 border rounded-lg bg-muted/30">
+                      <div className="flex items-center justify-between md:block md:flex-shrink-0 md:w-20 md:text-center">
+                        <div>
+                          <div className="text-sm font-semibold text-primary">
+                            {format(new Date(note.note_date), 'dd MMM')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(note.note_date), 'yyyy')}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(note.note_date), 'yyyy')}
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="md:hidden"
+                          onClick={() => handleDeleteNote(note.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
                       </div>
                       <div className="flex-1">
                         <p className="text-sm whitespace-pre-wrap">{note.content}</p>
@@ -1119,6 +1155,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="hidden md:flex"
                         onClick={() => handleDeleteNote(note.id)}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
@@ -1131,30 +1168,30 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="payments" className="space-y-4">
+        <TabsContent value="payments" className="space-y-4 mt-4">
           {/* Payment Summary Card - New Structure */}
           <Card className="border-l-4 border-l-primary">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 text-center">
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Estimated Price</p>
-                  <p className="text-lg font-semibold text-muted-foreground">${estimatedPrice.toLocaleString()}</p>
+            <CardContent className="pt-4 md:pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 text-center">
+                <div className="p-2 md:p-3 bg-muted/50 rounded-lg">
+                  <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Estimated</p>
+                  <p className="text-sm md:text-lg font-semibold text-muted-foreground">${estimatedPrice.toLocaleString()}</p>
                 </div>
-                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <p className="text-xs text-muted-foreground mb-1">Final Price</p>
-                  <p className="text-lg font-bold text-primary">${finalPrice.toLocaleString()}</p>
+                <div className="p-2 md:p-3 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Final Price</p>
+                  <p className="text-sm md:text-lg font-bold text-primary">${finalPrice.toLocaleString()}</p>
                 </div>
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-muted-foreground mb-1">Downpayment</p>
-                  <p className="text-lg font-semibold text-blue-600">${downpayment.toLocaleString()}</p>
+                <div className="p-2 md:p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Downpayment</p>
+                  <p className="text-sm md:text-lg font-semibold text-blue-600">${downpayment.toLocaleString()}</p>
                 </div>
-                <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-                  <p className="text-xs text-muted-foreground mb-1">Clinic Payment</p>
-                  <p className="text-lg font-semibold text-green-600">${clinicPayment.toLocaleString()}</p>
+                <div className="p-2 md:p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                  <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Clinic Pay</p>
+                  <p className="text-sm md:text-lg font-semibold text-green-600">${clinicPayment.toLocaleString()}</p>
                 </div>
-                <div className={`p-3 rounded-lg border ${remainingDebt > 0 ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'}`}>
-                  <p className="text-xs text-muted-foreground mb-1">Remaining Balance</p>
-                  <p className={`text-lg font-bold ${remainingDebt > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                <div className={`p-2 md:p-3 rounded-lg border col-span-2 md:col-span-1 ${remainingDebt > 0 ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'}`}>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mb-1">Remaining</p>
+                  <p className={`text-sm md:text-lg font-bold ${remainingDebt > 0 ? 'text-destructive' : 'text-green-600'}`}>
                     ${remainingDebt > 0 ? remainingDebt.toLocaleString() : '0'}
                   </p>
                 </div>
@@ -1163,8 +1200,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <CreditCard className="h-5 w-5" />
                 Add New Payment
               </CardTitle>
@@ -1231,7 +1268,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     />
                   </div>
                 </div>
-                <Button type="submit">
+                <Button type="submit" className="w-full md:w-auto">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Payment
                 </Button>
@@ -1240,60 +1277,96 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Payment History</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Payment History</CardTitle>
             </CardHeader>
             <CardContent>
               {payments.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No payment records yet</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Note</TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
                     {payments.map(payment => (
-                      <TableRow key={payment.id}>
-                        <TableCell>{format(new Date(payment.payment_date), 'dd.MM.yyyy')}</TableCell>
-                        <TableCell className="font-semibold text-green-600">
-                          ${payment.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {payment.payment_method === 'cash' ? 'Cash' :
-                           payment.payment_method === 'credit_card' ? 'Credit Card' :
-                           payment.payment_method === 'bank_transfer' ? 'Bank Transfer' :
-                           payment.payment_method === 'zelle' ? 'Zelle' :
-                           payment.payment_method || '-'}
-                        </TableCell>
-                        <TableCell>{payment.notes || '-'}</TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeletePayment(payment.id, payment.amount)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      <div key={payment.id} className="p-3 border rounded-lg bg-muted/30">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-green-600">${payment.amount.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(payment.payment_date), 'dd.MM.yyyy')}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {payment.payment_method === 'cash' ? 'Cash' :
+                               payment.payment_method === 'credit_card' ? 'Card' :
+                               payment.payment_method === 'bank_transfer' ? 'Transfer' :
+                               payment.payment_method === 'zelle' ? 'Zelle' :
+                               payment.payment_method || '-'}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeletePayment(payment.id, payment.amount)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                        {payment.notes && <p className="text-xs text-muted-foreground mt-2">{payment.notes}</p>}
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                  
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Note</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {payments.map(payment => (
+                          <TableRow key={payment.id}>
+                            <TableCell>{format(new Date(payment.payment_date), 'dd.MM.yyyy')}</TableCell>
+                            <TableCell className="font-semibold text-green-600">
+                              ${payment.amount.toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              {payment.payment_method === 'cash' ? 'Cash' :
+                               payment.payment_method === 'credit_card' ? 'Credit Card' :
+                               payment.payment_method === 'bank_transfer' ? 'Bank Transfer' :
+                               payment.payment_method === 'zelle' ? 'Zelle' :
+                               payment.payment_method || '-'}
+                            </TableCell>
+                            <TableCell>{payment.notes || '-'}</TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeletePayment(payment.id, payment.amount)}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="transfers" className="space-y-4">
+        <TabsContent value="transfers" className="space-y-4 mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <Plane className="h-5 w-5" />
                 Add Transfer Info
               </CardTitle>
