@@ -130,6 +130,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const [viewingDocument, setViewingDocument] = useState<{ url: string; name: string; type: string } | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState('notes');
 
   const [appointmentForm, setAppointmentForm] = useState({
     appointment_date: '',
@@ -1044,37 +1045,86 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         </Card>
       )}
 
-      <Tabs defaultValue="notes" className="w-full">
-        <ScrollArea className="w-full">
-          <TabsList className="inline-flex w-max min-w-full md:grid md:w-full md:grid-cols-5">
-            <TabsTrigger value="notes" className="flex-shrink-0 px-4">
-              <MessageSquare className="w-4 h-4 md:hidden" />
-              <span className="hidden md:inline">Notes</span>
-              <span className="md:hidden ml-1">Notes</span>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Mobile: Dropdown Select for Tabs */}
+        {isMobile ? (
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full mb-4">
+              <SelectValue>
+                <div className="flex items-center gap-2">
+                  {activeTab === 'notes' && <MessageSquare className="w-4 h-4" />}
+                  {activeTab === 'payments' && <CreditCard className="w-4 h-4" />}
+                  {activeTab === 'transfers' && <Plane className="w-4 h-4" />}
+                  {activeTab === 'appointments' && <Calendar className="w-4 h-4" />}
+                  {activeTab === 'documents' && <FileText className="w-4 h-4" />}
+                  <span>
+                    {activeTab === 'notes' && 'Notes'}
+                    {activeTab === 'payments' && 'Payments'}
+                    {activeTab === 'transfers' && 'Transfers'}
+                    {activeTab === 'appointments' && 'Appointments'}
+                    {activeTab === 'documents' && 'Documents'}
+                  </span>
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="notes">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Notes
+                </div>
+              </SelectItem>
+              <SelectItem value="payments">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Payments
+                </div>
+              </SelectItem>
+              <SelectItem value="transfers">
+                <div className="flex items-center gap-2">
+                  <Plane className="w-4 h-4" />
+                  Transfers
+                </div>
+              </SelectItem>
+              <SelectItem value="appointments">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Appointments
+                </div>
+              </SelectItem>
+              <SelectItem value="documents">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Documents
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          /* Desktop: Original TabsList */
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="notes">
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Notes
             </TabsTrigger>
-            <TabsTrigger value="payments" className="flex-shrink-0 px-4">
-              <CreditCard className="w-4 h-4 md:hidden" />
-              <span className="hidden md:inline">Payments</span>
-              <span className="md:hidden ml-1">Payments</span>
+            <TabsTrigger value="payments">
+              <CreditCard className="w-4 h-4 mr-2" />
+              Payments
             </TabsTrigger>
-            <TabsTrigger value="transfers" className="flex-shrink-0 px-4">
-              <Plane className="w-4 h-4 md:hidden" />
-              <span className="hidden md:inline">Transfers</span>
-              <span className="md:hidden ml-1">Transfers</span>
+            <TabsTrigger value="transfers">
+              <Plane className="w-4 h-4 mr-2" />
+              Transfers
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex-shrink-0 px-4">
-              <Calendar className="w-4 h-4 md:hidden" />
-              <span className="hidden md:inline">Appointments</span>
-              <span className="md:hidden ml-1">Appts</span>
+            <TabsTrigger value="appointments">
+              <Calendar className="w-4 h-4 mr-2" />
+              Appointments
             </TabsTrigger>
-            <TabsTrigger value="documents" className="flex-shrink-0 px-4">
-              <FileText className="w-4 h-4 md:hidden" />
-              <span className="hidden md:inline">Documents</span>
-              <span className="md:hidden ml-1">Docs</span>
+            <TabsTrigger value="documents">
+              <FileText className="w-4 h-4 mr-2" />
+              Documents
             </TabsTrigger>
           </TabsList>
-          <ScrollBar orientation="horizontal" className="md:hidden" />
-        </ScrollArea>
+        )}
 
         <TabsContent value="notes" className="space-y-4 mt-4">
           <Card>
