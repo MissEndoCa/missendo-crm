@@ -32,9 +32,9 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-8">
+    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-8">
       <div>
-        <h2 className="text-xl font-semibold text-foreground">Dashboard</h2>
+        <h2 className="text-lg md:text-xl font-semibold text-foreground">Dashboard</h2>
       </div>
 
       <div className="flex items-center gap-4">
@@ -52,9 +52,9 @@ export default function Header() {
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-96 p-0" align="end">
+          <PopoverContent className="w-80 md:w-96 p-0" align="end">
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground">Bildirimler</h3>
+              <h3 className="font-semibold text-foreground">Notifications</h3>
               {unreadCount > 0 && (
                 <Button
                   variant="ghost"
@@ -62,15 +62,15 @@ export default function Header() {
                   onClick={markAllAsRead}
                   className="text-xs"
                 >
-                  Tümünü Oku
+                  Mark all read
                 </Button>
               )}
             </div>
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="h-[300px] md:h-[400px]">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Bell className="h-12 w-12 text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">Henüz bildirim yok</p>
+                  <p className="text-sm text-muted-foreground">No notifications yet</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border">

@@ -413,16 +413,16 @@ export default function Hotels() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Hotels</h1>
-            <p className="text-muted-foreground mt-2">Manage accommodation options and patient bookings</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Hotels</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage accommodation options and patient bookings</p>
           </div>
         </div>
 
-        <Tabs defaultValue="hotels" className="space-y-6">
-          <TabsList>
+        <Tabs defaultValue="hotels" className="space-y-4 md:space-y-6">
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="hotels">Hotel List</TabsTrigger>
             <TabsTrigger value="bookings">Patient Bookings</TabsTrigger>
           </TabsList>

@@ -403,16 +403,16 @@ export default function Accounting() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-start">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Accounting</h1>
-            <p className="text-muted-foreground">Manage financial records and transactions</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Accounting</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Manage financial records and transactions</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Dialog open={isIncomeDialogOpen} onOpenChange={setIsIncomeDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-green-600 hover:bg-green-700">
+                <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
                   <ArrowUpCircle className="w-4 h-4 mr-2" />
                   Add Income
                 </Button>
@@ -740,7 +740,7 @@ export default function Accounting() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Type</TableHead>
