@@ -2012,13 +2012,13 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2">
                   {documents
                     .filter(doc => doc.category === 'photo')
                     .map(doc => (
                       <div 
                         key={doc.id} 
-                        className="group relative aspect-square rounded-lg overflow-hidden border bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                        className="group relative aspect-square rounded-md overflow-hidden border bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                         onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}
                       >
                         {documentThumbnails[doc.id] ? (
@@ -2029,23 +2029,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                          <p className="text-white text-xs text-center px-2 truncate max-w-full">{doc.document_name}</p>
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="secondary" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); handleDownloadDocument(doc.file_path, doc.document_name); }} title="Download">
-                              <Download className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="secondary" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setEditingDocument({ id: doc.id, name: doc.document_name }); }} title="Rename">
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc.id, doc.file_path); }} title="Delete">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
                       </div>
                     ))}
                 </div>
@@ -2063,13 +2049,13 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2">
                   {documents
                     .filter(doc => doc.category === 'xray')
                     .map(doc => (
                       <div 
                         key={doc.id} 
-                        className="group relative aspect-square rounded-lg overflow-hidden border bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                        className="group relative aspect-square rounded-md overflow-hidden border bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                         onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}
                       >
                         {documentThumbnails[doc.id] ? (
@@ -2080,23 +2066,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                          <p className="text-white text-xs text-center px-2 truncate max-w-full">{doc.document_name}</p>
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="secondary" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); handleDownloadDocument(doc.file_path, doc.document_name); }} title="Download">
-                              <Download className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="secondary" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setEditingDocument({ id: doc.id, name: doc.document_name }); }} title="Rename">
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc.id, doc.file_path); }} title="Delete">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
                       </div>
                     ))}
                 </div>
@@ -2116,98 +2088,34 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               {documents.filter(doc => doc.category === 'document').length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No documents uploaded yet</p>
               ) : (
-                <>
-                  {/* Mobile Card View */}
-                  <div className="md:hidden space-y-3">
-                    {documents
-                      .filter(doc => doc.category === 'document')
-                      .map(doc => (
-                        <div key={doc.id} className="p-3 border rounded-lg bg-muted/30">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary flex-shrink-0" />}
-                                {doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-destructive flex-shrink-0" />}
-                                <p className="font-medium text-sm truncate">{doc.document_name}</p>
-                              </div>
-                              <p className="text-xs text-muted-foreground">{format(new Date(doc.created_at), 'dd.MM.yyyy')}</p>
-                              {doc.notes && <p className="text-xs text-muted-foreground mt-1">{doc.notes}</p>}
-                            </div>
-                            <div className="flex gap-1 flex-shrink-0 ml-2">
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}>
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}>
-                                <Download className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDeleteDocument(doc.id, doc.file_path)}>
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
-                            </div>
+                <div className="space-y-2">
+                  {documents
+                    .filter(doc => doc.category === 'document')
+                    .map(doc => (
+                      <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary flex-shrink-0" />}
+                          {doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-destructive flex-shrink-0" />}
+                          {!doc.document_type.includes('video') && !doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{doc.document_name}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(doc.created_at), 'dd.MM.yyyy')}</p>
                           </div>
                         </div>
-                      ))}
-                  </div>
-                  
-                  {/* Desktop Table View */}
-                  <div className="hidden md:block overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Notes</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {documents
-                          .filter(doc => doc.category === 'document')
-                          .map(doc => (
-                          <TableRow key={doc.id}>
-                            <TableCell className="font-medium">
-                              {editingDocument?.id === doc.id ? (
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    value={editingDocument.name}
-                                    onChange={(e) => setEditingDocument({ ...editingDocument, name: e.target.value })}
-                                    className="h-8 w-48"
-                                  />
-                                  <Button size="sm" variant="ghost" onClick={() => handleRenameDocument(doc.id, editingDocument.name)}>Save</Button>
-                                  <Button size="sm" variant="ghost" onClick={() => setEditingDocument(null)}>Cancel</Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  {doc.document_type.includes('video') && <Video className="w-4 h-4 text-primary" />}
-                                  {doc.document_type.includes('pdf') && <FileText className="w-4 h-4 text-destructive" />}
-                                  {doc.document_name}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>{doc.notes || '-'}</TableCell>
-                            <TableCell>{format(new Date(doc.created_at), 'dd.MM.yyyy')}</TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => setEditingDocument({ id: doc.id, name: doc.document_name })} title="Rename">
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)} title="View">
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)} title="Download">
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleDeleteDocument(doc.id, doc.file_path)} title="Delete">
-                                  <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewDocument(doc.file_path, doc.document_name, doc.document_type)}>
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}>
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDeleteDocument(doc.id, doc.file_path)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               )}
             </CardContent>
           </Card>
