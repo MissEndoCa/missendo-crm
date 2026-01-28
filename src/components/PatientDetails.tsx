@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video, Image, Scan } from 'lucide-react';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
@@ -197,6 +198,15 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   });
 
   const [organizations, setOrganizations] = useState<any[]>([]);
+
+  // Delete confirmation states
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    type: 'document' | 'appointment' | 'note' | 'payment' | 'transfer' | null;
+    id: string;
+    extra?: string; // For document file path
+  }>({ open: false, type: null, id: '', extra: '' });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -920,6 +930,43 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
+  // Unified delete confirmation handler
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.type || !deleteDialog.id) return;
+    
+    setIsDeleting(true);
+    try {
+      switch (deleteDialog.type) {
+        case 'document':
+          await handleDeleteDocument(deleteDialog.id, deleteDialog.extra || '');
+          break;
+        case 'appointment':
+          await handleDeleteAppointment(deleteDialog.id);
+          break;
+        case 'note':
+          await handleDeleteNote(deleteDialog.id);
+          break;
+        case 'payment':
+          const payment = payments.find(p => p.id === deleteDialog.id);
+          if (payment) {
+            await handleDeletePayment(deleteDialog.id, payment.amount);
+          }
+          break;
+        case 'transfer':
+          await handleDeleteTransfer(deleteDialog.id);
+          break;
+      }
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialog({ open: false, type: null, id: '', extra: '' });
+    }
+  };
+
+  const openDeleteDialog = (type: 'document' | 'appointment' | 'note' | 'payment' | 'transfer', id: string, extra?: string) => {
+    setDeleteDialog({ open: true, type, id, extra });
+  };
+
+
   const getRoomPrice = (hotel: any, roomType: string) => {
     switch (roomType) {
       case 'single': return hotel.single_room_price || hotel.price_per_night;
@@ -1244,7 +1291,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                           size="sm"
                           variant="ghost"
                           className="md:hidden"
-                          onClick={() => handleDeleteNote(note.id)}
+                          onClick={() => openDeleteDialog('note', note.id)}
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
@@ -1263,7 +1310,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                         size="sm"
                         variant="ghost"
                         className="hidden md:flex"
-                        onClick={() => handleDeleteNote(note.id)}
+                        onClick={() => openDeleteDialog('note', note.id)}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
@@ -1461,7 +1508,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDeletePayment(payment.id, payment.amount)}
+                              onClick={() => openDeleteDialog('payment', payment.id)}
                             >
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
@@ -1503,7 +1550,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleDeletePayment(payment.id, payment.amount)}
+                                onClick={() => openDeleteDialog('payment', payment.id)}
                               >
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
@@ -1817,7 +1864,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                             </Badge>
                             <p className="text-sm font-semibold mt-1">{format(new Date(transfer.transfer_datetime), 'dd.MM.yyyy')}</p>
                           </div>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDeleteTransfer(transfer.id)}>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openDeleteDialog('transfer', transfer.id)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>
@@ -1866,7 +1913,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">{transfer.airport_pickup_info || '-'}</TableCell>
                             <TableCell>
-                              <Button size="sm" variant="ghost" onClick={() => handleDeleteTransfer(transfer.id)}>
+                              <Button size="sm" variant="ghost" onClick={() => openDeleteDialog('transfer', transfer.id)}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </TableCell>
@@ -2022,7 +2069,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                               <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleEditAppointment(apt)}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleDeleteAppointment(apt.id)}>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openDeleteDialog('appointment', apt.id)}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
@@ -2061,7 +2108,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                                   <Button size="sm" variant="ghost" onClick={() => handleEditAppointment(apt)}>
                                     <Pencil className="w-4 h-4" />
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => handleDeleteAppointment(apt.id)}>
+                                  <Button size="sm" variant="ghost" onClick={() => openDeleteDialog('appointment', apt.id)}>
                                     <Trash2 className="w-4 h-4 text-destructive" />
                                   </Button>
                                 </div>
@@ -2219,7 +2266,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                             <Button size="sm" variant="outline" onClick={() => handleDownloadDocument(doc.file_path, doc.document_name)}>
                               <Download className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleDeleteDocument(doc.id, doc.file_path)}>
+                            <Button size="sm" variant="outline" onClick={() => openDeleteDialog('document', doc.id, doc.file_path)}>
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
                           </div>
@@ -2440,6 +2487,23 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => !open && setDeleteDialog({ open: false, type: null, id: '', extra: '' })}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+        title="Bu işlemi yapmak istediğinize emin misiniz?"
+        description={
+          deleteDialog.type === 'document' ? "Bu döküman kalıcı olarak silinecektir." :
+          deleteDialog.type === 'appointment' ? "Bu randevu kalıcı olarak silinecektir." :
+          deleteDialog.type === 'note' ? "Bu not kalıcı olarak silinecektir." :
+          deleteDialog.type === 'payment' ? "Bu ödeme kaydı kalıcı olarak silinecektir." :
+          deleteDialog.type === 'transfer' ? "Bu transfer kaydı kalıcı olarak silinecektir." :
+          "Bu kayıt kalıcı olarak silinecektir."
+        }
+      />
     </div>
   );
 }
