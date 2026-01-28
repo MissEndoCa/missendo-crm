@@ -762,12 +762,13 @@ function ReminderCard({
             </p>
             <p className="text-sm text-muted-foreground">{targetPhone}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {new Date(reminder.reminder_date).toLocaleString('en-US', { 
+              {new Date(reminder.reminder_date).toLocaleString('en-GB', { 
                 day: '2-digit', 
                 month: '2-digit', 
                 year: 'numeric', 
                 hour: '2-digit', 
-                minute: '2-digit' 
+                minute: '2-digit',
+                hour12: false
               })}
               {reminder.creator && ` • ${reminder.creator.first_name} ${reminder.creator.last_name}`}
             </p>
