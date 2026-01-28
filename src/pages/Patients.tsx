@@ -33,6 +33,7 @@ interface Patient {
   photo_url: string | null;
   created_at: string;
   organization_id: string;
+  lead_id: string | null;
   organizations?: {
     name: string;
   } | null;
@@ -91,6 +92,7 @@ export default function Patients() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isFromLead, setIsFromLead] = useState(false);
   useEffect(() => {
     loadPatients();
     if (isSuperAdmin) {
@@ -112,7 +114,7 @@ export default function Patients() {
   const loadPatients = async () => {
     if (!profile) return;
     try {
-      let query = supabase.from('patients').select('*, organizations(name), patient_treatments(treatments(name))').order('created_at', {
+      let query = supabase.from('patients').select('*, organizations(name), patient_treatments(treatments(name)), lead_id').order('created_at', {
         ascending: false
       });
       if (!isSuperAdmin && profile.organization_id) {
@@ -265,6 +267,7 @@ export default function Patients() {
     setPhotoFile(null);
     setPhotoPreview('');
     setSelectedPatient(null);
+    setIsFromLead(false);
   };
   const handleEdit = async (patient: Patient) => {
     setSelectedPatient(patient);
@@ -298,6 +301,8 @@ export default function Patients() {
         final_price: patientData.final_price ? String(patientData.final_price) : ''
       });
       setPhotoPreview(patientData.photo_url || '');
+      // Check if patient came from a lead
+      setIsFromLead(!!patientData.lead_id);
     }
     setIsDialogOpen(true);
   };
@@ -434,20 +439,34 @@ export default function Patients() {
                   </div>
                 </div>
 
-                {/* Clinic selection for super admins */}
+                {/* Clinic selection for super admins - disabled if patient came from lead */}
                 {isSuperAdmin && <div className="space-y-2">
                     <Label htmlFor="organization_id">Clinic *</Label>
-                    <Select value={formData.organization_id} onValueChange={value => setFormData({
-                  ...formData,
-                  organization_id: value
-                })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select clinic" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {organizations.map(org => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    {selectedPatient && isFromLead ? (
+                      <div className="space-y-1">
+                        <Select value={formData.organization_id} disabled>
+                          <SelectTrigger className="opacity-60">
+                            <SelectValue placeholder="Select clinic" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {organizations.map(org => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Lead'den gelen hastaların kliniği değiştirilemez</p>
+                      </div>
+                    ) : (
+                      <Select value={formData.organization_id} onValueChange={value => setFormData({
+                        ...formData,
+                        organization_id: value
+                      })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select clinic" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {organizations.map(org => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>}
 
                 <div className="grid grid-cols-2 gap-4">
