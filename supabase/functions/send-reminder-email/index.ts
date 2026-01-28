@@ -12,9 +12,6 @@ interface ReminderEmailRequest {
   check_pending?: boolean;
 }
 
-// Advance notification intervals in days
-const ADVANCE_NOTIFICATION_DAYS = [7, 3, 1]; // 1 week, 3 days, 1 day before
-
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -36,7 +33,6 @@ serve(async (req: Request) => {
     const { reminder_id, check_pending }: ReminderEmailRequest = await req.json();
 
     let remindersToProcess: any[] = [];
-    let advanceReminders: any[] = [];
 
     if (check_pending) {
       const now = new Date();
@@ -61,47 +57,6 @@ serve(async (req: Request) => {
 
       remindersToProcess = pendingReminders || [];
       console.log(`Found ${remindersToProcess.length} pending reminders due now`);
-
-      // Get reminders for advance notifications (1 week, 3 days, 1 day before)
-      for (const daysAhead of ADVANCE_NOTIFICATION_DAYS) {
-        const targetDate = new Date(now);
-        targetDate.setDate(targetDate.getDate() + daysAhead);
-        
-        // Check for reminders on this future date (within a 15-minute window to match cron interval)
-        const startWindow = new Date(targetDate);
-        startWindow.setMinutes(startWindow.getMinutes() - 7);
-        
-        const endWindow = new Date(targetDate);
-        endWindow.setMinutes(endWindow.getMinutes() + 8);
-
-        const { data: futureReminders, error: futureError } = await supabase
-          .from("reminders")
-          .select(`
-            *,
-            patient:patients(first_name, last_name, phone, email),
-            lead:leads(first_name, last_name, phone, email),
-            creator:profiles!reminders_created_by_fkey(first_name, last_name, email)
-          `)
-          .eq("status", "pending")
-          .gte("reminder_date", startWindow.toISOString())
-          .lte("reminder_date", endWindow.toISOString());
-
-        if (futureError) {
-          console.error(`Error fetching ${daysAhead}-day advance reminders:`, futureError);
-          continue;
-        }
-
-        if (futureReminders && futureReminders.length > 0) {
-          // Mark these as advance notifications
-          const advanceNotifications = futureReminders.map(r => ({
-            ...r,
-            _advanceDays: daysAhead,
-            _isAdvanceNotification: true
-          }));
-          advanceReminders.push(...advanceNotifications);
-          console.log(`Found ${futureReminders.length} reminders for ${daysAhead}-day advance notification`);
-        }
-      }
     } else if (reminder_id) {
       // Get specific reminder
       const { data: reminder, error: fetchError } = await supabase
@@ -123,9 +78,7 @@ serve(async (req: Request) => {
       remindersToProcess = reminder ? [reminder] : [];
     }
 
-    const allRemindersToSend = [...remindersToProcess, ...advanceReminders];
-
-    if (allRemindersToSend.length === 0) {
+    if (remindersToProcess.length === 0) {
       return new Response(
         JSON.stringify({ message: "No reminders to process", count: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -148,11 +101,8 @@ serve(async (req: Request) => {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const reminder of allRemindersToSend) {
+    for (const reminder of remindersToProcess) {
       try {
-        const isAdvanceNotification = reminder._isAdvanceNotification || false;
-        const advanceDays = reminder._advanceDays || 0;
-        
         const targetName = reminder.patient 
           ? `${reminder.patient.first_name} ${reminder.patient.last_name}`
           : reminder.lead 
@@ -207,27 +157,6 @@ serve(async (req: Request) => {
           timeStyle: "short",
         });
 
-        // Determine email subject and header based on advance notification
-        let emailSubjectPrefix = "Reminder";
-        let headerTitle = "Reminder";
-        let urgencyBadge = "";
-        
-        if (isAdvanceNotification) {
-          if (advanceDays === 7) {
-            emailSubjectPrefix = "📅 1 Week Notice";
-            headerTitle = "1 Week Advance Notice";
-            urgencyBadge = '<span style="display: inline-block; margin-left: 10px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; background-color: #dbeafe; color: #1d4ed8;">1 Week Away</span>';
-          } else if (advanceDays === 3) {
-            emailSubjectPrefix = "⚠️ 3 Day Notice";
-            headerTitle = "3 Day Advance Notice";
-            urgencyBadge = '<span style="display: inline-block; margin-left: 10px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; background-color: #fef3c7; color: #b45309;">3 Days Away</span>';
-          } else if (advanceDays === 1) {
-            emailSubjectPrefix = "🔔 Tomorrow";
-            headerTitle = "Tomorrow - Action Required";
-            urgencyBadge = '<span style="display: inline-block; margin-left: 10px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; background-color: #fee2e2; color: #dc2626;">Tomorrow!</span>';
-          }
-        }
-
         const emailHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -243,8 +172,8 @@ serve(async (req: Request) => {
 <tr>
 <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
 <img src="https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/email-assets/miss-endo-logo.webp?v=1" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
-<h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">${headerTitle}</h1>
-<p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">${reminder.title}${urgencyBadge}</p>
+<h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Reminder</h1>
+<p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">${reminder.title}</p>
 </td>
 </tr>
 <!-- Content -->
@@ -270,10 +199,9 @@ serve(async (req: Request) => {
 <tr><td style="height: 12px;"></td></tr>
 <!-- Date -->
 <tr>
-<td style="padding: 15px; background-color: ${isAdvanceNotification && advanceDays === 1 ? '#fee2e2' : '#f9fafb'}; border-radius: 8px; ${isAdvanceNotification && advanceDays === 1 ? 'border: 2px solid #fca5a5;' : ''}">
-<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${isAdvanceNotification ? 'Scheduled For' : 'Reminder Date'}</p>
+<td style="padding: 15px; background-color: #f9fafb; border-radius: 8px;">
+<p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Reminder Date</p>
 <p style="margin: 5px 0 0 0; color: #111827; font-size: 16px; font-weight: 500;">${reminderDate}</p>
-${isAdvanceNotification ? `<p style="margin: 8px 0 0 0; color: #dc2626; font-size: 14px; font-weight: 600;">${advanceDays === 1 ? 'TOMORROW!' : advanceDays + ' days from now'}</p>` : ''}
 </td>
 </tr>
 <tr><td style="height: 12px;"></td></tr>
@@ -298,7 +226,7 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
 <tr>
 <td style="background-color: #1f2937; padding: 25px; text-align: center;">
 <p style="margin: 0; color: #9ca3af; font-size: 12px;">Miss Endo CRM - Reminder System</p>
-<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 11px;">${isAdvanceNotification ? 'This is an advance notification. You will receive another reminder when it is due.' : 'This email was sent automatically.'}</p>
+<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 11px;">This email was sent automatically.</p>
 </td>
 </tr>
 </table>
@@ -313,24 +241,22 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
           await client.send({
             from: `${fromName} <${fromEmail}>`,
             to: recipientEmail,
-            subject: `${emailSubjectPrefix}: ${reminder.title} - ${targetName}`,
+            subject: `Reminder: ${reminder.title} - ${targetName}`,
             html: emailHtml,
           });
-          console.log(`Email sent to: ${recipientEmail} (${isAdvanceNotification ? advanceDays + '-day advance' : 'due now'})`);
+          console.log(`Email sent to: ${recipientEmail}`);
         }
 
-        // Only update status for reminders that are due NOW (not advance notifications)
-        if (!isAdvanceNotification) {
-          await supabase
-            .from("reminders")
-            .update({ 
-              status: "sent", 
-              email_sent_at: new Date().toISOString() 
-            })
-            .eq("id", reminder.id);
-        }
+        // Update reminder status to sent
+        await supabase
+          .from("reminders")
+          .update({ 
+            status: "sent", 
+            email_sent_at: new Date().toISOString() 
+          })
+          .eq("id", reminder.id);
 
-        console.log(`Reminder email sent successfully for: ${reminder.id} (${isAdvanceNotification ? 'advance notification' : 'due now'})`);
+        console.log(`Reminder email sent successfully for: ${reminder.id}`);
         successCount++;
       } catch (emailError) {
         console.error(`Failed to send email for reminder ${reminder.id}:`, emailError);
@@ -345,9 +271,7 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
         message: "Reminders processed",
         success: successCount,
         errors: errorCount,
-        total: allRemindersToSend.length,
-        dueNow: remindersToProcess.length,
-        advanceNotifications: advanceReminders.length
+        total: remindersToProcess.length
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
