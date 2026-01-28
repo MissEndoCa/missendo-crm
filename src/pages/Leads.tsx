@@ -95,9 +95,7 @@ export default function Leads() {
 
   useEffect(() => {
     loadLeads();
-    if (isSuperAdmin) {
-      loadOrganizations();
-    }
+    loadOrganizations();
   }, [profile, isSuperAdmin]);
 
   const loadOrganizations = async () => {
@@ -528,7 +526,7 @@ export default function Leads() {
                 <TableHead>Contact</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Source</TableHead>
+                <TableHead>Clinic</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -579,8 +577,8 @@ export default function Leads() {
                         {lead.status.replace('_', ' ')}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {lead.source || '-'}
+                    <TableCell className="text-sm">
+                      {organizations.find(org => org.id === lead.organization_id)?.name || '-'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(lead.created_at), 'MMM dd, yyyy')}
