@@ -160,6 +160,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     note_date: new Date().toISOString().split('T')[0],
     content: ''
   });
+  const [editingNote, setEditingNote] = useState<PatientNote | null>(null);
 
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
@@ -751,6 +752,51 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
+  const handleEditNote = (note: PatientNote) => {
+    setEditingNote(note);
+    setNoteForm({
+      note_date: note.note_date,
+      content: note.content
+    });
+  };
+
+  const handleUpdateNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteForm.content.trim() || !editingNote) return;
+
+    try {
+      const { error } = await supabase
+        .from('patient_notes')
+        .update({
+          note_date: noteForm.note_date,
+          content: noteForm.content
+        })
+        .eq('id', editingNote.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note updated'
+      });
+
+      setEditingNote(null);
+      setNoteForm({
+        note_date: new Date().toISOString().split('T')[0],
+        content: ''
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update note',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentForm.amount) return;
@@ -1278,13 +1324,30 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         <TabsContent value="notes" className="space-y-4 mt-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                <MessageSquare className="h-5 w-5" />
-                Add New Note
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-base md:text-lg">
+                  <MessageSquare className="h-5 w-5" />
+                  {editingNote ? 'Edit Note' : 'Add New Note'}
+                </div>
+                {editingNote && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingNote(null);
+                      setNoteForm({
+                        note_date: new Date().toISOString().split('T')[0],
+                        content: ''
+                      });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddNote} className="space-y-4">
+              <form onSubmit={editingNote ? handleUpdateNote : handleAddNote} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="note_date">Date *</Label>
@@ -1309,8 +1372,17 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   </div>
                 </div>
                 <Button type="submit" className="w-full md:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Note
+                  {editingNote ? (
+                    <>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Update Note
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Note
+                    </>
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -1336,14 +1408,22 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                             {format(new Date(note.note_date), 'yyyy')}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="md:hidden"
-                          onClick={() => openDeleteDialog('note', note.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <div className="flex gap-1 md:hidden">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditNote(note)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openDeleteDialog('note', note.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="flex-1">
                         <p className="text-sm whitespace-pre-wrap">{note.content}</p>
@@ -1355,14 +1435,22 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                           {format(new Date(note.created_at), 'dd.MM.yyyy HH:mm')}
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="hidden md:flex"
-                        onClick={() => openDeleteDialog('note', note.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      <div className="hidden md:flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditNote(note)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openDeleteDialog('note', note.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
