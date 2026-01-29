@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Settings as SettingsIcon, Key, MessageSquare, TrendingUp, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { ActivityLogs } from '@/components/ActivityLogs';
 
 export default function Settings() {
-  const { profile } = useAuth();
+  const { profile, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [orgData, setOrgData] = useState({
@@ -230,6 +231,9 @@ export default function Settings() {
             {loading ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>
+
+        {/* Activity Logs - Super Admins Only */}
+        {isSuperAdmin && <ActivityLogs />}
       </div>
     </Layout>
   );
