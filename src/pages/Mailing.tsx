@@ -1311,12 +1311,12 @@ export default function Mailing() {
                   {recipientSource === 'organization' && isSuperAdmin && (
                     <div className="space-y-2">
                       <Label>Organization</Label>
-                      <Select value={selectedOrganizationId} onValueChange={setSelectedOrganizationId}>
+                      <Select value={selectedOrganizationId || "all"} onValueChange={(val) => setSelectedOrganizationId(val === "all" ? "" : val)}>
                         <SelectTrigger className="w-[200px]">
                           <SelectValue placeholder="All organizations" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Organizations</SelectItem>
+                          <SelectItem value="all">All Organizations</SelectItem>
                           {organizations.map((org) => (
                             <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
                           ))}
@@ -1637,12 +1637,12 @@ export default function Mailing() {
               {isSuperAdmin && (
                 <div className="space-y-2">
                   <Label>Filter by Clinic</Label>
-                  <Select value={selectedOrganizationId} onValueChange={setSelectedOrganizationId}>
+                  <Select value={selectedOrganizationId || "all"} onValueChange={(val) => setSelectedOrganizationId(val === "all" ? "" : val)}>
                     <SelectTrigger className="w-[250px]">
                       <SelectValue placeholder="All Clinics" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Clinics</SelectItem>
+                      <SelectItem value="all">All Clinics</SelectItem>
                       {organizations.map((org) => (
                         <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
                       ))}
