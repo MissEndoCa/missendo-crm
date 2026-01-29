@@ -32,6 +32,7 @@ import {
   DollarSign,
   Menu,
   Bell,
+  Mail,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -77,6 +78,7 @@ export default function Layout({ children }: LayoutProps) {
   // Add super admin only items
   if (isSuperAdmin) {
     navItems.push({ path: '/reminders', icon: Bell, label: 'Reminders' });
+    navItems.push({ path: '/mailing', icon: Mail, label: 'Mailing' });
     navItems.push({ path: '/organizations', icon: Building2, label: 'Organizations' });
   }
 
