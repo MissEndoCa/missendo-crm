@@ -306,6 +306,25 @@ export default function Mailing() {
     enabled: isSuperAdmin
   });
 
+  // Query for today's email usage (daily limit tracking)
+  const { data: todayEmailCount = 0 } = useQuery({
+    queryKey: ['today-email-count'],
+    queryFn: async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { count, error } = await supabase
+        .from('campaign_recipients')
+        .select('*', { count: 'exact', head: true })
+        .gte('sent_at', today.toISOString())
+        .eq('status', 'sent');
+      
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 30000 // Refresh every 30 seconds
+  });
+
   // Query for campaign recipients when editing
   const { data: campaignRecipients = [] } = useQuery({
     queryKey: ['campaign-recipients', editingCampaign?.id],
@@ -759,9 +778,15 @@ export default function Mailing() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1">
-              <AlertCircle className="h-3 w-3" />
-              Hostinger: ~1000 emails/day
+            <Badge 
+              variant="outline" 
+              className={`gap-1.5 ${todayEmailCount >= 900 ? 'border-destructive text-destructive' : todayEmailCount >= 700 ? 'border-warning text-warning' : ''}`}
+            >
+              <Mail className="h-3 w-3" />
+              <span className="font-medium">{todayEmailCount}</span>
+              <span className="text-muted-foreground">/</span>
+              <span>1000</span>
+              <span className="text-xs text-muted-foreground ml-1">today</span>
             </Badge>
           </div>
         </div>
