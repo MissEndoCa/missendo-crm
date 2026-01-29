@@ -95,12 +95,26 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
     }
   }, [content, editor]);
 
+  // Convert plain text with line breaks to proper HTML paragraphs
+  const textToHtml = (text: string): string => {
+    // If already has HTML tags, return as is
+    if (/<[^>]+>/.test(text)) {
+      return text;
+    }
+    // Convert line breaks to paragraphs
+    const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+    if (paragraphs.length === 0) return '<p></p>';
+    return paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+  };
+
   // Sync HTML changes to editor when switching tabs
   const handleTabChange = (tab: string) => {
     if (tab === 'visual' && activeTab === 'html' && editor) {
-      // When switching from HTML to visual, update the editor
-      editor.commands.setContent(htmlContent);
-      onChange(htmlContent);
+      // When switching from HTML to visual, convert and update the editor
+      const convertedHtml = textToHtml(htmlContent);
+      editor.commands.setContent(convertedHtml);
+      onChange(convertedHtml);
+      setHtmlContent(convertedHtml);
     }
     setActiveTab(tab as 'visual' | 'html');
   };
