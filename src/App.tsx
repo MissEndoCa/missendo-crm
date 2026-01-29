@@ -18,6 +18,7 @@ import Transfers from "./pages/Transfers";
 import Hotels from "./pages/Hotels";
 import Accounting from "./pages/Accounting";
 import Reminders from "./pages/Reminders";
+import Mailing from "./pages/Mailing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -174,6 +175,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Reminders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mailing"
+              element={
+                <ProtectedRoute>
+                  <Mailing />
                 </ProtectedRoute>
               }
             />
