@@ -99,8 +99,9 @@ serve(async (req: Request) => {
 
     // Generate HTML email template
     const generateEmailHtml = (recipientName: string, content: string) => {
-      // Logo hosted in public folder - use the production URL
-      const logoUrl = "https://id-preview--8ef91ecf-bcb6-494f-a1f9-5e4395cf6f20.lovable.app/miss-endo-logo.webp";
+      // Logo hosted in public folder - accessible via the app's public URL
+      // Using a data URI or external hosting would be more reliable
+      const logoUrl = "https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/avatars/miss-endo-logo.png";
       
       return `<!DOCTYPE html>
 <html>

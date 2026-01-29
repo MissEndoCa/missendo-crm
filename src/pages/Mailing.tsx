@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { CampaignDetailDialog } from "@/components/CampaignDetailDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +37,8 @@ import {
   Copy,
   Building2,
   UserCheck,
-  UserX
+  UserX,
+  RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -145,6 +147,10 @@ export default function Mailing() {
     content: ""
   });
   const [editCampaignStep, setEditCampaignStep] = useState<'content' | 'recipients'>('content');
+
+  // Campaign Detail Dialog
+  const [detailCampaign, setDetailCampaign] = useState<EmailCampaign | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // Queries
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -871,7 +877,39 @@ export default function Mailing() {
                                   </Button>
                                 </>
                               )}
-                              <Button size="sm" variant="outline">
+                              {campaign.status === 'sent' && (
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => openEditCampaign(campaign)}
+                                    className="gap-1"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                    Edit
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => {
+                                      setDetailCampaign(campaign);
+                                      setDetailDialogOpen(true);
+                                    }}
+                                    className="gap-1"
+                                  >
+                                    <RefreshCw className="h-3 w-3" />
+                                    Resend
+                                  </Button>
+                                </>
+                              )}
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setDetailCampaign(campaign);
+                                  setDetailDialogOpen(true);
+                                }}
+                              >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </div>
@@ -1959,6 +1997,17 @@ export default function Mailing() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Campaign Detail Dialog */}
+        <CampaignDetailDialog
+          campaign={detailCampaign}
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          onEdit={(campaign) => {
+            setDetailDialogOpen(false);
+            openEditCampaign(campaign);
+          }}
+        />
       </div>
     </Layout>
   );
