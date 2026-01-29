@@ -59,6 +59,7 @@ interface ContactGroup {
   created_at: string;
   lead_count?: number;
   patient_count?: number;
+  user_count?: number;
 }
 
 interface EmailCampaign {
@@ -174,14 +175,16 @@ export default function Mailing() {
 
       // Get member counts
       const groupsWithCounts = await Promise.all((data || []).map(async (group) => {
-        const [leadCount, patientCount] = await Promise.all([
+        const [leadCount, patientCount, userCount] = await Promise.all([
           supabase.from('lead_group_members').select('id', { count: 'exact', head: true }).eq('group_id', group.id),
-          supabase.from('patient_group_members').select('id', { count: 'exact', head: true }).eq('group_id', group.id)
+          supabase.from('patient_group_members').select('id', { count: 'exact', head: true }).eq('group_id', group.id),
+          supabase.from('user_group_members').select('id', { count: 'exact', head: true }).eq('group_id', group.id)
         ]);
         return {
           ...group,
           lead_count: leadCount.count || 0,
-          patient_count: patientCount.count || 0
+          patient_count: patientCount.count || 0,
+          user_count: userCount.count || 0
         };
       }));
 
@@ -269,15 +272,21 @@ export default function Mailing() {
 
   // Query for system users (only for super admins)
   const { data: systemUsers = [] } = useQuery({
-    queryKey: ['users-for-mailing'],
+    queryKey: ['users-for-mailing', selectedOrganizationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('profiles')
-        .select('id, first_name, last_name, email, is_active, organization:organizations(name)')
+        .select('id, first_name, last_name, email, is_active, organization_id, organization:organizations(name)')
         .eq('is_active', true)
         .not('email', 'is', null)
         .neq('email', '')
         .order('created_at', { ascending: false });
+      
+      if (selectedOrganizationId) {
+        query = query.eq('organization_id', selectedOrganizationId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -986,15 +995,21 @@ export default function Mailing() {
                         )}
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
                           <div className="flex items-center gap-1 text-sm">
                             <UserCheck className="h-4 w-4 text-blue-500" />
                             <span>{group.lead_count} Leads</span>
                           </div>
                           <div className="flex items-center gap-1 text-sm">
-                            <UserX className="h-4 w-4 text-green-500" />
+                            <Users className="h-4 w-4 text-green-500" />
                             <span>{group.patient_count} Patients</span>
                           </div>
+                          {isSuperAdmin && (group.user_count || 0) > 0 && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Building2 className="h-4 w-4 text-purple-500" />
+                              <span>{group.user_count} Users</span>
+                            </div>
+                          )}
                         </div>
                         <Button 
                           size="sm" 
@@ -1404,8 +1419,11 @@ export default function Mailing() {
                                   {lead.first_name} {lead.last_name}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
+                                {isSuperAdmin && lead.organization?.name && (
+                                  <p className="text-xs text-primary/70 truncate">{lead.organization.name}</p>
+                                )}
                               </div>
-                              <Badge className={`text-xs ${getLeadStatusColor(lead.status)}`}>
+                              <Badge className={`text-xs shrink-0 ${getLeadStatusColor(lead.status)}`}>
                                 {lead.status}
                               </Badge>
                             </div>
@@ -1450,12 +1468,10 @@ export default function Mailing() {
                                   {patient.first_name} {patient.last_name}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">{patient.email}</p>
+                                {isSuperAdmin && patient.organization?.name && (
+                                  <p className="text-xs text-primary/70 truncate">{patient.organization.name}</p>
+                                )}
                               </div>
-                              {isSuperAdmin && patient.organization?.name && (
-                                <Badge variant="outline" className="text-xs">
-                                  {patient.organization.name}
-                                </Badge>
-                              )}
                             </div>
                           ))}
                         </div>
@@ -1475,36 +1491,34 @@ export default function Mailing() {
                       <CardContent>
                         <ScrollArea className="h-[300px]">
                           <div className="space-y-2">
-                            {systemUsers.map((user: any) => (
+                            {systemUsers.map((sysUser: any) => (
                               <div 
-                                key={user.id}
+                                key={sysUser.id}
                                 className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                                  selectedRecipients.find(r => r.id === user.id && r.type === 'user')
+                                  selectedRecipients.find(r => r.id === sysUser.id && r.type === 'user')
                                     ? 'bg-primary/10 border border-primary/20'
                                     : 'hover:bg-muted'
                                 }`}
                                 onClick={() => toggleRecipient({
-                                  id: user.id,
-                                  email: user.email,
-                                  name: `${user.first_name} ${user.last_name}`,
+                                  id: sysUser.id,
+                                  email: sysUser.email,
+                                  name: `${sysUser.first_name} ${sysUser.last_name}`,
                                   type: 'user',
-                                  organization_name: user.organization?.name
+                                  organization_name: sysUser.organization?.name
                                 })}
                               >
                                 <Checkbox 
-                                  checked={!!selectedRecipients.find(r => r.id === user.id && r.type === 'user')}
+                                  checked={!!selectedRecipients.find(r => r.id === sysUser.id && r.type === 'user')}
                                 />
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-sm truncate">
-                                    {user.first_name} {user.last_name}
+                                    {sysUser.first_name} {sysUser.last_name}
                                   </p>
-                                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{sysUser.email}</p>
+                                  {sysUser.organization?.name && (
+                                    <p className="text-xs text-primary/70 truncate">{sysUser.organization.name}</p>
+                                  )}
                                 </div>
-                                {user.organization?.name && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {user.organization.name}
-                                  </Badge>
-                                )}
                               </div>
                             ))}
                           </div>
@@ -1619,6 +1633,24 @@ export default function Mailing() {
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* Organization filter for super admin */}
+              {isSuperAdmin && (
+                <div className="space-y-2">
+                  <Label>Filter by Clinic</Label>
+                  <Select value={selectedOrganizationId} onValueChange={setSelectedOrganizationId}>
+                    <SelectTrigger className="w-[250px]">
+                      <SelectValue placeholder="All Clinics" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Clinics</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Quick actions */}
               <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="outline" onClick={selectAllLeads}>
@@ -1680,8 +1712,11 @@ export default function Mailing() {
                                 {lead.first_name} {lead.last_name}
                               </p>
                               <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
+                              {isSuperAdmin && lead.organization?.name && (
+                                <p className="text-xs text-primary/70 truncate">{lead.organization.name}</p>
+                              )}
                             </div>
-                            <Badge className={`text-xs ${getLeadStatusColor(lead.status)}`}>
+                            <Badge className={`text-xs shrink-0 ${getLeadStatusColor(lead.status)}`}>
                               {lead.status}
                             </Badge>
                           </div>
@@ -1726,12 +1761,10 @@ export default function Mailing() {
                                 {patient.first_name} {patient.last_name}
                               </p>
                               <p className="text-xs text-muted-foreground truncate">{patient.email}</p>
+                              {isSuperAdmin && patient.organization?.name && (
+                                <p className="text-xs text-primary/70 truncate">{patient.organization.name}</p>
+                              )}
                             </div>
-                            {isSuperAdmin && patient.organization?.name && (
-                              <Badge variant="outline" className="text-xs">
-                                {patient.organization.name}
-                              </Badge>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -1775,12 +1808,10 @@ export default function Mailing() {
                                   {sysUser.first_name} {sysUser.last_name}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">{sysUser.email}</p>
+                                {sysUser.organization?.name && (
+                                  <p className="text-xs text-primary/70 truncate">{sysUser.organization.name}</p>
+                                )}
                               </div>
-                              {sysUser.organization?.name && (
-                                <Badge variant="outline" className="text-xs">
-                                  {sysUser.organization.name}
-                                </Badge>
-                              )}
                             </div>
                           ))}
                         </div>
