@@ -412,6 +412,89 @@ export function CampaignDetailDialog({ campaign, open, onOpenChange, onEdit }: C
                 )}
               </CardContent>
             </Card>
+
+            {/* Activity Feed - Who opened / didn't open */}
+            {campaign.status === 'sent' && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <MailOpen className="h-4 w-4" />
+                    Open Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[200px]">
+                    <div className="p-4 space-y-3">
+                      {/* Opened emails - sorted by opened_at desc */}
+                      {openedRecipients
+                        .sort((a, b) => new Date(b.opened_at!).getTime() - new Date(a.opened_at!).getTime())
+                        .map((recipient) => (
+                          <div 
+                            key={recipient.id} 
+                            className="flex items-center gap-3 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900"
+                          >
+                            <div className="flex-shrink-0">
+                              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                <MailOpen className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {recipient.recipient_name || recipient.email}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {recipient.email}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 text-right">
+                              <p className="text-xs font-medium text-green-600 dark:text-green-400">Opened</p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(recipient.opened_at!), 'MMM d, HH:mm')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+
+                      {/* Not opened emails */}
+                      {sentRecipients
+                        .filter(r => !r.opened_at)
+                        .map((recipient) => (
+                          <div 
+                            key={recipient.id} 
+                            className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 border border-border"
+                          >
+                            <div className="flex-shrink-0">
+                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {recipient.recipient_name || recipient.email}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {recipient.email}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 text-right">
+                              <p className="text-xs text-muted-foreground">Not opened yet</p>
+                              <p className="text-xs text-muted-foreground">
+                                Sent {format(new Date(recipient.sent_at!), 'MMM d, HH:mm')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+
+                      {sentRecipients.length === 0 && (
+                        <div className="text-center text-muted-foreground text-sm py-8">
+                          No emails sent yet
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="recipients" className="flex-1 overflow-hidden mt-4">
