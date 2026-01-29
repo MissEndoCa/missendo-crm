@@ -4,9 +4,10 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Bold, 
   Italic, 
@@ -23,7 +24,9 @@ import {
   Quote,
   Undo,
   Redo,
-  Unlink
+  Unlink,
+  Code,
+  Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -31,7 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface RichTextEditorProps {
   content: string;
@@ -45,6 +48,8 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
   const [imageUrl, setImageUrl] = useState('');
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'visual' | 'html'>('visual');
+  const [htmlContent, setHtmlContent] = useState(content);
 
   const editor = useEditor({
     extensions: [
@@ -71,7 +76,9 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
     ],
     content: content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const html = editor.getHTML();
+      setHtmlContent(html);
+      onChange(html);
     },
     editorProps: {
       attributes: {
@@ -84,8 +91,24 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);
+      setHtmlContent(content);
     }
   }, [content, editor]);
+
+  // Sync HTML changes to editor when switching tabs
+  const handleTabChange = (tab: string) => {
+    if (tab === 'visual' && activeTab === 'html' && editor) {
+      // When switching from HTML to visual, update the editor
+      editor.commands.setContent(htmlContent);
+      onChange(htmlContent);
+    }
+    setActiveTab(tab as 'visual' | 'html');
+  };
+
+  const handleHtmlChange = (value: string) => {
+    setHtmlContent(value);
+    onChange(value);
+  };
 
   const addLink = useCallback(() => {
     if (!editor || !linkUrl) return;
@@ -145,196 +168,228 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
 
   return (
     <div className={cn("border rounded-md overflow-hidden bg-background", className)}>
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 p-1 border-b bg-muted/50">
-        {/* Undo/Redo */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-          title="Undo"
-        >
-          <Undo className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-          title="Redo"
-        >
-          <Redo className="h-4 w-4" />
-        </ToolbarButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        {/* Headings */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          isActive={editor.isActive('heading', { level: 1 })}
-          title="Heading 1"
-        >
-          <Heading1 className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          isActive={editor.isActive('heading', { level: 2 })}
-          title="Heading 2"
-        >
-          <Heading2 className="h-4 w-4" />
-        </ToolbarButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        {/* Text Formatting */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          isActive={editor.isActive('bold')}
-          title="Bold"
-        >
-          <Bold className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          isActive={editor.isActive('italic')}
-          title="Italic"
-        >
-          <Italic className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          isActive={editor.isActive('underline')}
-          title="Underline"
-        >
-          <UnderlineIcon className="h-4 w-4" />
-        </ToolbarButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        {/* Text Alignment */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          isActive={editor.isActive({ textAlign: 'left' })}
-          title="Align Left"
-        >
-          <AlignLeft className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          isActive={editor.isActive({ textAlign: 'center' })}
-          title="Align Center"
-        >
-          <AlignCenter className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          isActive={editor.isActive({ textAlign: 'right' })}
-          title="Align Right"
-        >
-          <AlignRight className="h-4 w-4" />
-        </ToolbarButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        {/* Lists */}
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          isActive={editor.isActive('bulletList')}
-          title="Bullet List"
-        >
-          <List className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          isActive={editor.isActive('orderedList')}
-          title="Numbered List"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          isActive={editor.isActive('blockquote')}
-          title="Quote"
-        >
-          <Quote className="h-4 w-4" />
-        </ToolbarButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        {/* Link */}
-        <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-8 w-8 p-0",
-                editor.isActive('link') && "bg-muted text-foreground"
-              )}
-              title="Add Link"
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <div className="flex items-center justify-between border-b bg-muted/30 px-2">
+          <TabsList className="h-9 bg-transparent p-0">
+            <TabsTrigger 
+              value="visual" 
+              className="gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-b-none"
             >
-              <LinkIcon className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-3" align="start">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Insert Link</p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="https://example.com"
-                  value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addLink()}
-                />
-                <Button size="sm" onClick={addLink}>Add</Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {editor.isActive('link') && (
-          <ToolbarButton
-            onClick={removeLink}
-            title="Remove Link"
-          >
-            <Unlink className="h-4 w-4" />
-          </ToolbarButton>
-        )}
-
-        {/* Image */}
-        <Popover open={imagePopoverOpen} onOpenChange={setImagePopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              title="Add Image"
+              <Eye className="h-3.5 w-3.5" />
+              Visual
+            </TabsTrigger>
+            <TabsTrigger 
+              value="html" 
+              className="gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-b-none"
             >
-              <ImageIcon className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-3" align="start">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Insert Image</p>
-              <p className="text-xs text-muted-foreground">Enter image URL</p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="https://example.com/image.jpg"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addImage()}
-                />
-                <Button size="sm" onClick={addImage}>Add</Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+              <Code className="h-3.5 w-3.5" />
+              HTML
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* Editor Content */}
-      <EditorContent 
-        editor={editor} 
-        className="min-h-[200px] [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none"
-      />
+        <TabsContent value="visual" className="m-0">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-0.5 p-1 border-b bg-muted/50">
+            {/* Undo/Redo */}
+            <ToolbarButton
+              onClick={() => editor.chain().focus().undo().run()}
+              disabled={!editor.can().undo()}
+              title="Undo"
+            >
+              <Undo className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().redo().run()}
+              disabled={!editor.can().redo()}
+              title="Redo"
+            >
+              <Redo className="h-4 w-4" />
+            </ToolbarButton>
+
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Headings */}
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+              isActive={editor.isActive('heading', { level: 1 })}
+              title="Heading 1"
+            >
+              <Heading1 className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              isActive={editor.isActive('heading', { level: 2 })}
+              title="Heading 2"
+            >
+              <Heading2 className="h-4 w-4" />
+            </ToolbarButton>
+
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Text Formatting */}
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              isActive={editor.isActive('bold')}
+              title="Bold"
+            >
+              <Bold className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              isActive={editor.isActive('italic')}
+              title="Italic"
+            >
+              <Italic className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              isActive={editor.isActive('underline')}
+              title="Underline"
+            >
+              <UnderlineIcon className="h-4 w-4" />
+            </ToolbarButton>
+
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Text Alignment */}
+            <ToolbarButton
+              onClick={() => editor.chain().focus().setTextAlign('left').run()}
+              isActive={editor.isActive({ textAlign: 'left' })}
+              title="Align Left"
+            >
+              <AlignLeft className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().setTextAlign('center').run()}
+              isActive={editor.isActive({ textAlign: 'center' })}
+              title="Align Center"
+            >
+              <AlignCenter className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().setTextAlign('right').run()}
+              isActive={editor.isActive({ textAlign: 'right' })}
+              title="Align Right"
+            >
+              <AlignRight className="h-4 w-4" />
+            </ToolbarButton>
+
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Lists */}
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              isActive={editor.isActive('bulletList')}
+              title="Bullet List"
+            >
+              <List className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              isActive={editor.isActive('orderedList')}
+              title="Numbered List"
+            >
+              <ListOrdered className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+              isActive={editor.isActive('blockquote')}
+              title="Quote"
+            >
+              <Quote className="h-4 w-4" />
+            </ToolbarButton>
+
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Link */}
+            <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 w-8 p-0",
+                    editor.isActive('link') && "bg-muted text-foreground"
+                  )}
+                  title="Add Link"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-3" align="start">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Insert Link</p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://example.com"
+                      value={linkUrl}
+                      onChange={(e) => setLinkUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addLink()}
+                    />
+                    <Button size="sm" onClick={addLink}>Add</Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {editor.isActive('link') && (
+              <ToolbarButton
+                onClick={removeLink}
+                title="Remove Link"
+              >
+                <Unlink className="h-4 w-4" />
+              </ToolbarButton>
+            )}
+
+            {/* Image */}
+            <Popover open={imagePopoverOpen} onOpenChange={setImagePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="Add Image"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-3" align="start">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Insert Image</p>
+                  <p className="text-xs text-muted-foreground">Enter image URL</p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://example.com/image.jpg"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addImage()}
+                    />
+                    <Button size="sm" onClick={addImage}>Add</Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Editor Content */}
+          <EditorContent 
+            editor={editor} 
+            className="min-h-[200px] [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none"
+          />
+        </TabsContent>
+
+        <TabsContent value="html" className="m-0">
+          <Textarea
+            value={htmlContent}
+            onChange={(e) => handleHtmlChange(e.target.value)}
+            placeholder="<p>Write your HTML here...</p>"
+            className="min-h-[280px] font-mono text-sm border-0 rounded-none resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
