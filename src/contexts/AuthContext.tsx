@@ -33,13 +33,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const [profileData, rolesData] = await Promise.all([
-      getUserProfile(),
-      getUserRoles()
-    ]);
+    try {
+      const [profileData, rolesData] = await Promise.all([
+        getUserProfile(),
+        getUserRoles()
+      ]);
 
-    setProfile(profileData);
-    setRoles(rolesData);
+      setProfile(profileData);
+      setRoles(rolesData);
+    } catch (err) {
+      // If role/profile queries fail (e.g. RLS), never leave the app stuck in loading.
+      console.error('AuthContext.loadUserData error', err);
+      setProfile(null);
+      setRoles([]);
+    }
   };
 
   const refreshProfile = async () => {
@@ -49,16 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    let isMounted = true;
+
+    // Listener for ongoing auth changes (does NOT control initial loading flag)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (_event, currentSession) => {
+        if (!isMounted) return;
+
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
-        
+
         if (currentSession?.user) {
-          setTimeout(() => {
-            loadUserData(currentSession.user);
-          }, 0);
+          // Fire and forget; do not touch `loading` here.
+          loadUserData(currentSession.user);
         } else {
           setProfile(null);
           setRoles([]);
@@ -66,19 +76,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        loadUserData(currentSession.user).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+    // Initial load (controls `loading`)
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!isMounted) return;
 
-    return () => subscription.unsubscribe();
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+
+        if (currentSession?.user) {
+          await loadUserData(currentSession.user);
+        } else {
+          setProfile(null);
+          setRoles([]);
+        }
+      } catch (err) {
+        console.error('AuthContext.initializeAuth error', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
