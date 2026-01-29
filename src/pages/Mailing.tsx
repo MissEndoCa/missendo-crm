@@ -6,6 +6,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -1098,13 +1099,11 @@ export default function Mailing() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="template-content">Email Content</Label>
-                <Textarea
-                  id="template-content"
-                  value={templateForm.content}
-                  onChange={(e) => setTemplateForm(prev => ({ ...prev, content: e.target.value }))}
+                <Label>Email Content</Label>
+                <RichTextEditor
+                  content={templateForm.content}
+                  onChange={(content) => setTemplateForm(prev => ({ ...prev, content }))}
                   placeholder="Write your email content here... Use {{name}} for personalization."
-                  rows={8}
                 />
                 <p className="text-xs text-muted-foreground">
                   Available variables: {"{{name}}"}, {"{{email}}"}, {"{{phone}}"}
@@ -1288,14 +1287,15 @@ export default function Mailing() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="campaign-content">Email Content</Label>
-                  <Textarea
-                    id="campaign-content"
-                    value={campaignForm.content}
-                    onChange={(e) => setCampaignForm(prev => ({ ...prev, content: e.target.value }))}
+                  <Label>Email Content</Label>
+                  <RichTextEditor
+                    content={campaignForm.content}
+                    onChange={(content) => setCampaignForm(prev => ({ ...prev, content }))}
                     placeholder="Write your email content here..."
-                    rows={10}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Use the toolbar to format text, add links, and insert images. Use {"{{name}}"} for personalization.
+                  </p>
                 </div>
               </div>
             )}
@@ -1709,16 +1709,14 @@ export default function Mailing() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-campaign-content">Email Content *</Label>
-                  <Textarea
-                    id="edit-campaign-content"
-                    value={editCampaignForm.content}
-                    onChange={(e) => setEditCampaignForm(prev => ({ ...prev, content: e.target.value }))}
+                  <Label>Email Content *</Label>
+                  <RichTextEditor
+                    content={editCampaignForm.content}
+                    onChange={(content) => setEditCampaignForm(prev => ({ ...prev, content }))}
                     placeholder="Write your email content here..."
-                    rows={12}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use {"{{name}}"} to personalize with recipient's name
+                    Use the toolbar to format text, add links, and insert images. Use {"{{name}}"} for personalization.
                   </p>
                 </div>
 
