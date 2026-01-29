@@ -134,7 +134,7 @@ ${content.replace(/\{\{name\}\}/g, recipientName)}
 <tr>
 <td style="background-color: #1f2937; padding: 25px; text-align: center;">
 <p style="margin: 0; color: #9ca3af; font-size: 12px;">Miss Endo</p>
-<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 11px;">This email was sent from Miss Endo CRM.</p>
+<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 11px;">This email was sent from Miss Endo.</p>
 </td>
 </tr>
 </table>
