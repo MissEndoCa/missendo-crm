@@ -89,14 +89,14 @@ export default function Layout({ children }: LayoutProps) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-3 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center justify-center" onClick={() => isMobile && setSidebarOpen(false)}>
-          <img src={missEndoLogo} alt="Miss Endo" className="h-14 w-auto" />
+          <img src={missEndoLogo} alt="Miss Endo" className="h-10 w-auto" />
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -106,101 +106,101 @@ export default function Layout({ children }: LayoutProps) {
               key={item.path}
               to={item.path}
               onClick={() => isMobile && setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-sm ${
                 isActive
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
               }`}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4" />
               <span className="font-medium">{item.label}</span>
             </Link>
           );
         })}
 
         {/* Services Section */}
-        <div className="pt-4 mt-4 border-t border-sidebar-border">
-          <p className="px-4 text-xs font-semibold text-sidebar-foreground/50 uppercase mb-2">
+        <div className="pt-3 mt-3 border-t border-sidebar-border">
+          <p className="px-3 text-[10px] font-semibold text-sidebar-foreground/50 uppercase mb-1.5">
             Services
           </p>
           <Link
             to="/treatments"
             onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-sm ${
               location.pathname === '/treatments'
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             }`}
           >
-            <Stethoscope className="w-5 h-5" />
+            <Stethoscope className="w-4 h-4" />
             <span className="font-medium">Treatments</span>
           </Link>
           <Link
             to="/transfers"
             onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-sm ${
               location.pathname === '/transfers'
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             }`}
           >
-            <Car className="w-5 h-5" />
+            <Car className="w-4 h-4" />
             <span className="font-medium">Transfers</span>
           </Link>
           <Link
             to="/hotels"
             onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-sm ${
               location.pathname === '/hotels'
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             }`}
           >
-            <Hotel className="w-5 h-5" />
+            <Hotel className="w-4 h-4" />
             <span className="font-medium">Hotels</span>
           </Link>
           <Link
             to="/accounting"
             onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-sm ${
               location.pathname === '/accounting'
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             }`}
           >
-            <DollarSign className="w-5 h-5" />
+            <DollarSign className="w-4 h-4" />
             <span className="font-medium">Accounting</span>
           </Link>
           <Link
             to="/settings"
             onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-sm ${
               location.pathname === '/settings'
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             }`}
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-4 h-4" />
             <span className="font-medium">Settings</span>
           </Link>
         </div>
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-3 border-t border-sidebar-border">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-3 px-4 py-6 h-auto">
-              <Avatar className="w-10 h-10">
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
+            <Button variant="ghost" className="w-full justify-start gap-2.5 px-3 py-2.5 h-auto">
+              <Avatar className="w-8 h-8">
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-sidebar-foreground">
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-xs font-medium text-sidebar-foreground truncate">
                   {profile?.first_name} {profile?.last_name}
                 </p>
-                <p className="text-xs text-sidebar-foreground/60">{profile?.email}</p>
+                <p className="text-[10px] text-sidebar-foreground/60 truncate">{profile?.email}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>
