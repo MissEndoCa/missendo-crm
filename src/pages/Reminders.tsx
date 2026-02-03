@@ -7,14 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -33,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, Bell, Plus, Phone, Calendar, CheckCircle, Clock, 
-  User, Users, PhoneOff, AlertCircle, Trash2, Eye, Mail 
+  User, Users, PhoneOff, AlertCircle, Trash2, Mail, Pencil, Building2 
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -58,9 +50,14 @@ interface Reminder {
   email_sent_at: string | null;
   completed_at: string | null;
   created_at: string;
-  patient?: { first_name: string; last_name: string; phone: string } | null;
-  lead?: { first_name: string; last_name: string; phone: string } | null;
+  organization_id: string;
+  patient_id: string | null;
+  lead_id: string | null;
+  notify_all_admins: boolean | null;
+  patient?: { first_name: string; last_name: string; phone: string; organization_id: string } | null;
+  lead?: { first_name: string; last_name: string; phone: string; organization_id: string } | null;
   creator?: { first_name: string; last_name: string } | null;
+  organization?: { name: string } | null;
 }
 
 interface Patient {
@@ -68,6 +65,8 @@ interface Patient {
   first_name: string;
   last_name: string;
   phone: string;
+  organization_id: string;
+  organization?: { name: string } | null;
 }
 
 interface Lead {
@@ -76,6 +75,13 @@ interface Lead {
   last_name: string;
   phone: string;
   status: string;
+  organization_id: string;
+  organization?: { name: string } | null;
+}
+
+interface Organization {
+  id: string;
+  name: string;
 }
 
 const REMINDER_TYPES = [
@@ -99,13 +105,25 @@ export default function Reminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [organizationFilter, setOrganizationFilter] = useState<string>('all');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientOrgFilter, setPatientOrgFilter] = useState<string>('all');
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadOrgFilter, setLeadOrgFilter] = useState<string>('all');
+  
+  // Dialogs
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [activeTab, setActiveTab] = useState('reminders');
   
   const [form, setForm] = useState({
@@ -119,6 +137,16 @@ export default function Reminders() {
     notify_all_admins: false,
   });
 
+  const [editForm, setEditForm] = useState({
+    reminder_type: 'call_back',
+    reminder_date: '',
+    reminder_time: '09:00',
+    title: '',
+    notes: '',
+    status: 'pending',
+    notify_all_admins: false,
+  });
+
   useEffect(() => {
     if (isSuperAdmin) {
       fetchData();
@@ -128,35 +156,42 @@ export default function Reminders() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Super admin sees ALL data across all organizations
-      const [remindersRes, patientsRes, leadsRes] = await Promise.all([
+      const [remindersRes, patientsRes, leadsRes, orgsRes] = await Promise.all([
         supabase
           .from('reminders')
           .select(`
             *,
-            patient:patients(first_name, last_name, phone),
-            lead:leads(first_name, last_name, phone),
-            creator:profiles!reminders_created_by_fkey(first_name, last_name)
+            patient:patients(first_name, last_name, phone, organization_id),
+            lead:leads(first_name, last_name, phone, organization_id),
+            creator:profiles!reminders_created_by_fkey(first_name, last_name),
+            organization:organizations(name)
           `)
           .order('reminder_date', { ascending: true }),
         supabase
           .from('patients')
-          .select('id, first_name, last_name, phone')
+          .select('id, first_name, last_name, phone, organization_id, organization:organizations(name)')
           .order('first_name'),
         supabase
           .from('leads')
-          .select('id, first_name, last_name, phone, status')
+          .select('id, first_name, last_name, phone, status, organization_id, organization:organizations(name)')
           .not('status', 'eq', 'converted_to_patient')
           .order('first_name'),
+        supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name'),
       ]);
 
       if (remindersRes.error) throw remindersRes.error;
       if (patientsRes.error) throw patientsRes.error;
       if (leadsRes.error) throw leadsRes.error;
+      if (orgsRes.error) throw orgsRes.error;
 
       setReminders((remindersRes.data || []) as Reminder[]);
-      setPatients(patientsRes.data || []);
-      setLeads(leadsRes.data || []);
+      setPatients((patientsRes.data || []) as Patient[]);
+      setLeads((leadsRes.data || []) as Lead[]);
+      setOrganizations(orgsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -182,7 +217,6 @@ export default function Reminders() {
     }
 
     try {
-      // Create a proper local date and convert to ISO string
       const localDate = new Date(`${form.reminder_date}T${form.reminder_time}:00`);
       const reminderDateTime = localDate.toISOString();
       
@@ -225,6 +259,78 @@ export default function Reminders() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleEditReminder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingReminder || !editForm.reminder_date || !editForm.title) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const localDate = new Date(`${editForm.reminder_date}T${editForm.reminder_time}:00`);
+      const reminderDateTime = localDate.toISOString();
+      
+      const updateData: Record<string, unknown> = {
+        reminder_type: editForm.reminder_type,
+        reminder_date: reminderDateTime,
+        title: editForm.title,
+        notes: editForm.notes || null,
+        status: editForm.status,
+        notify_all_admins: editForm.notify_all_admins,
+      };
+
+      // Reset completed_at if status is no longer completed
+      if (editForm.status !== 'completed') {
+        updateData.completed_at = null;
+      } else if (editForm.status === 'completed' && editingReminder.status !== 'completed') {
+        updateData.completed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('reminders')
+        .update(updateData)
+        .eq('id', editingReminder.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Reminder updated successfully',
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingReminder(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating reminder:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update reminder',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const openEditDialog = (reminder: Reminder) => {
+    const reminderDate = new Date(reminder.reminder_date);
+    setEditingReminder(reminder);
+    setEditForm({
+      reminder_type: reminder.reminder_type,
+      reminder_date: format(reminderDate, 'yyyy-MM-dd'),
+      reminder_time: format(reminderDate, 'HH:mm'),
+      title: reminder.title,
+      notes: reminder.notes || '',
+      status: reminder.status,
+      notify_all_admins: reminder.notify_all_admins || false,
+    });
+    setIsEditDialogOpen(true);
   };
 
   const handleMarkComplete = async (id: string) => {
@@ -282,6 +388,7 @@ export default function Reminders() {
     }
   };
 
+  // Filter reminders
   const filteredReminders = reminders.filter((reminder) => {
     const targetName = reminder.patient 
       ? `${reminder.patient.first_name} ${reminder.patient.last_name}`
@@ -295,8 +402,29 @@ export default function Reminders() {
     
     const matchesStatus = statusFilter === 'all' || reminder.status === statusFilter;
     const matchesType = typeFilter === 'all' || reminder.reminder_type === typeFilter;
+    const matchesOrg = organizationFilter === 'all' || reminder.organization_id === organizationFilter;
     
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesSearch && matchesStatus && matchesType && matchesOrg;
+  });
+
+  // Filter patients
+  const filteredPatients = patients.filter((patient) => {
+    const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
+    const matchesSearch = patientSearch === '' || 
+      fullName.includes(patientSearch.toLowerCase()) ||
+      patient.phone.includes(patientSearch);
+    const matchesOrg = patientOrgFilter === 'all' || patient.organization_id === patientOrgFilter;
+    return matchesSearch && matchesOrg;
+  });
+
+  // Filter leads
+  const filteredLeads = leads.filter((lead) => {
+    const fullName = `${lead.first_name} ${lead.last_name}`.toLowerCase();
+    const matchesSearch = leadSearch === '' || 
+      fullName.includes(leadSearch.toLowerCase()) ||
+      lead.phone.includes(leadSearch);
+    const matchesOrg = leadOrgFilter === 'all' || lead.organization_id === leadOrgFilter;
+    return matchesSearch && matchesOrg;
   });
 
   const pendingReminders = filteredReminders.filter(r => r.status === 'pending');
@@ -507,12 +635,24 @@ export default function Reminders() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
-                      placeholder="Search..."
+                      placeholder="Search by name or title..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
                     />
                   </div>
+                  <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+                    <SelectTrigger className="w-full md:w-48">
+                      <Building2 className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Clinic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Clinics</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full md:w-40">
                       <SelectValue placeholder="Status" />
@@ -555,6 +695,7 @@ export default function Reminders() {
                         key={reminder.id} 
                         reminder={reminder} 
                         onComplete={() => handleMarkComplete(reminder.id)}
+                        onEdit={() => openEditDialog(reminder)}
                         onDelete={() => { setDeletingId(reminder.id); setDeleteDialogOpen(true); }}
                       />
                     ))}
@@ -579,6 +720,7 @@ export default function Reminders() {
                         key={reminder.id} 
                         reminder={reminder} 
                         onComplete={() => handleMarkComplete(reminder.id)}
+                        onEdit={() => openEditDialog(reminder)}
                         onDelete={() => { setDeletingId(reminder.id); setDeleteDialogOpen(true); }}
                       />
                     ))}
@@ -600,15 +742,46 @@ export default function Reminders() {
           <TabsContent value="patients" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Hastalar ({patients.length})</CardTitle>
+                <CardTitle>Patients ({filteredPatients.length})</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Patient Filters */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Search by name or phone..."
+                      value={patientSearch}
+                      onChange={(e) => setPatientSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={patientOrgFilter} onValueChange={setPatientOrgFilter}>
+                    <SelectTrigger className="w-full md:w-48">
+                      <Building2 className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Clinic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Clinics</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
-                  {patients.map(patient => (
+                  {filteredPatients.map(patient => (
                     <div key={patient.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
                       <div>
                         <p className="font-medium">{patient.first_name} {patient.last_name}</p>
                         <p className="text-sm text-muted-foreground">{patient.phone}</p>
+                        {patient.organization && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Building2 className="w-3 h-3" />
+                            {patient.organization.name}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button 
@@ -638,6 +811,11 @@ export default function Reminders() {
                       </div>
                     </div>
                   ))}
+                  {filteredPatients.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No patients found
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -646,15 +824,46 @@ export default function Reminders() {
           <TabsContent value="leads" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Leads ({leads.length})</CardTitle>
+                <CardTitle>Leads ({filteredLeads.length})</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Lead Filters */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Search by name or phone..."
+                      value={leadSearch}
+                      onChange={(e) => setLeadSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={leadOrgFilter} onValueChange={setLeadOrgFilter}>
+                    <SelectTrigger className="w-full md:w-48">
+                      <Building2 className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Clinic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Clinics</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
-                  {leads.map(lead => (
+                  {filteredLeads.map(lead => (
                     <div key={lead.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
                       <div>
                         <p className="font-medium">{lead.first_name} {lead.last_name}</p>
                         <p className="text-sm text-muted-foreground">{lead.phone}</p>
+                        {lead.organization && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Building2 className="w-3 h-3" />
+                            {lead.organization.name}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button 
@@ -684,11 +893,139 @@ export default function Reminders() {
                       </div>
                     </div>
                   ))}
+                  {filteredLeads.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No leads found
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Reminder Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Reminder</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditReminder} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Reminder Type</Label>
+                  <Select 
+                    value={editForm.reminder_type} 
+                    onValueChange={(value) => setEditForm({ ...editForm, reminder_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REMINDER_TYPES.map(type => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select 
+                    value={editForm.status} 
+                    onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(STATUS_LABELS).map(([value, { label }]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date *</Label>
+                  <Input
+                    type="date"
+                    value={editForm.reminder_date}
+                    onChange={(e) => setEditForm({ ...editForm, reminder_date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Time</Label>
+                  <Input
+                    type="time"
+                    value={editForm.reminder_time}
+                    onChange={(e) => setEditForm({ ...editForm, reminder_time: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Title *</Label>
+                <Input
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  placeholder="Reminder title"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  placeholder="Additional notes..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                <Label className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Email Notification
+                </Label>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_notify_type"
+                      checked={!editForm.notify_all_admins}
+                      onChange={() => setEditForm({ ...editForm, notify_all_admins: false })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Only creator</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_notify_type"
+                      checked={editForm.notify_all_admins}
+                      onChange={() => setEditForm({ ...editForm, notify_all_admins: true })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">All Super Admins</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Delete Confirmation */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -715,10 +1052,12 @@ export default function Reminders() {
 function ReminderCard({ 
   reminder, 
   onComplete, 
+  onEdit,
   onDelete 
 }: { 
   reminder: Reminder; 
   onComplete: () => void; 
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const targetName = reminder.patient 
@@ -761,6 +1100,12 @@ function ReminderCard({
               </Badge>
             </p>
             <p className="text-sm text-muted-foreground">{targetPhone}</p>
+            {reminder.organization && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <Building2 className="w-3 h-3" />
+                {reminder.organization.name}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
               {new Date(reminder.reminder_date).toLocaleString('en-GB', { 
                 day: '2-digit', 
@@ -784,6 +1129,9 @@ function ReminderCard({
               Complete
             </Button>
           )}
+          <Button size="sm" variant="ghost" onClick={onEdit}>
+            <Pencil className="w-4 h-4 text-muted-foreground" />
+          </Button>
           <Button size="sm" variant="ghost" onClick={onDelete}>
             <Trash2 className="w-4 h-4 text-destructive" />
           </Button>
