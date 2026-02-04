@@ -101,6 +101,13 @@ interface Organization {
   name: string;
 }
 
+interface SuperAdmin {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 const REMINDER_TYPES = [
   { value: 'call_back', label: 'Call Back', icon: Phone },
   { value: 'follow_up', label: 'Follow Up', icon: Calendar },
@@ -123,6 +130,7 @@ export default function Reminders() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Filters
@@ -152,6 +160,7 @@ export default function Reminders() {
     title: '',
     notes: '',
     notify_all_admins: false,
+    selected_admins: [] as string[],
   });
 
   const [editForm, setEditForm] = useState({
@@ -162,6 +171,7 @@ export default function Reminders() {
     notes: '',
     status: 'pending',
     notify_all_admins: false,
+    selected_admins: [] as string[],
   });
 
   useEffect(() => {
@@ -173,7 +183,7 @@ export default function Reminders() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [remindersRes, patientsRes, leadsRes, orgsRes, callLogsRes] = await Promise.all([
+      const [remindersRes, patientsRes, leadsRes, orgsRes, callLogsRes, superAdminsRes, notifyUsersRes] = await Promise.all([
         supabase
           .from('reminders')
           .select(`
@@ -205,6 +215,15 @@ export default function Reminders() {
             caller:profiles!reminder_call_logs_called_by_fkey(first_name, last_name)
           `)
           .order('called_at', { ascending: false }),
+        // Fetch super admin user_ids
+        supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'super_admin'),
+        // Fetch notify users for reminders
+        supabase
+          .from('reminder_notify_users')
+          .select('reminder_id, user_id'),
       ]);
 
       if (remindersRes.error) throw remindersRes.error;
@@ -212,6 +231,8 @@ export default function Reminders() {
       if (leadsRes.error) throw leadsRes.error;
       if (orgsRes.error) throw orgsRes.error;
       if (callLogsRes.error) throw callLogsRes.error;
+      if (superAdminsRes.error) throw superAdminsRes.error;
+      if (notifyUsersRes.error) throw notifyUsersRes.error;
 
       // Group call logs by reminder_id
       const callLogsByReminder: Record<string, CallLog[]> = {};
@@ -232,6 +253,20 @@ export default function Reminders() {
       setPatients((patientsRes.data || []) as Patient[]);
       setLeads((leadsRes.data || []) as Lead[]);
       setOrganizations(orgsRes.data || []);
+      
+      // Fetch super admin profiles separately
+      const superAdminIds = (superAdminsRes.data || []).map((r: { user_id: string }) => r.user_id);
+      if (superAdminIds.length > 0) {
+        const { data: adminProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', superAdminIds)
+          .eq('is_active', true);
+        
+        if (!profilesError && adminProfiles) {
+          setSuperAdmins(adminProfiles as SuperAdmin[]);
+        }
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -260,7 +295,7 @@ export default function Reminders() {
       const localDate = new Date(`${form.reminder_date}T${form.reminder_time}:00`);
       const reminderDateTime = localDate.toISOString();
       
-      const { error } = await supabase.from('reminders').insert([{
+      const { data: newReminder, error } = await supabase.from('reminders').insert([{
         organization_id: profile?.organization_id,
         created_by: profile?.id,
         patient_id: form.target_type === 'patient' ? form.target_id : null,
@@ -270,9 +305,18 @@ export default function Reminders() {
         title: form.title,
         notes: form.notes || null,
         notify_all_admins: form.notify_all_admins,
-      }]);
+      }]).select('id').single();
 
       if (error) throw error;
+
+      // Insert selected admins to notify
+      if (form.selected_admins.length > 0 && newReminder) {
+        const notifyInserts = form.selected_admins.map(userId => ({
+          reminder_id: newReminder.id,
+          user_id: userId,
+        }));
+        await supabase.from('reminder_notify_users').insert(notifyInserts);
+      }
 
       toast({
         title: 'Success',
@@ -289,6 +333,7 @@ export default function Reminders() {
         title: '',
         notes: '',
         notify_all_admins: false,
+        selected_admins: [],
       });
       fetchData();
     } catch (error) {
@@ -340,6 +385,22 @@ export default function Reminders() {
 
       if (error) throw error;
 
+      // Update selected admins to notify
+      // First delete existing
+      await supabase
+        .from('reminder_notify_users')
+        .delete()
+        .eq('reminder_id', editingReminder.id);
+      
+      // Then insert new ones
+      if (editForm.selected_admins.length > 0) {
+        const notifyInserts = editForm.selected_admins.map(userId => ({
+          reminder_id: editingReminder.id,
+          user_id: userId,
+        }));
+        await supabase.from('reminder_notify_users').insert(notifyInserts);
+      }
+
       toast({
         title: 'Success',
         description: 'Reminder updated successfully',
@@ -358,9 +419,18 @@ export default function Reminders() {
     }
   };
 
-  const openEditDialog = (reminder: Reminder) => {
+  const openEditDialog = async (reminder: Reminder) => {
     const reminderDate = new Date(reminder.reminder_date);
     setEditingReminder(reminder);
+    
+    // Fetch existing notify users for this reminder
+    const { data: notifyUsers } = await supabase
+      .from('reminder_notify_users')
+      .select('user_id')
+      .eq('reminder_id', reminder.id);
+    
+    const existingAdmins = (notifyUsers || []).map(n => n.user_id);
+    
     setEditForm({
       reminder_type: reminder.reminder_type,
       reminder_date: format(reminderDate, 'yyyy-MM-dd'),
@@ -369,6 +439,7 @@ export default function Reminders() {
       notes: reminder.notes || '',
       status: reminder.status,
       notify_all_admins: reminder.notify_all_admins || false,
+      selected_admins: existingAdmins,
     });
     setIsEditDialogOpen(true);
   };
@@ -487,6 +558,7 @@ export default function Reminders() {
       title: `${typeLabel} - ${targetName}`,
       notes: '',
       notify_all_admins: false,
+      selected_admins: [],
     });
     setIsDialogOpen(true);
   };
@@ -640,30 +712,67 @@ export default function Reminders() {
                 <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
                   <Label className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    Email Notification
+                    E-posta Bildirimi
                   </Label>
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
                         name="notify_type"
-                        checked={!form.notify_all_admins}
-                        onChange={() => setForm({ ...form, notify_all_admins: false })}
+                        checked={!form.notify_all_admins && form.selected_admins.length === 0}
+                        onChange={() => setForm({ ...form, notify_all_admins: false, selected_admins: [] })}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm">Only me (creator)</span>
+                      <span className="text-sm">Sadece ben (oluşturan)</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
                         name="notify_type"
                         checked={form.notify_all_admins}
-                        onChange={() => setForm({ ...form, notify_all_admins: true })}
+                        onChange={() => setForm({ ...form, notify_all_admins: true, selected_admins: [] })}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm">All Super Admins</span>
+                      <span className="text-sm">Tüm Super Adminler</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="notify_type"
+                        checked={!form.notify_all_admins && form.selected_admins.length > 0}
+                        onChange={() => setForm({ ...form, notify_all_admins: false })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">Seçili Super Adminler</span>
                     </label>
                   </div>
+                  
+                  {/* Super Admin Selection */}
+                  {!form.notify_all_admins && (
+                    <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
+                      {superAdmins.map(admin => (
+                        <label key={admin.id} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded">
+                          <input
+                            type="checkbox"
+                            checked={form.selected_admins.includes(admin.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setForm({ ...form, selected_admins: [...form.selected_admins, admin.id] });
+                              } else {
+                                setForm({ ...form, selected_admins: form.selected_admins.filter(id => id !== admin.id) });
+                              }
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">{admin.first_name} {admin.last_name}</span>
+                          <span className="text-xs text-muted-foreground">({admin.email})</span>
+                        </label>
+                      ))}
+                      {superAdmins.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-2">Super admin bulunamadı</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <Button type="submit" className="w-full">
@@ -1057,30 +1166,67 @@ export default function Reminders() {
               <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
                 <Label className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  Email Notification
+                  E-posta Bildirimi
                 </Label>
                 <div className="flex flex-col gap-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="edit_notify_type"
-                      checked={!editForm.notify_all_admins}
-                      onChange={() => setEditForm({ ...editForm, notify_all_admins: false })}
+                      checked={!editForm.notify_all_admins && editForm.selected_admins.length === 0}
+                      onChange={() => setEditForm({ ...editForm, notify_all_admins: false, selected_admins: [] })}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm">Only creator</span>
+                    <span className="text-sm">Sadece oluşturan</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="edit_notify_type"
                       checked={editForm.notify_all_admins}
-                      onChange={() => setEditForm({ ...editForm, notify_all_admins: true })}
+                      onChange={() => setEditForm({ ...editForm, notify_all_admins: true, selected_admins: [] })}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm">All Super Admins</span>
+                    <span className="text-sm">Tüm Super Adminler</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_notify_type"
+                      checked={!editForm.notify_all_admins && editForm.selected_admins.length > 0}
+                      onChange={() => setEditForm({ ...editForm, notify_all_admins: false })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Seçili Super Adminler</span>
                   </label>
                 </div>
+                
+                {/* Super Admin Selection */}
+                {!editForm.notify_all_admins && (
+                  <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
+                    {superAdmins.map(admin => (
+                      <label key={admin.id} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded">
+                        <input
+                          type="checkbox"
+                          checked={editForm.selected_admins.includes(admin.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditForm({ ...editForm, selected_admins: [...editForm.selected_admins, admin.id] });
+                            } else {
+                              setEditForm({ ...editForm, selected_admins: editForm.selected_admins.filter(id => id !== admin.id) });
+                            }
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">{admin.first_name} {admin.last_name}</span>
+                        <span className="text-xs text-muted-foreground">({admin.email})</span>
+                      </label>
+                    ))}
+                    {superAdmins.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">Super admin bulunamadı</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">

@@ -1401,6 +1401,42 @@ export type Database = {
           },
         ]
       }
+      reminder_notify_users: {
+        Row: {
+          created_at: string
+          id: string
+          reminder_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reminder_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reminder_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_notify_users_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "reminders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_notify_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           completed_at: string | null
