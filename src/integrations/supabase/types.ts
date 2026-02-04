@@ -1356,6 +1356,51 @@ export type Database = {
           },
         ]
       }
+      reminder_call_logs: {
+        Row: {
+          call_result: string
+          called_at: string
+          called_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          reminder_id: string
+        }
+        Insert: {
+          call_result: string
+          called_at?: string
+          called_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reminder_id: string
+        }
+        Update: {
+          call_result?: string
+          called_at?: string
+          called_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reminder_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_call_logs_called_by_fkey"
+            columns: ["called_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_call_logs_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "reminders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           completed_at: string | null
