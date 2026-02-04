@@ -576,10 +576,19 @@ export default function Patients() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gender">Gender</Label>
-                    <Input id="gender" value={formData.gender} onChange={e => setFormData({
-                    ...formData,
-                    gender: e.target.value
-                  })} placeholder="Male/Female/Other" />
+                    <Select value={formData.gender} onValueChange={value => setFormData({
+                      ...formData,
+                      gender: value
+                    })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
@@ -783,7 +792,6 @@ export default function Patients() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Patient</TableHead>
-                  <TableHead>Contact</TableHead>
                   <TableHead>CRM Status</TableHead>
                   {isSuperAdmin && (
                     <TableHead className="p-0">
@@ -800,11 +808,11 @@ export default function Patients() {
               </TableHeader>
               <TableBody>
                 {loading ? <TableRow>
-                    <TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center py-8">
+                    <TableCell colSpan={isSuperAdmin ? 4 : 3} className="text-center py-8">
                       Loading patients...
                     </TableCell>
                   </TableRow> : filteredPatients.length === 0 ? <TableRow>
-                    <TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={isSuperAdmin ? 4 : 3} className="text-center py-8 text-muted-foreground">
                       No patients found
                     </TableCell>
                   </TableRow> : filteredPatients.map(patient => <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
@@ -819,18 +827,6 @@ export default function Patients() {
                           <div>
                             <div className="font-medium">{patient.first_name} {patient.last_name}</div>
                             {patient.gender && <div className="text-xs text-muted-foreground">{patient.gender}</div>}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell onClick={() => handleEdit(patient)}>
-                        <div className="space-y-1">
-                          {patient.email && <div className="flex items-center gap-1 text-sm">
-                              <Mail className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">{patient.email}</span>
-                            </div>}
-                          <div className="flex items-center gap-1 text-sm">
-                            <Phone className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">{patient.phone}</span>
                           </div>
                         </div>
                       </TableCell>
