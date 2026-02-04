@@ -792,6 +792,7 @@ export default function Reminders() {
                 <Badge variant="secondary" className="ml-1">{pendingReminders.length}</Badge>
               )}
             </TabsTrigger>
+            {/* HIDDEN: Patients and Leads tabs - uncomment to restore
             <TabsTrigger value="patients" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Patients</span>
@@ -800,6 +801,7 @@ export default function Reminders() {
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Leads</span>
             </TabsTrigger>
+            */}
           </TabsList>
 
           <TabsContent value="reminders" className="space-y-4">
@@ -916,13 +918,13 @@ export default function Reminders() {
             )}
           </TabsContent>
 
+          {/* HIDDEN: Patients and Leads TabsContent - uncomment to restore
           <TabsContent value="patients" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Patients ({filteredPatients.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Patient Filters */}
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -1004,7 +1006,6 @@ export default function Reminders() {
                 <CardTitle>Leads ({filteredLeads.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Lead Filters */}
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -1079,6 +1080,7 @@ export default function Reminders() {
               </CardContent>
             </Card>
           </TabsContent>
+          */}
         </Tabs>
 
         {/* Edit Reminder Dialog */}
