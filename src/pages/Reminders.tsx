@@ -25,8 +25,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, Bell, Plus, Phone, Calendar, CheckCircle, Clock, 
-  User, Users, PhoneOff, AlertCircle, Trash2, Mail, Pencil, Building2 
+  User, Users, PhoneOff, AlertCircle, Trash2, Mail, Pencil, Building2,
+  Eye, Check, PhoneCall, PhoneMissed, X
 } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +45,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+
+interface CallLog {
+  id: string;
+  reminder_id: string;
+  call_result: string;
+  notes: string | null;
+  called_by: string | null;
+  called_at: string;
+  caller?: { first_name: string; last_name: string } | null;
+}
 
 interface Reminder {
   id: string;
@@ -58,6 +74,7 @@ interface Reminder {
   lead?: { first_name: string; last_name: string; phone: string; organization_id: string } | null;
   creator?: { first_name: string; last_name: string } | null;
   organization?: { name: string } | null;
+  call_logs?: CallLog[];
 }
 
 interface Patient {
@@ -156,7 +173,7 @@ export default function Reminders() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [remindersRes, patientsRes, leadsRes, orgsRes] = await Promise.all([
+      const [remindersRes, patientsRes, leadsRes, orgsRes, callLogsRes] = await Promise.all([
         supabase
           .from('reminders')
           .select(`
@@ -181,14 +198,37 @@ export default function Reminders() {
           .select('id, name')
           .eq('is_active', true)
           .order('name'),
+        supabase
+          .from('reminder_call_logs')
+          .select(`
+            *,
+            caller:profiles!reminder_call_logs_called_by_fkey(first_name, last_name)
+          `)
+          .order('called_at', { ascending: false }),
       ]);
 
       if (remindersRes.error) throw remindersRes.error;
       if (patientsRes.error) throw patientsRes.error;
       if (leadsRes.error) throw leadsRes.error;
       if (orgsRes.error) throw orgsRes.error;
+      if (callLogsRes.error) throw callLogsRes.error;
 
-      setReminders((remindersRes.data || []) as Reminder[]);
+      // Group call logs by reminder_id
+      const callLogsByReminder: Record<string, CallLog[]> = {};
+      (callLogsRes.data || []).forEach((log: CallLog) => {
+        if (!callLogsByReminder[log.reminder_id]) {
+          callLogsByReminder[log.reminder_id] = [];
+        }
+        callLogsByReminder[log.reminder_id].push(log);
+      });
+
+      // Attach call logs to reminders
+      const remindersWithLogs = (remindersRes.data || []).map((reminder: Reminder) => ({
+        ...reminder,
+        call_logs: callLogsByReminder[reminder.id] || [],
+      }));
+
+      setReminders(remindersWithLogs as Reminder[]);
       setPatients((patientsRes.data || []) as Patient[]);
       setLeads((leadsRes.data || []) as Lead[]);
       setOrganizations(orgsRes.data || []);
@@ -451,6 +491,32 @@ export default function Reminders() {
     setIsDialogOpen(true);
   };
 
+  const handleAddCallLog = async (reminderId: string, callResult: string, notes?: string) => {
+    try {
+      const { error } = await supabase.from('reminder_call_logs').insert([{
+        reminder_id: reminderId,
+        call_result: callResult,
+        notes: notes || null,
+        called_by: profile?.id,
+      }]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Başarılı',
+        description: 'Arama kaydı eklendi',
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error adding call log:', error);
+      toast({
+        title: 'Hata',
+        description: 'Arama kaydı eklenemedi',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6">
@@ -697,6 +763,7 @@ export default function Reminders() {
                         onComplete={() => handleMarkComplete(reminder.id)}
                         onEdit={() => openEditDialog(reminder)}
                         onDelete={() => { setDeletingId(reminder.id); setDeleteDialogOpen(true); }}
+                        onAddCallLog={handleAddCallLog}
                       />
                     ))}
                   </div>
@@ -722,6 +789,7 @@ export default function Reminders() {
                         onComplete={() => handleMarkComplete(reminder.id)}
                         onEdit={() => openEditDialog(reminder)}
                         onDelete={() => { setDeletingId(reminder.id); setDeleteDialogOpen(true); }}
+                        onAddCallLog={handleAddCallLog}
                       />
                     ))}
                   </div>
@@ -1049,17 +1117,30 @@ export default function Reminders() {
   );
 }
 
+const CALL_RESULT_LABELS: Record<string, { label: string; icon: typeof PhoneCall; color: string }> = {
+  reached: { label: 'Ulaşıldı', icon: PhoneCall, color: 'text-green-600' },
+  unreached: { label: 'Ulaşılamadı', icon: PhoneMissed, color: 'text-red-500' },
+  no_answer: { label: 'Cevap Yok', icon: PhoneOff, color: 'text-orange-500' },
+  busy: { label: 'Meşgul', icon: Phone, color: 'text-yellow-600' },
+  wrong_number: { label: 'Yanlış Numara', icon: X, color: 'text-destructive' },
+};
+
 function ReminderCard({ 
   reminder, 
   onComplete, 
   onEdit,
-  onDelete 
+  onDelete,
+  onAddCallLog
 }: { 
   reminder: Reminder; 
   onComplete: () => void; 
   onEdit: () => void;
   onDelete: () => void;
+  onAddCallLog: (reminderId: string, callResult: string, notes?: string) => Promise<void>;
 }) {
+  const [isCallLogOpen, setIsCallLogOpen] = useState(false);
+  const [callNotes, setCallNotes] = useState('');
+
   const targetName = reminder.patient 
     ? `${reminder.patient.first_name} ${reminder.patient.last_name}`
     : reminder.lead 
@@ -1074,6 +1155,16 @@ function ReminderCard({
   const typeInfo = REMINDER_TYPES.find(t => t.value === reminder.reminder_type);
   const TypeIcon = typeInfo?.icon || Bell;
   const statusInfo = STATUS_LABELS[reminder.status] || STATUS_LABELS.pending;
+
+  const callLogs = reminder.call_logs || [];
+  const reachedCount = callLogs.filter(l => l.call_result === 'reached').length;
+  const unreachedCount = callLogs.filter(l => l.call_result !== 'reached').length;
+
+  const handleQuickCall = async (result: string) => {
+    await onAddCallLog(reminder.id, result, callNotes);
+    setCallNotes('');
+    setIsCallLogOpen(false);
+  };
 
   return (
     <div className={`p-4 border rounded-lg ${isOverdue ? 'border-destructive bg-destructive/5' : 'bg-muted/30'}`}>
@@ -1122,17 +1213,111 @@ function ReminderCard({
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Call Logs Popover */}
+          <Popover open={isCallLogOpen} onOpenChange={setIsCallLogOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="ghost" className="relative">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                {callLogs.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                    {callLogs.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">Arama Kayıtları</h4>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="flex items-center gap-1 text-green-600">
+                      <PhoneCall className="w-3 h-3" /> {reachedCount}
+                    </span>
+                    <span className="flex items-center gap-1 text-red-500">
+                      <PhoneMissed className="w-3 h-3" /> {unreachedCount}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Add new call log */}
+                <div className="border-t pt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">Yeni arama kaydı ekle:</p>
+                  <Textarea
+                    placeholder="Not (opsiyonel)..."
+                    value={callNotes}
+                    onChange={(e) => setCallNotes(e.target.value)}
+                    rows={2}
+                    className="text-sm"
+                  />
+                  <div className="flex flex-wrap gap-1">
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleQuickCall('reached')}>
+                      <PhoneCall className="w-3 h-3 mr-1 text-green-600" /> Ulaşıldı
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleQuickCall('unreached')}>
+                      <PhoneMissed className="w-3 h-3 mr-1 text-red-500" /> Ulaşılamadı
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleQuickCall('no_answer')}>
+                      <PhoneOff className="w-3 h-3 mr-1 text-orange-500" /> Cevap Yok
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Call log history */}
+                {callLogs.length > 0 && (
+                  <div className="border-t pt-3 space-y-2 max-h-48 overflow-y-auto">
+                    <p className="text-xs text-muted-foreground">Geçmiş aramalar:</p>
+                    {callLogs.map((log) => {
+                      const resultInfo = CALL_RESULT_LABELS[log.call_result] || CALL_RESULT_LABELS.unreached;
+                      const ResultIcon = resultInfo.icon;
+                      return (
+                        <div key={log.id} className="text-xs p-2 bg-muted/50 rounded space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className={`flex items-center gap-1 font-medium ${resultInfo.color}`}>
+                              <ResultIcon className="w-3 h-3" />
+                              {resultInfo.label}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {new Date(log.called_at).toLocaleString('tr-TR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                          {log.caller && (
+                            <p className="text-muted-foreground">
+                              {log.caller.first_name} {log.caller.last_name}
+                            </p>
+                          )}
+                          {log.notes && (
+                            <p className="text-muted-foreground italic">{log.notes}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {callLogs.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Henüz arama kaydı yok
+                  </p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           {isPending && (
-            <Button size="sm" variant="outline" onClick={onComplete}>
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Complete
+            <Button size="icon" variant="outline" onClick={onComplete} title="Tamamla">
+              <Check className="w-4 h-4" />
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={onEdit}>
+          <Button size="icon" variant="ghost" onClick={onEdit}>
             <Pencil className="w-4 h-4 text-muted-foreground" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={onDelete}>
+          <Button size="icon" variant="ghost" onClick={onDelete}>
             <Trash2 className="w-4 h-4 text-destructive" />
           </Button>
         </div>
