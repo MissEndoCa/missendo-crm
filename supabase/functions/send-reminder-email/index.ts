@@ -112,10 +112,34 @@ serve(async (req: Request) => {
         const targetType = reminder.patient ? "Patient" : "Lead";
         const targetPhone = reminder.patient?.phone || reminder.lead?.phone || "N/A";
         
-        // Determine recipients based on notify_all_admins flag
+        // Determine recipients based on notify settings
         let recipientEmails: string[] = [];
         
-        if (reminder.notify_all_admins) {
+        // First, check if there are specific users selected in reminder_notify_users table
+        const { data: notifyUsers, error: notifyError } = await supabase
+          .from("reminder_notify_users")
+          .select("user_id")
+          .eq("reminder_id", reminder.id);
+        
+        if (notifyError) {
+          console.error("Error fetching notify users:", notifyError);
+        }
+        
+        if (notifyUsers && notifyUsers.length > 0) {
+          // Send to specifically selected users
+          const userIds = notifyUsers.map(nu => nu.user_id);
+          const { data: profiles, error: profileError } = await supabase
+            .from("profiles")
+            .select("email")
+            .in("id", userIds);
+          
+          if (profileError) {
+            console.error("Error fetching selected user profiles:", profileError);
+          } else if (profiles) {
+            recipientEmails = profiles.map(p => p.email).filter(Boolean);
+          }
+          console.log(`Sending to ${recipientEmails.length} selected users`);
+        } else if (reminder.notify_all_admins) {
           // Get all super admin emails
           const { data: superAdmins, error: adminError } = await supabase
             .from("user_roles")
@@ -144,6 +168,7 @@ serve(async (req: Request) => {
           if (creatorEmail) {
             recipientEmails = [creatorEmail];
           }
+          console.log(`Sending to creator only: ${recipientEmails.length} recipient`);
         }
 
         if (recipientEmails.length === 0) {
