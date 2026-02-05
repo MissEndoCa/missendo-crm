@@ -21,6 +21,9 @@ import Accounting from "./pages/Accounting";
 import Reminders from "./pages/Reminders";
 import Mailing from "./pages/Mailing";
 import NotFound from "./pages/NotFound";
+ import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+ import Terms from "./pages/legal/Terms";
+ import DataDeletion from "./pages/legal/DataDeletion";
 
 const queryClient = new QueryClient();
 
@@ -188,6 +191,10 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+             {/* Public Legal Pages */}
+             <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
+             <Route path="/legal/terms" element={<Terms />} />
+             <Route path="/legal/data-deletion" element={<DataDeletion />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
