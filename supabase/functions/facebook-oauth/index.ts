@@ -9,6 +9,7 @@ const corsHeaders = {
 const FB_APP_ID = Deno.env.get('FB_APP_ID')!;
 const FB_APP_SECRET = Deno.env.get('FB_APP_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
@@ -27,8 +28,11 @@ serve(async (req) => {
       });
     }
 
-    // Create authenticated client to get user info
-    const supabaseAuth = createClient(SUPABASE_URL, authHeader.replace('Bearer ', ''), {
+    // Create authenticated client to get user info using anon key
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: { Authorization: authHeader }
+      },
       auth: { persistSession: false }
     });
     
