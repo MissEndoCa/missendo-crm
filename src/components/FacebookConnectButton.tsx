@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 // Facebook App ID (public, safe to expose)
-const FB_APP_ID = '690197103638958';
+const FB_APP_ID = '1722864942230149';
 
 interface FacebookPage {
   id: string;
