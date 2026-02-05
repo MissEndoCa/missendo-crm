@@ -146,77 +146,107 @@ export function FacebookConnectButton() {
       return;
     }
 
+    console.log('Starting FB.login...');
     setLoading(true);
 
-    window.FB.login(
-      async (response: any) => {
-        if (response.authResponse) {
-          const { accessToken, userID } = response.authResponse;
-          setFbUserId(userID);
-          
-          try {
-            // Exchange for long-lived token
-            const { data: session } = await supabase.auth.getSession();
-            if (!session?.session?.access_token) {
-              throw new Error('Not authenticated');
-            }
+    // FB.login bazen popup engellendiğinde / Safari ITP'de callback dönmeden takılabiliyor.
+    // Sonsuz spinner yerine kullanıcıya net bir uyarı verelim.
+    const loginTimeout = window.setTimeout(() => {
+      console.warn('FB.login timed out - possible popup block');
+      setLoading(false);
+      toast({
+        title: 'Facebook penceresi açılamadı',
+        description:
+          'Popup engellenmiş olabilir. Tarayıcı adres çubuğundaki popup engelleme ikonundan izin verip tekrar deneyin (adblock da engelleyebilir).',
+        variant: 'destructive',
+      });
+    }, 20000);
 
-            const exchangeRes = await supabase.functions.invoke('facebook-oauth', {
-              body: { action: 'exchange', accessToken },
-            });
+    try {
+      window.FB.login(
+        async (response: any) => {
+          window.clearTimeout(loginTimeout);
+          console.log('FB.login callback response:', response);
 
-            if (exchangeRes.error) {
-              throw new Error(exchangeRes.error.message || 'Token exchange failed');
-            }
+          if (response?.authResponse) {
+            const { accessToken, userID } = response.authResponse;
+            setFbUserId(userID);
 
-            const { longLivedToken: token } = exchangeRes.data;
-            setLongLivedToken(token);
+            try {
+              // Exchange for long-lived token
+              const { data: session } = await supabase.auth.getSession();
+              if (!session?.session?.access_token) {
+                throw new Error('Not authenticated');
+              }
 
-            // Get pages
-            const pagesRes = await supabase.functions.invoke('facebook-oauth', {
-              body: { action: 'pages', longLivedToken: token },
-            });
+              const exchangeRes = await supabase.functions.invoke('facebook-oauth', {
+                body: { action: 'exchange', accessToken },
+              });
 
-            if (pagesRes.error) {
-              throw new Error(pagesRes.error.message || 'Failed to fetch pages');
-            }
+              if (exchangeRes.error) {
+                throw new Error(exchangeRes.error.message || 'Token exchange failed');
+              }
 
-            const { pages: userPages } = pagesRes.data;
-            
-            if (!userPages || userPages.length === 0) {
+              const { longLivedToken: token } = exchangeRes.data;
+              setLongLivedToken(token);
+
+              // Get pages
+              const pagesRes = await supabase.functions.invoke('facebook-oauth', {
+                body: { action: 'pages', longLivedToken: token },
+              });
+
+              if (pagesRes.error) {
+                throw new Error(pagesRes.error.message || 'Failed to fetch pages');
+              }
+
+              const { pages: userPages } = pagesRes.data;
+
+              if (!userPages || userPages.length === 0) {
+                toast({
+                  title: 'Sayfa Bulunamadı',
+                  description: 'Facebook hesabınıza bağlı yönetici olduğunuz bir sayfa bulunamadı.',
+                  variant: 'destructive',
+                });
+                setLoading(false);
+                return;
+              }
+
+              setPages(userPages);
+              setShowPageDialog(true);
+            } catch (error: any) {
+              console.error('Facebook connect error:', error);
               toast({
-                title: 'Sayfa Bulunamadı',
-                description: 'Facebook hesabınıza bağlı yönetici olduğunuz bir sayfa bulunamadı.',
+                title: 'Bağlantı Hatası',
+                description: error.message || 'Facebook bağlantısı kurulamadı',
                 variant: 'destructive',
               });
-              setLoading(false);
-              return;
             }
-
-            setPages(userPages);
-            setShowPageDialog(true);
-          } catch (error: any) {
-            console.error('Facebook connect error:', error);
+          } else {
             toast({
-              title: 'Bağlantı Hatası',
-              description: error.message || 'Facebook bağlantısı kurulamadı',
+              title: 'İptal Edildi',
+              description: 'Facebook girişi iptal edildi veya izinler reddedildi.',
               variant: 'destructive',
             });
           }
-        } else {
-          toast({
-            title: 'İptal Edildi',
-            description: 'Facebook girişi iptal edildi veya izinler reddedildi.',
-            variant: 'destructive',
-          });
+          setLoading(false);
+        },
+        {
+          scope: 'pages_show_list,pages_read_engagement,leads_retrieval,pages_manage_metadata',
+          return_scopes: true,
+          auth_type: 'rerequest',
+          display: 'popup',
         }
-        setLoading(false);
-      },
-      {
-        scope: 'pages_show_list,pages_read_engagement,leads_retrieval,pages_manage_metadata',
-        return_scopes: true,
-      }
-    );
+      );
+    } catch (e) {
+      window.clearTimeout(loginTimeout);
+      console.error('FB.login threw error:', e);
+      setLoading(false);
+      toast({
+        title: 'Facebook girişi başlatılamadı',
+        description: 'Tarayıcı güvenlik ayarları / reklam engelleyici Facebook popupını engelliyor olabilir.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handlePageSelect = async (page: FacebookPage) => {
