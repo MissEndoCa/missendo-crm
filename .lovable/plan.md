@@ -1,175 +1,177 @@
 
-# Facebook ile Bağlan - OAuth Entegrasyonu
+# Facebook Lead Senkronizasyonu ve Bildirim Sistemi
 
-## Hedef
-Klinik kullanıcıları Settings sayfasında **"Facebook ile Bağlan"** butonuna tıklayarak, tek tıkla Facebook sayfalarını CRM'e bağlayabilecek. Sistem otomatik olarak:
-- Page Access Token alacak
-- Token'ı veritabanına kaydedecek
-- Leadgen webhook aboneliğini aktifleyecek
+## Genel Bakış
+
+Bu plan, Facebook Lead Ads entegrasyonunu daha güvenilir hale getirmek ve yeni lead geldiğinde e-posta bildirimi göndermek için gerekli değişiklikleri kapsar.
 
 ---
 
-## Akış Özeti
+## Yapılacaklar Özeti
+
+| Adım | Açıklama |
+|------|----------|
+| 1 | Veritabanındaki test/seed leadleri silmek için migration |
+| 2 | Facebook'tan lead çeken yeni edge function oluştur |
+| 3 | Leads sayfasına manuel yenileme butonu ekle |
+| 4 | Otomatik polling (her dakika) mekanizması ekle |
+| 5 | Yeni lead geldiğinde e-posta gönderen trigger/function |
+
+---
+
+## Adım 1: Test Leadleri Temizleme
+
+Veritabanında aynı anda (2026-01-28 07:48:48) oluşturulmuş 5 adet seed/test lead bulunuyor:
+- Ahmet Yılmaz
+- Fatma Kaya
+- Ayşe Öztürk
+- Ali Çelik
+- Mehmet Demir
+
+Bu kayıtları silmek için bir migration oluşturulacak.
+
+---
+
+## Adım 2: Facebook Lead Polling Edge Function
+
+Yeni bir edge function oluşturulacak: `poll-facebook-leads`
+
+Bu function:
+- Facebook bağlantısı olan tüm organizasyonları bulur
+- Her organizasyon için Facebook Graph API'den son leadleri çeker
+- Yeni leadleri veritabanına kaydeder (telefon numarası ile mükerrer kontrol)
+- Manuel tetikleme ve cron job ile çağrılabilir olacak
 
 ```text
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   CRM Settings  │────>│  Facebook Login │────>│  Sayfa Seçimi   │
-│   "Bağlan" btn  │     │   OAuth Dialog  │     │   (Popup)       │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                        │
-                                                        v
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Token Kaydet   │<────│  Edge Function  │<────│  Callback ile   │
-│  organizations  │     │  Token Exchange │     │  Code Döner     │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
++------------------+      +----------------------+      +------------------+
+|   Leads Page     | ---> | poll-facebook-leads  | ---> |  Facebook API    |
+|  (Refresh Btn)   |      |   Edge Function      |      |  Graph API       |
++------------------+      +----------------------+      +------------------+
+                                    |
+                                    v
+                          +------------------+
+                          |   leads table    |
+                          |   (Supabase)     |
+                          +------------------+
+                                    |
+                                    v
+                          +------------------+
+                          |  notify trigger  |
+                          |  (email + notif) |
+                          +------------------+
+```
+
+---
+
+## Adım 3: Leads Sayfasına Yenileme Butonu
+
+Leads sayfasının header kısmına yenileme (refresh) ikonu olan bir buton eklenecek:
+- RefreshCw ikonu kullanılacak
+- Butona tıklandığında `poll-facebook-leads` edge function çağrılacak
+- Loading state gösterilecek
+- Sonuç toast mesajı ile bildirilecek
+
+---
+
+## Adım 4: Otomatik Polling Mekanizması
+
+İki seçenek mevcut:
+
+**Seçenek A - Frontend Polling (Önerilen):**
+- Leads sayfası açıkken 60 saniyede bir otomatik yenileme
+- `useEffect` ile interval kurulacak
+- Sayfa kapatılınca polling durur
+
+**Seçenek B - Supabase Cron Job:**
+- pg_cron ile her dakika edge function çağrılır
+- Sayfa açık olmasa da çalışır
+- Daha fazla kaynak kullanır
+
+Frontend polling tercih edilecek (sayfa açıkken aktif).
+
+---
+
+## Adım 5: Yeni Lead E-posta Bildirimi
+
+Mevcut `notify_admins_on_new_lead` trigger'ı sadece uygulama içi bildirim oluşturuyor. E-posta göndermesi için:
+
+Yeni edge function: `send-new-lead-email`
+
+Bu function:
+- Lead oluşturulduğunda çağrılır (trigger veya webhook ile)
+- Tüm super adminlere e-posta gönderir
+- İlgili clinic admin'e e-posta gönderir
+- Lead bilgilerini (isim, telefon, kaynak, klinik) içerir
+
+**E-posta Akışı:**
+```text
+Yeni Lead Insert
+      |
+      v
+trigger_notify_admins_on_new_lead (mevcut - bildirim)
+      |
+      v
+pg_net HTTP hook --> send-new-lead-email (yeni)
+      |
+      v
+SMTP --> Super Admins + Clinic Admin
 ```
 
 ---
 
 ## Teknik Detaylar
 
-### 1. Database Güncellemesi
-Organizations tablosuna yeni kolonlar eklenecek:
+### poll-facebook-leads Edge Function
 
-| Kolon | Tip | Açıklama |
-|-------|-----|----------|
-| `fb_page_id` | text | Bağlanan Facebook Page ID |
-| `fb_page_name` | text | Sayfa adı (gösterim için) |
-| `fb_connected_at` | timestamp | Bağlantı tarihi |
-| `fb_user_id` | text | Token sahibi kullanıcı ID |
-
-### 2. Gerekli Secrets
-Facebook Developer Console'dan alınacak:
-
-| Secret | Kaynak |
-|--------|--------|
-| `FB_APP_ID` | Facebook App > Settings > Basic |
-| `FB_APP_SECRET` | Facebook App > Settings > Basic |
-
-### 3. Yeni Edge Function: `facebook-oauth`
-Token exchange ve sayfa listeleme işlemleri için:
-
-**Endpoint:** `/functions/v1/facebook-oauth`
-
-| Action | Açıklama |
-|--------|----------|
-| `exchange` | Short-lived token'ı long-lived'a çevir |
-| `pages` | Kullanıcının yönettiği sayfaları listele |
-| `subscribe` | Seçilen sayfayı leadgen webhook'una abone et |
-
-### 4. Frontend Bileşenleri
-
-**Yeni Bileşen:** `FacebookConnectButton.tsx`
-- "Facebook ile Bağlan" butonu
-- Bağlantı durumunu göster (bağlı/bağlı değil)
-- Bağlıysa sayfa adını ve bağlantıyı kaldır seçeneğini göster
-
-**Settings.tsx Güncellemesi:**
-- Manuel token input alanlarını kaldır
-- FacebookConnectButton bileşenini ekle
-
----
-
-## Adım Adım İmplementasyon
-
-### Adım 1: Database Migration
-```sql
-ALTER TABLE organizations
-ADD COLUMN fb_page_id text,
-ADD COLUMN fb_page_name text,
-ADD COLUMN fb_connected_at timestamptz,
-ADD COLUMN fb_user_id text;
+```
+supabase/functions/poll-facebook-leads/index.ts
 ```
 
-### Adım 2: Secrets Ekleme
-- `FB_APP_ID` - Facebook App ID
-- `FB_APP_SECRET` - Facebook App Secret
+Yapacakları:
+1. Facebook bağlantısı olan organizasyonları çek
+2. Her biri için leadgen form'larını listele
+3. Son 24 saatteki leadleri çek
+4. Mükerrer kontrolü yap (telefon + org)
+5. Yeni leadleri insert et
+6. Kaç lead eklendi bilgisini döndür
 
-### Adım 3: facebook-oauth Edge Function
-Token exchange akışı:
-1. Frontend Facebook SDK ile login → short-lived token alır
-2. Edge function'a gönderir
-3. Edge function:
-   - Token'ı long-lived'a çevirir (60 günlük)
-   - `/me/accounts` ile page token alır (sınırsız süre)
-   - Sayfayı leadgen webhook'una abone eder
-   - Token'ı organizations tablosuna kaydeder
+### send-new-lead-email Edge Function
 
-### Adım 4: FacebookConnectButton Bileşeni
-```text
-┌────────────────────────────────────────────┐
-│  📘 Facebook Lead Ads                       │
-│                                             │
-│  ┌─────────────────────────────────────┐   │
-│  │  🔗 Facebook ile Bağlan             │   │
-│  └─────────────────────────────────────┘   │
-│                                             │
-│  veya (bağlıysa):                          │
-│                                             │
-│  ✅ Bağlı: Miss Endo Clinic Sayfa          │
-│  📅 Bağlantı: 5 Şubat 2026                 │
-│  [Bağlantıyı Kaldır]                       │
-└────────────────────────────────────────────┘
+```
+supabase/functions/send-new-lead-email/index.ts
 ```
 
-### Adım 5: Settings.tsx Güncellemesi
-- Facebook Ads kartını güncelle
-- Manuel input yerine FacebookConnectButton kullan
-- WhatsApp kartı olduğu gibi kalacak
+Yapacakları:
+1. Lead ID'yi al
+2. Lead detaylarını ve organizasyon bilgisini çek
+3. Super admin e-postalarını bul
+4. İlgili clinic admin e-postalarını bul
+5. HTML e-posta şablonu oluştur
+6. SMTP ile gönder
 
----
+### Leads.tsx Değişiklikleri
 
-## Facebook İzinleri (Permissions)
-
-OAuth dialog'da istenen izinler:
-- `pages_show_list` - Sayfa listesini görme
-- `pages_read_engagement` - Sayfa etkileşimlerini okuma
-- `leads_retrieval` - Lead verilerini çekme
-- `pages_manage_metadata` - Webhook aboneliği için
+- Header'a RefreshCw butonu
+- `pollFacebookLeads()` fonksiyonu
+- 60 saniyelik interval ile otomatik polling
+- Loading ve sonuç gösterimi
 
 ---
 
 ## Dosya Değişiklikleri
 
-### Yeni Dosyalar
-| Dosya | Açıklama |
-|-------|----------|
-| `supabase/functions/facebook-oauth/index.ts` | Token exchange ve webhook aboneliği |
-| `src/components/FacebookConnectButton.tsx` | OAuth bağlantı butonu |
-
-### Güncellenecek Dosyalar
-| Dosya | Değişiklik |
-|-------|------------|
-| `src/pages/Settings.tsx` | Manuel input → FacebookConnectButton |
-| `src/integrations/supabase/types.ts` | Yeni kolonlar (regenerate) |
-| `supabase/config.toml` | facebook-oauth function config |
-
-### Migration
-| Dosya | Açıklama |
-|-------|----------|
-| `XXXXXX_add_fb_page_columns.sql` | Yeni organizations kolonları |
+| Dosya | İşlem |
+|-------|-------|
+| `supabase/functions/poll-facebook-leads/index.ts` | Yeni |
+| `supabase/functions/send-new-lead-email/index.ts` | Yeni |
+| `supabase/config.toml` | Güncelle (yeni functions) |
+| `src/pages/Leads.tsx` | Güncelle (refresh button + polling) |
+| Migration SQL | Yeni (seed data silme + pg_net trigger) |
 
 ---
 
-## Güvenlik Notları
+## Risk ve Dikkat Edilecekler
 
-1. **FB_APP_SECRET** sadece Edge Function'da kullanılacak (asla frontend'e gitmeyecek)
-2. Token exchange server-side yapılacak
-3. Sadece clinic_admin ve super_admin rolü bağlantı yapabilecek
-4. Token veritabanında şifreli saklanacak (RLS korumalı)
-
----
-
-## Kullanıcı Deneyimi
-
-**Klinik Yöneticisi için akış:**
-1. Settings sayfasına git
-2. "Facebook ile Bağlan" butonuna tıkla
-3. Facebook popup açılır → Giriş yap
-4. İzinleri onayla
-5. Hangi sayfayı bağlamak istediğini seç
-6. Tamamlandı! Artık leadler otomatik gelecek
-
-**Bağlantı durumu gösterimi:**
-- Bağlı değilse: Mavi "Facebook ile Bağlan" butonu
-- Bağlıysa: Yeşil onay + sayfa adı + tarih + kaldır butonu
+- **Facebook Rate Limit:** Her dakika polling yapılacağı için rate limit'e dikkat edilmeli
+- **Token Geçerliliği:** Page access token'ların geçerliliği kontrol edilmeli
+- **E-posta Spam:** Çok fazla lead gelirse e-posta flood olabilir - throttling düşünülmeli
