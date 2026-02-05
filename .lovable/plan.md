@@ -1,81 +1,175 @@
 
-# Facebook App Live Mode için Yasal Sayfalar
+# Facebook ile Bağlan - OAuth Entegrasyonu
 
 ## Hedef
-CRM içinde Facebook'un talep ettiği yasal sayfaları oluşturup, uygulamayı Live moda alabilmenizi sağlamak.
+Klinik kullanıcıları Settings sayfasında **"Facebook ile Bağlan"** butonuna tıklayarak, tek tıkla Facebook sayfalarını CRM'e bağlayabilecek. Sistem otomatik olarak:
+- Page Access Token alacak
+- Token'ı veritabanına kaydedecek
+- Leadgen webhook aboneliğini aktifleyecek
 
-## Oluşturulacak Sayfalar
+---
 
-### 1. Privacy Policy (Gizlilik Politikası)
-**URL:** `https://crm.missendo.com/legal/privacy-policy`
+## Akış Özeti
 
-İçerik:
-- Hangi veriler toplanıyor (ad, telefon, e-posta)
-- Facebook Lead Ads entegrasyonu açıklaması
-- Verilerin nasıl kullanıldığı
-- Verilerin kimlerle paylaşıldığı
-- Kullanıcı hakları (KVKK / GDPR uyumlu)
+```text
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   CRM Settings  │────>│  Facebook Login │────>│  Sayfa Seçimi   │
+│   "Bağlan" btn  │     │   OAuth Dialog  │     │   (Popup)       │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                                                        │
+                                                        v
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Token Kaydet   │<────│  Edge Function  │<────│  Callback ile   │
+│  organizations  │     │  Token Exchange │     │  Code Döner     │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
 
-### 2. Terms of Service (Kullanım Şartları)
-**URL:** `https://crm.missendo.com/legal/terms`
+---
 
-İçerik:
-- Hizmet tanımı
-- Kullanıcı sorumlulukları
-- Sorumluluk sınırlamaları
-- Değişiklik hakları
+## Teknik Detaylar
 
-### 3. Data Deletion Instructions (Veri Silme Talimatları)
-**URL:** `https://crm.missendo.com/legal/data-deletion`
+### 1. Database Güncellemesi
+Organizations tablosuna yeni kolonlar eklenecek:
 
-İçerik:
-- E-posta ile nasıl talep edileceği (info@talxmedia.com.tr)
-- Hangi verilerin silineceği
-- İşlem süresi (30 gün içinde)
+| Kolon | Tip | Açıklama |
+|-------|-----|----------|
+| `fb_page_id` | text | Bağlanan Facebook Page ID |
+| `fb_page_name` | text | Sayfa adı (gösterim için) |
+| `fb_connected_at` | timestamp | Bağlantı tarihi |
+| `fb_user_id` | text | Token sahibi kullanıcı ID |
 
-## Teknik Değişiklikler
+### 2. Gerekli Secrets
+Facebook Developer Console'dan alınacak:
+
+| Secret | Kaynak |
+|--------|--------|
+| `FB_APP_ID` | Facebook App > Settings > Basic |
+| `FB_APP_SECRET` | Facebook App > Settings > Basic |
+
+### 3. Yeni Edge Function: `facebook-oauth`
+Token exchange ve sayfa listeleme işlemleri için:
+
+**Endpoint:** `/functions/v1/facebook-oauth`
+
+| Action | Açıklama |
+|--------|----------|
+| `exchange` | Short-lived token'ı long-lived'a çevir |
+| `pages` | Kullanıcının yönettiği sayfaları listele |
+| `subscribe` | Seçilen sayfayı leadgen webhook'una abone et |
+
+### 4. Frontend Bileşenleri
+
+**Yeni Bileşen:** `FacebookConnectButton.tsx`
+- "Facebook ile Bağlan" butonu
+- Bağlantı durumunu göster (bağlı/bağlı değil)
+- Bağlıysa sayfa adını ve bağlantıyı kaldır seçeneğini göster
+
+**Settings.tsx Güncellemesi:**
+- Manuel token input alanlarını kaldır
+- FacebookConnectButton bileşenini ekle
+
+---
+
+## Adım Adım İmplementasyon
+
+### Adım 1: Database Migration
+```sql
+ALTER TABLE organizations
+ADD COLUMN fb_page_id text,
+ADD COLUMN fb_page_name text,
+ADD COLUMN fb_connected_at timestamptz,
+ADD COLUMN fb_user_id text;
+```
+
+### Adım 2: Secrets Ekleme
+- `FB_APP_ID` - Facebook App ID
+- `FB_APP_SECRET` - Facebook App Secret
+
+### Adım 3: facebook-oauth Edge Function
+Token exchange akışı:
+1. Frontend Facebook SDK ile login → short-lived token alır
+2. Edge function'a gönderir
+3. Edge function:
+   - Token'ı long-lived'a çevirir (60 günlük)
+   - `/me/accounts` ile page token alır (sınırsız süre)
+   - Sayfayı leadgen webhook'una abone eder
+   - Token'ı organizations tablosuna kaydeder
+
+### Adım 4: FacebookConnectButton Bileşeni
+```text
+┌────────────────────────────────────────────┐
+│  📘 Facebook Lead Ads                       │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  🔗 Facebook ile Bağlan             │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  veya (bağlıysa):                          │
+│                                             │
+│  ✅ Bağlı: Miss Endo Clinic Sayfa          │
+│  📅 Bağlantı: 5 Şubat 2026                 │
+│  [Bağlantıyı Kaldır]                       │
+└────────────────────────────────────────────┘
+```
+
+### Adım 5: Settings.tsx Güncellemesi
+- Facebook Ads kartını güncelle
+- Manuel input yerine FacebookConnectButton kullan
+- WhatsApp kartı olduğu gibi kalacak
+
+---
+
+## Facebook İzinleri (Permissions)
+
+OAuth dialog'da istenen izinler:
+- `pages_show_list` - Sayfa listesini görme
+- `pages_read_engagement` - Sayfa etkileşimlerini okuma
+- `leads_retrieval` - Lead verilerini çekme
+- `pages_manage_metadata` - Webhook aboneliği için
+
+---
+
+## Dosya Değişiklikleri
 
 ### Yeni Dosyalar
-```text
-src/pages/legal/
-├── PrivacyPolicy.tsx    # Gizlilik Politikası (TR+EN)
-├── Terms.tsx            # Kullanım Şartları (TR+EN)
-└── DataDeletion.tsx     # Veri Silme Talimatları (TR+EN)
-```
+| Dosya | Açıklama |
+|-------|----------|
+| `supabase/functions/facebook-oauth/index.ts` | Token exchange ve webhook aboneliği |
+| `src/components/FacebookConnectButton.tsx` | OAuth bağlantı butonu |
 
-### Router Güncellemesi (App.tsx)
-```text
-/legal/privacy-policy  → PrivacyPolicy
-/legal/terms           → Terms  
-/legal/data-deletion   → DataDeletion
-```
+### Güncellenecek Dosyalar
+| Dosya | Değişiklik |
+|-------|------------|
+| `src/pages/Settings.tsx` | Manuel input → FacebookConnectButton |
+| `src/integrations/supabase/types.ts` | Yeni kolonlar (regenerate) |
+| `supabase/config.toml` | facebook-oauth function config |
 
-Bu sayfalar:
-- **Public** olacak (giriş yapmadan erişilebilir)
-- **Dil seçici** olacak (TR/EN toggle)
-- **Profesyonel görünümlü** ve print-friendly
+### Migration
+| Dosya | Açıklama |
+|-------|----------|
+| `XXXXXX_add_fb_page_columns.sql` | Yeni organizations kolonları |
 
-## Facebook Console'a Girilecek URL'ler
+---
 
-Sayfalar canlıya alındıktan sonra:
+## Güvenlik Notları
 
-| Alan | URL |
-|------|-----|
-| Privacy Policy URL | `https://crm.missendo.com/legal/privacy-policy` |
-| Terms of Service URL | `https://crm.missendo.com/legal/terms` |
-| User Data Deletion | `https://crm.missendo.com/legal/data-deletion` |
+1. **FB_APP_SECRET** sadece Edge Function'da kullanılacak (asla frontend'e gitmeyecek)
+2. Token exchange server-side yapılacak
+3. Sadece clinic_admin ve super_admin rolü bağlantı yapabilecek
+4. Token veritabanında şifreli saklanacak (RLS korumalı)
 
-## Adım Adım Süreç
+---
 
-1. Yasal sayfaları oluştur
-2. App.tsx'e public route'ları ekle
-3. Publish et (CRM'i canlıya al)
-4. URL'leri Facebook Developer Console'a gir
-5. App Mode'u "Live" yap
-6. Webhook'u test et
+## Kullanıcı Deneyimi
 
-## Ek Öneriler
+**Klinik Yöneticisi için akış:**
+1. Settings sayfasına git
+2. "Facebook ile Bağlan" butonuna tıkla
+3. Facebook popup açılır → Giriş yap
+4. İzinleri onayla
+5. Hangi sayfayı bağlamak istediğini seç
+6. Tamamlandı! Artık leadler otomatik gelecek
 
-- **App Icon:** 1024x1024 Miss Endo logosu yükleyebilirsiniz
-- **Category:** "Business" veya "Health & Fitness" seçebilirsiniz
-- **Contact Email:** Zaten girilmiş (info@talxmedia.com.tr)
+**Bağlantı durumu gösterimi:**
+- Bağlı değilse: Mavi "Facebook ile Bağlan" butonu
+- Bağlıysa: Yeşil onay + sayfa adı + tarih + kaldır butonu
