@@ -5,19 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings as SettingsIcon, Key, MessageSquare, TrendingUp, Save } from 'lucide-react';
+import { Settings as SettingsIcon, Key, MessageSquare, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { ActivityLogs } from '@/components/ActivityLogs';
 import { ThemeSelector } from '@/components/ThemeSelector';
+import { FacebookConnectButton } from '@/components/FacebookConnectButton';
 
 export default function Settings() {
   const { profile, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [orgData, setOrgData] = useState({
-    fb_page_access_token: '',
-    fb_ad_account_id: '',
     wa_phone_number_id: '',
     wa_access_token: '',
   });
@@ -32,7 +31,7 @@ export default function Settings() {
     try {
       const { data, error } = await supabase
         .from('organizations')
-        .select('fb_page_access_token, fb_ad_account_id, wa_phone_number_id, wa_access_token')
+        .select('wa_phone_number_id, wa_access_token')
         .eq('id', profile.organization_id)
         .single();
 
@@ -40,8 +39,6 @@ export default function Settings() {
       
       if (data) {
         setOrgData({
-          fb_page_access_token: data.fb_page_access_token || '',
-          fb_ad_account_id: data.fb_ad_account_id || '',
           wa_phone_number_id: data.wa_phone_number_id || '',
           wa_access_token: data.wa_access_token || '',
         });
@@ -66,8 +63,6 @@ export default function Settings() {
       const { error } = await supabase
         .from('organizations')
         .update({
-          fb_page_access_token: orgData.fb_page_access_token || null,
-          fb_ad_account_id: orgData.fb_ad_account_id || null,
           wa_phone_number_id: orgData.wa_phone_number_id || null,
           wa_access_token: orgData.wa_access_token || null,
         })
@@ -102,49 +97,8 @@ export default function Settings() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* Facebook Ads Integration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                Facebook Ads Lead API
-              </CardTitle>
-              <CardDescription>
-                Connect your Facebook Ad account to automatically import leads
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fb_page_access_token">
-                  <div className="flex items-center gap-2">
-                    <Key className="w-4 h-4" />
-                    Page Access Token
-                  </div>
-                </Label>
-                <Input
-                  id="fb_page_access_token"
-                  type="password"
-                  placeholder="Enter your Facebook Page Access Token"
-                  value={orgData.fb_page_access_token}
-                  onChange={(e) => setOrgData({ ...orgData, fb_page_access_token: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fb_ad_account_id">
-                  Ad Account ID
-                </Label>
-                <Input
-                  id="fb_ad_account_id"
-                  placeholder="act_123456789"
-                  value={orgData.fb_ad_account_id}
-                  onChange={(e) => setOrgData({ ...orgData, fb_ad_account_id: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Format: act_XXXXXXXXXX (Found in Facebook Ads Manager)
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Facebook Lead Ads - OAuth Integration */}
+          <FacebookConnectButton />
 
           {/* WhatsApp Business Integration */}
           <Card>
