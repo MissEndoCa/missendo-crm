@@ -790,7 +790,11 @@ export type Database = {
           created_at: string | null
           email: string | null
           fb_ad_account_id: string | null
+          fb_connected_at: string | null
           fb_page_access_token: string | null
+          fb_page_id: string | null
+          fb_page_name: string | null
+          fb_user_id: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -807,7 +811,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           fb_ad_account_id?: string | null
+          fb_connected_at?: string | null
           fb_page_access_token?: string | null
+          fb_page_id?: string | null
+          fb_page_name?: string | null
+          fb_user_id?: string | null
           id?: string
           is_active?: boolean | null
           name: string
@@ -824,7 +832,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           fb_ad_account_id?: string | null
+          fb_connected_at?: string | null
           fb_page_access_token?: string | null
+          fb_page_id?: string | null
+          fb_page_name?: string | null
+          fb_user_id?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
