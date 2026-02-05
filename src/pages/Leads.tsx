@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/Layout';
@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, Phone, Mail, MapPin, UserPlus } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -76,6 +76,8 @@ export default function Leads() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -93,9 +95,61 @@ export default function Leads() {
     organization_id: '',
   });
 
+  // Poll Facebook leads function
+  const pollFacebookLeads = useCallback(async (showToast = true) => {
+    if (isPolling) return;
+    
+    setIsPolling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('poll-facebook-leads');
+      
+      if (error) throw error;
+      
+      if (showToast) {
+        if (data?.newLeadsCount > 0) {
+          toast({
+            title: "Yeni Lead'ler Eklendi",
+            description: `${data.newLeadsCount} yeni lead Facebook'tan senkronize edildi`,
+          });
+        } else {
+          toast({
+            title: "Lead Kontrolü Tamamlandı",
+            description: "Yeni lead bulunamadı",
+          });
+        }
+      }
+      
+      // Reload leads after polling
+      await loadLeads();
+    } catch (error) {
+      console.error('Error polling Facebook leads:', error);
+      if (showToast) {
+        toast({
+          title: "Hata",
+          description: "Facebook lead'leri senkronize edilemedi",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsPolling(false);
+    }
+  }, [isPolling, toast]);
+
   useEffect(() => {
     loadLeads();
     loadOrganizations();
+    
+    // Start automatic polling every 60 seconds
+    pollingIntervalRef.current = setInterval(() => {
+      pollFacebookLeads(false); // Silent polling (no toast)
+    }, 60000);
+    
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, [profile, isSuperAdmin]);
 
   const loadOrganizations = async () => {
@@ -307,13 +361,27 @@ export default function Leads() {
             <h1 className="text-2xl md:text-3xl font-bold">Leads Management</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Track and manage your potential patients</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Lead
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              onClick={() => pollFacebookLeads(true)} 
+              disabled={isPolling}
+              className="flex-1 sm:flex-none"
+            >
+              {isPolling ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {isPolling ? 'Senkronize Ediliyor...' : 'Lead Senkronize Et'}
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm} className="flex-1 sm:flex-none">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Lead
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{selectedLead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
@@ -504,6 +572,7 @@ export default function Leads() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Search */}
