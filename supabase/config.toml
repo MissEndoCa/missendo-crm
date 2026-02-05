@@ -1,5 +1,8 @@
 project_id = "xzcpxatfzgusrxfreeoi"
 
+[functions.facebook-lead-webhook]
+verify_jwt = false
+
 [functions.appointment-reminders]
 verify_jwt = false
 
