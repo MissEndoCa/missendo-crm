@@ -1,177 +1,79 @@
 
-# Facebook Lead Senkronizasyonu ve Bildirim Sistemi
+# Facebook "Sayfa Bulunamadı" Hatası Çözüm Planı
 
-## Genel Bakış
+## Problem Özeti
+Kullanıcılar Facebook bağlantısı yaparken "Sayfa Bulunamadı" hatası alıyor. Aynı kullanıcılar Zapier veya Doktor365 gibi uygulamalarda sorunsuz bağlanabiliyor.
 
-Bu plan, Facebook Lead Ads entegrasyonunu daha güvenilir hale getirmek ve yeni lead geldiğinde e-posta bildirimi göndermek için gerekli değişiklikleri kapsar.
+**Log Analizi:**
+- Token exchange başarılı (60 günlük token alındı)
+- Pages API çağrısı yapıldı ama **0 sayfa döndü**
 
----
+## Kök Neden
+Facebook Graph API `me/accounts` endpoint'i sayfa döndürmemesi şu nedenlerden olabilir:
 
-## Yapılacaklar Özeti
+1. **Advanced Access Eksikliği** - `pages_show_list` ve `pages_read_engagement` izinleri Standard Access modunda sınırlı çalışıyor
+2. **Kullanıcı İzinleri Reddetmiş** - Popup'ta izinleri onaylamadan devam etmiş olabilir
+3. **Sayfa Rolü Eksikliği** - Kullanıcı sayfada admin/editor değil
 
-| Adım | Açıklama |
-|------|----------|
-| 1 | Veritabanındaki test/seed leadleri silmek için migration |
-| 2 | Facebook'tan lead çeken yeni edge function oluştur |
-| 3 | Leads sayfasına manuel yenileme butonu ekle |
-| 4 | Otomatik polling (her dakika) mekanizması ekle |
-| 5 | Yeni lead geldiğinde e-posta gönderen trigger/function |
+## Çözüm Adımları
 
----
+### Adım 1: Enhanced Debug Logging
+`facebook-oauth` edge function'ına detaylı loglama eklenecek:
+- Facebook API'nin tam yanıtını loglama
+- Verilen izinleri kontrol etme (`/me/permissions` endpoint'i)
+- Hata durumunda kullanıcıya anlamlı mesaj gösterme
 
-## Adım 1: Test Leadleri Temizleme
+### Adım 2: İzin Kontrolü Ekleme
+Token alındıktan sonra kullanıcının verdiği izinleri kontrol eden bir adım eklenecek:
+- `me/permissions` endpoint'i ile verilen izinleri sorgulama
+- Eksik izin varsa kullanıcıya hangi izinlerin gerektiğini gösterme
 
-Veritabanında aynı anda (2026-01-28 07:48:48) oluşturulmuş 5 adet seed/test lead bulunuyor:
-- Ahmet Yılmaz
-- Fatma Kaya
-- Ayşe Öztürk
-- Ali Çelik
-- Mehmet Demir
+### Adım 3: Alternatif Sayfa Çekme Yöntemi
+Business API üzerinden sayfa çekmeyi deneme:
+- `/me/businesses` → her business için `/accounts`
+- Bu yöntem bazı kurumsal hesaplarda daha iyi çalışıyor
 
-Bu kayıtları silmek için bir migration oluşturulacak.
-
----
-
-## Adım 2: Facebook Lead Polling Edge Function
-
-Yeni bir edge function oluşturulacak: `poll-facebook-leads`
-
-Bu function:
-- Facebook bağlantısı olan tüm organizasyonları bulur
-- Her organizasyon için Facebook Graph API'den son leadleri çeker
-- Yeni leadleri veritabanına kaydeder (telefon numarası ile mükerrer kontrol)
-- Manuel tetikleme ve cron job ile çağrılabilir olacak
-
-```text
-+------------------+      +----------------------+      +------------------+
-|   Leads Page     | ---> | poll-facebook-leads  | ---> |  Facebook API    |
-|  (Refresh Btn)   |      |   Edge Function      |      |  Graph API       |
-+------------------+      +----------------------+      +------------------+
-                                    |
-                                    v
-                          +------------------+
-                          |   leads table    |
-                          |   (Supabase)     |
-                          +------------------+
-                                    |
-                                    v
-                          +------------------+
-                          |  notify trigger  |
-                          |  (email + notif) |
-                          +------------------+
-```
-
----
-
-## Adım 3: Leads Sayfasına Yenileme Butonu
-
-Leads sayfasının header kısmına yenileme (refresh) ikonu olan bir buton eklenecek:
-- RefreshCw ikonu kullanılacak
-- Butona tıklandığında `poll-facebook-leads` edge function çağrılacak
-- Loading state gösterilecek
-- Sonuç toast mesajı ile bildirilecek
-
----
-
-## Adım 4: Otomatik Polling Mekanizması
-
-İki seçenek mevcut:
-
-**Seçenek A - Frontend Polling (Önerilen):**
-- Leads sayfası açıkken 60 saniyede bir otomatik yenileme
-- `useEffect` ile interval kurulacak
-- Sayfa kapatılınca polling durur
-
-**Seçenek B - Supabase Cron Job:**
-- pg_cron ile her dakika edge function çağrılır
-- Sayfa açık olmasa da çalışır
-- Daha fazla kaynak kullanır
-
-Frontend polling tercih edilecek (sayfa açıkken aktif).
-
----
-
-## Adım 5: Yeni Lead E-posta Bildirimi
-
-Mevcut `notify_admins_on_new_lead` trigger'ı sadece uygulama içi bildirim oluşturuyor. E-posta göndermesi için:
-
-Yeni edge function: `send-new-lead-email`
-
-Bu function:
-- Lead oluşturulduğunda çağrılır (trigger veya webhook ile)
-- Tüm super adminlere e-posta gönderir
-- İlgili clinic admin'e e-posta gönderir
-- Lead bilgilerini (isim, telefon, kaynak, klinik) içerir
-
-**E-posta Akışı:**
-```text
-Yeni Lead Insert
-      |
-      v
-trigger_notify_admins_on_new_lead (mevcut - bildirim)
-      |
-      v
-pg_net HTTP hook --> send-new-lead-email (yeni)
-      |
-      v
-SMTP --> Super Admins + Clinic Admin
-```
+### Adım 4: Kullanıcı Dostu Hata Mesajları
+Frontend'de daha açıklayıcı hata mesajları:
+- İzin eksikse ne yapması gerektiğini anlatan mesaj
+- Meta Business Suite'te sayfa yöneticisi olduğunu doğrulaması için yönlendirme
 
 ---
 
 ## Teknik Detaylar
 
-### poll-facebook-leads Edge Function
+### Edge Function Değişiklikleri (`facebook-oauth/index.ts`)
 
-```
-supabase/functions/poll-facebook-leads/index.ts
-```
-
-Yapacakları:
-1. Facebook bağlantısı olan organizasyonları çek
-2. Her biri için leadgen form'larını listele
-3. Son 24 saatteki leadleri çek
-4. Mükerrer kontrolü yap (telefon + org)
-5. Yeni leadleri insert et
-6. Kaç lead eklendi bilgisini döndür
-
-### send-new-lead-email Edge Function
-
-```
-supabase/functions/send-new-lead-email/index.ts
+**Yeni `check-permissions` action:**
+```text
+me/permissions endpoint'ini çağırarak kullanıcının 
+hangi izinleri verdiğini kontrol eder
 ```
 
-Yapacakları:
-1. Lead ID'yi al
-2. Lead detaylarını ve organizasyon bilgisini çek
-3. Super admin e-postalarını bul
-4. İlgili clinic admin e-postalarını bul
-5. HTML e-posta şablonu oluştur
-6. SMTP ile gönder
+**Güncellenmiş `pages` action:**
+```text
+1. Önce permissions kontrolü yap
+2. me/accounts çağrısının tam yanıtını logla
+3. 0 sayfa dönerse alternatif endpoint'leri dene
+4. Detaylı hata mesajı döndür
+```
 
-### Leads.tsx Değişiklikleri
-
-- Header'a RefreshCw butonu
-- `pollFacebookLeads()` fonksiyonu
-- 60 saniyelik interval ile otomatik polling
-- Loading ve sonuç gösterimi
+### Frontend Değişiklikleri (`FacebookConnectButton.tsx`)
+- İzin kontrolü adımı ekleme
+- Eksik izinler için uyarı dialog'u
+- "İzinleri Düzenle" butonu ile Facebook'ta ayarları açma linki
 
 ---
 
-## Dosya Değişiklikleri
+## Meta Developer Console Gereksinimleri
 
-| Dosya | İşlem |
-|-------|-------|
-| `supabase/functions/poll-facebook-leads/index.ts` | Yeni |
-| `supabase/functions/send-new-lead-email/index.ts` | Yeni |
-| `supabase/config.toml` | Güncelle (yeni functions) |
-| `src/pages/Leads.tsx` | Güncelle (refresh button + polling) |
-| Migration SQL | Yeni (seed data silme + pg_net trigger) |
+Aşağıdaki izinler için **Advanced Access** alınmalı:
 
----
+| İzin | Durum | Gereklilik |
+|------|-------|------------|
+| `pages_show_list` | Advanced Access gerekli | Sayfa listesi |
+| `pages_read_engagement` | Advanced Access gerekli | Sayfa detayları |
+| `leads_retrieval` | Zaten var | Lead çekme |
+| `pages_manage_metadata` | Advanced Access gerekli | Webhook |
 
-## Risk ve Dikkat Edilecekler
-
-- **Facebook Rate Limit:** Her dakika polling yapılacağı için rate limit'e dikkat edilmeli
-- **Token Geçerliliği:** Page access token'ların geçerliliği kontrol edilmeli
-- **E-posta Spam:** Çok fazla lead gelirse e-posta flood olabilir - throttling düşünülmeli
+**Not:** Development Mode'da sadece App Administrator'lar test edebilir.
