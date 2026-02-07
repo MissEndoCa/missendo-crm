@@ -6,11 +6,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Facebook, Check, X, Loader2, AlertCircle, ChevronRight, Filter, Settings2 } from 'lucide-react';
+import { Facebook, Check, X, Loader2, AlertCircle, ChevronRight, Filter, Settings2, ExternalLink, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Facebook App ID (public, safe to expose)
 const FB_APP_ID = '1722864942230149';
@@ -46,6 +47,12 @@ interface ConnectionStatus {
   connectedAt: string | null;
   selectedCampaigns: SelectedItem[];
   selectedAdsets: SelectedItem[];
+}
+
+interface PermissionCheck {
+  granted: string[];
+  declined: string[];
+  missing: string[];
 }
 
 declare global {
@@ -87,6 +94,11 @@ export function FacebookConnectButton() {
   
   // Filter management dialog
   const [showFilterDialog, setShowFilterDialog] = useState(false);
+
+  // Permission error state
+  const [showPermissionError, setShowPermissionError] = useState(false);
+  const [permissionInfo, setPermissionInfo] = useState<PermissionCheck | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   // Load connection status
   const loadConnectionStatus = useCallback(async () => {
@@ -228,8 +240,14 @@ export function FacebookConnectButton() {
                   throw new Error(exchangeRes.error.message || 'Token exchange failed');
                 }
 
-                const { longLivedToken: token } = exchangeRes.data;
+                const { longLivedToken: token, permissions } = exchangeRes.data;
                 setLongLivedToken(token);
+
+                // Check for permission issues
+                if (permissions?.missing?.length > 0 || permissions?.declined?.length > 0) {
+                  console.warn('Permission issues detected:', permissions);
+                  setPermissionInfo(permissions);
+                }
 
                 // Get pages
                 const pagesRes = await supabase.functions.invoke('facebook-oauth', {
@@ -240,14 +258,13 @@ export function FacebookConnectButton() {
                   throw new Error(pagesRes.error.message || 'Failed to fetch pages');
                 }
 
-                const { pages: userPages } = pagesRes.data;
+                const { pages: userPages, error: pagesError, errorCode: pagesErrorCode, permissions: pagesPermissions } = pagesRes.data;
 
                 if (!userPages || userPages.length === 0) {
-                  toast({
-                    title: 'Sayfa Bulunamadı',
-                    description: 'Facebook hesabınıza bağlı yönetici olduğunuz bir sayfa bulunamadı.',
-                    variant: 'destructive',
-                  });
+                  // Show detailed error dialog
+                  setPermissionInfo(pagesPermissions || permissions);
+                  setErrorCode(pagesErrorCode || 'NO_PAGES');
+                  setShowPermissionError(true);
                   setLoading(false);
                   return;
                 }
@@ -535,11 +552,41 @@ export function FacebookConnectButton() {
     setAdsets([]);
     setSelectedCampaigns([]);
     setSelectedAdsets([]);
+    setPermissionInfo(null);
+    setErrorCode(null);
   };
 
   const getSelectedCampaignAdsets = () => {
     const selectedCampaignIds = new Set(selectedCampaigns.map(c => c.id));
     return adsets.filter(a => selectedCampaignIds.has(a.campaignId));
+  };
+
+  const getPermissionErrorMessage = () => {
+    if (!permissionInfo) {
+      return {
+        title: 'Sayfa Bulunamadı',
+        description: 'Facebook hesabınıza bağlı yönetici olduğunuz bir sayfa bulunamadı.'
+      };
+    }
+
+    if (permissionInfo.declined.length > 0) {
+      return {
+        title: 'İzinler Reddedildi',
+        description: `Şu izinler reddedildi: ${permissionInfo.declined.join(', ')}. Bu izinler lead\'lerin çekilmesi için gereklidir.`
+      };
+    }
+
+    if (permissionInfo.missing.length > 0) {
+      return {
+        title: 'Eksik İzinler',
+        description: `Şu izinler eksik: ${permissionInfo.missing.join(', ')}. Facebook uygulama ayarlarından bu izinleri vermeniz gerekiyor.`
+      };
+    }
+
+    return {
+      title: 'Sayfa Bulunamadı',
+      description: 'Meta Business Suite\'te sayfa yöneticisi olduğunuzdan emin olun.'
+    };
   };
 
   return (
@@ -882,6 +929,110 @@ export function FacebookConnectButton() {
             <Button onClick={handleUpdateFilters} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Güncelle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Permission Error Dialog */}
+      <Dialog open={showPermissionError} onOpenChange={(open) => {
+        setShowPermissionError(open);
+        if (!open) {
+          resetState();
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              {getPermissionErrorMessage().title}
+            </DialogTitle>
+            <DialogDescription>
+              {getPermissionErrorMessage().description}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Ne Yapmalısınız?</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>1. <strong>Meta Business Suite</strong>'e gidin</p>
+                <p>2. İlgili sayfada <strong>admin/yönetici</strong> rolünüz olduğunu kontrol edin</p>
+                <p>3. Facebook &gt; Ayarlar &gt; Uygulamalar bölümünden bu uygulamanın izinlerini kontrol edin</p>
+              </AlertDescription>
+            </Alert>
+
+            {permissionInfo && (
+              <div className="space-y-2">
+                {permissionInfo.granted.length > 0 && (
+                  <div className="p-3 bg-success/10 rounded-lg">
+                    <p className="text-sm font-medium text-success mb-1">✓ Verilen İzinler</p>
+                    <div className="flex flex-wrap gap-1">
+                      {permissionInfo.granted.map(p => (
+                        <Badge key={p} variant="outline" className="text-xs text-success border-success">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {permissionInfo.missing.length > 0 && (
+                  <div className="p-3 bg-destructive/10 rounded-lg">
+                    <p className="text-sm font-medium text-destructive mb-1">✗ Eksik İzinler</p>
+                    <div className="flex flex-wrap gap-1">
+                      {permissionInfo.missing.map(p => (
+                        <Badge key={p} variant="outline" className="text-xs text-destructive border-destructive">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {permissionInfo.declined.length > 0 && (
+                  <div className="p-3 bg-destructive/10 rounded-lg">
+                    <p className="text-sm font-medium text-destructive mb-1">✗ Reddedilen İzinler</p>
+                    <div className="flex flex-wrap gap-1">
+                      {permissionInfo.declined.map(p => (
+                        <Badge key={p} variant="outline" className="text-xs text-destructive border-destructive">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => window.open('https://business.facebook.com/settings/pages', '_blank')}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Meta Business Suite
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1"
+              onClick={() => window.open(`https://www.facebook.com/settings?tab=applications&app_id=${FB_APP_ID}`, '_blank')}
+            >
+              <Settings2 className="w-4 h-4 mr-2" />
+              Uygulama İzinleri
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowPermissionError(false);
+                resetState();
+                // Trigger new login
+                handleFacebookLogin();
+              }}
+            >
+              Tekrar Dene
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -12,6 +12,131 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Required permissions for Facebook Lead Ads
+const REQUIRED_PERMISSIONS = [
+  'pages_show_list',
+  'pages_read_engagement', 
+  'leads_retrieval',
+  'pages_manage_metadata'
+];
+
+// Helper function to check user permissions
+async function checkUserPermissions(accessToken: string): Promise<{
+  granted: string[];
+  declined: string[];
+  missing: string[];
+}> {
+  const permissionsUrl = `https://graph.facebook.com/v19.0/me/permissions?access_token=${accessToken}`;
+  const permissionsRes = await fetch(permissionsUrl);
+  const permissionsData = await permissionsRes.json();
+
+  console.log('Permissions API response:', JSON.stringify(permissionsData, null, 2));
+
+  if (permissionsData.error) {
+    console.error('Permissions check error:', permissionsData.error);
+    return { granted: [], declined: [], missing: REQUIRED_PERMISSIONS };
+  }
+
+  const granted: string[] = [];
+  const declined: string[] = [];
+
+  for (const perm of permissionsData.data || []) {
+    if (perm.status === 'granted') {
+      granted.push(perm.permission);
+    } else if (perm.status === 'declined') {
+      declined.push(perm.permission);
+    }
+  }
+
+  const missing = REQUIRED_PERMISSIONS.filter(p => !granted.includes(p));
+
+  console.log('Permission check result:', { granted, declined, missing });
+  return { granted, declined, missing };
+}
+
+// Helper function to fetch pages with fallback methods
+async function fetchUserPages(accessToken: string): Promise<{
+  pages: Array<{ id: string; name: string; access_token?: string }>;
+  error?: string;
+  debugInfo?: any;
+}> {
+  // Method 1: Standard me/accounts endpoint
+  console.log('Attempting to fetch pages via me/accounts...');
+  const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}&fields=id,name,access_token,category,tasks`;
+  const pagesRes = await fetch(pagesUrl);
+  const pagesData = await pagesRes.json();
+
+  console.log('me/accounts full response:', JSON.stringify(pagesData, null, 2));
+
+  if (pagesData.error) {
+    console.error('me/accounts error:', pagesData.error);
+    return { 
+      pages: [], 
+      error: pagesData.error.message,
+      debugInfo: { method: 'me/accounts', error: pagesData.error }
+    };
+  }
+
+  if (pagesData.data && pagesData.data.length > 0) {
+    console.log('Found', pagesData.data.length, 'pages via me/accounts');
+    return { 
+      pages: pagesData.data,
+      debugInfo: { method: 'me/accounts', count: pagesData.data.length }
+    };
+  }
+
+  // Method 2: Try via businesses endpoint (for business accounts)
+  console.log('No pages found via me/accounts, trying businesses endpoint...');
+  const businessesUrl = `https://graph.facebook.com/v19.0/me/businesses?access_token=${accessToken}&fields=id,name,owned_pages{id,name,access_token}`;
+  const businessesRes = await fetch(businessesUrl);
+  const businessesData = await businessesRes.json();
+
+  console.log('me/businesses full response:', JSON.stringify(businessesData, null, 2));
+
+  if (businessesData.data && businessesData.data.length > 0) {
+    const allPages: Array<{ id: string; name: string; access_token?: string }> = [];
+    
+    for (const business of businessesData.data) {
+      if (business.owned_pages?.data) {
+        for (const page of business.owned_pages.data) {
+          allPages.push({
+            id: page.id,
+            name: page.name,
+            access_token: page.access_token
+          });
+        }
+      }
+    }
+
+    if (allPages.length > 0) {
+      console.log('Found', allPages.length, 'pages via businesses endpoint');
+      return { 
+        pages: allPages,
+        debugInfo: { method: 'businesses', count: allPages.length }
+      };
+    }
+  }
+
+  // Method 3: Check if user has any page roles
+  console.log('Checking user page roles...');
+  const userUrl = `https://graph.facebook.com/v19.0/me?access_token=${accessToken}&fields=id,name`;
+  const userRes = await fetch(userUrl);
+  const userData = await userRes.json();
+
+  console.log('User info:', JSON.stringify(userData, null, 2));
+
+  return { 
+    pages: [],
+    debugInfo: {
+      method: 'all_failed',
+      userId: userData?.id,
+      userName: userData?.name,
+      accountsResponse: pagesData,
+      businessesResponse: businessesData
+    }
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -110,9 +235,34 @@ serve(async (req) => {
 
         console.log('Token exchanged successfully, expires in:', exchangeData.expires_in);
 
+        // Check permissions after token exchange
+        const permissionCheck = await checkUserPermissions(exchangeData.access_token);
+
         return new Response(JSON.stringify({ 
           longLivedToken: exchangeData.access_token,
-          expiresIn: exchangeData.expires_in
+          expiresIn: exchangeData.expires_in,
+          permissions: permissionCheck
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'check-permissions': {
+        // Check current token permissions
+        const { longLivedToken } = body;
+        
+        if (!longLivedToken) {
+          return new Response(JSON.stringify({ error: 'Token required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const permissionCheck = await checkUserPermissions(longLivedToken);
+
+        return new Response(JSON.stringify({ 
+          permissions: permissionCheck,
+          requiredPermissions: REQUIRED_PERMISSIONS
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -129,28 +279,64 @@ serve(async (req) => {
           });
         }
 
-        const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?access_token=${longLivedToken}&fields=id,name,access_token`;
+        // First check permissions
+        const permissionCheck = await checkUserPermissions(longLivedToken);
         
-        const pagesRes = await fetch(pagesUrl);
-        const pagesData = await pagesRes.json();
+        // Check for critical missing permissions
+        const criticalMissing = ['pages_show_list', 'pages_read_engagement'].filter(
+          p => permissionCheck.missing.includes(p)
+        );
 
-        if (pagesData.error) {
-          console.error('Pages fetch error:', pagesData.error);
-          return new Response(JSON.stringify({ error: pagesData.error.message }), {
-            status: 400,
+        if (criticalMissing.length > 0) {
+          console.warn('Missing critical permissions:', criticalMissing);
+          // Still try to fetch pages, but include warning
+        }
+
+        // Fetch pages with fallback methods
+        const pagesResult = await fetchUserPages(longLivedToken);
+
+        if (pagesResult.pages.length === 0) {
+          // Detailed error message based on what we found
+          let errorMessage = 'Facebook sayfası bulunamadı.';
+          let errorCode = 'NO_PAGES';
+          
+          if (permissionCheck.missing.length > 0) {
+            errorMessage = `Eksik izinler: ${permissionCheck.missing.join(', ')}. Facebook izin ayarlarını kontrol edin.`;
+            errorCode = 'MISSING_PERMISSIONS';
+          } else if (permissionCheck.declined.length > 0) {
+            errorMessage = `Reddedilen izinler: ${permissionCheck.declined.join(', ')}. Facebook ayarlarından izinleri yeniden verin.`;
+            errorCode = 'DECLINED_PERMISSIONS';
+          }
+
+          console.error('No pages found:', {
+            errorCode,
+            permissions: permissionCheck,
+            debugInfo: pagesResult.debugInfo
+          });
+
+          return new Response(JSON.stringify({ 
+            pages: [],
+            error: errorMessage,
+            errorCode,
+            permissions: permissionCheck,
+            debugInfo: pagesResult.debugInfo
+          }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
-        console.log('Found', pagesData.data?.length || 0, 'pages');
-
         // Return pages without exposing tokens to frontend
-        const pages = pagesData.data?.map((page: any) => ({
+        const pages = pagesResult.pages.map((page: any) => ({
           id: page.id,
           name: page.name,
-        })) || [];
+        }));
 
-        return new Response(JSON.stringify({ pages }), {
+        console.log('Successfully returning', pages.length, 'pages');
+
+        return new Response(JSON.stringify({ 
+          pages,
+          permissions: permissionCheck 
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -259,28 +445,41 @@ serve(async (req) => {
           });
         }
 
-        // Get page access token (this is a never-expiring token)
-        const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?access_token=${longLivedToken}&fields=id,name,access_token`;
-        const pagesRes = await fetch(pagesUrl);
-        const pagesData = await pagesRes.json();
+        // Fetch pages with the enhanced method to get page access token
+        const pagesResult = await fetchUserPages(longLivedToken);
 
-        if (pagesData.error) {
-          console.error('Pages fetch error:', pagesData.error);
-          return new Response(JSON.stringify({ error: pagesData.error.message }), {
+        if (pagesResult.error) {
+          console.error('Pages fetch error during connect:', pagesResult.error);
+          return new Response(JSON.stringify({ error: pagesResult.error }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
-        const selectedPage = pagesData.data?.find((p: any) => p.id === pageId);
+        const selectedPage = pagesResult.pages.find((p: any) => p.id === pageId);
         if (!selectedPage) {
-          return new Response(JSON.stringify({ error: 'Page not found or no access' }), {
+          return new Response(JSON.stringify({ 
+            error: 'Sayfa bulunamadı veya erişim yok. Sayfada admin olduğunuzdan emin olun.',
+            errorCode: 'PAGE_NOT_FOUND'
+          }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
         const pageAccessToken = selectedPage.access_token;
+        
+        if (!pageAccessToken) {
+          console.error('No page access token available for page:', pageId);
+          return new Response(JSON.stringify({ 
+            error: 'Sayfa erişim token\'ı alınamadı. Lütfen Facebook izinlerini kontrol edin.',
+            errorCode: 'NO_PAGE_TOKEN'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
         console.log('Got page access token for:', selectedPage.name);
 
         // Subscribe to leadgen webhook
