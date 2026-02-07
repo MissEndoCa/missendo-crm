@@ -26,7 +26,7 @@ async function checkUserPermissions(accessToken: string): Promise<{
   declined: string[];
   missing: string[];
 }> {
-  const permissionsUrl = `https://graph.facebook.com/v19.0/me/permissions?access_token=${accessToken}`;
+  const permissionsUrl = `https://graph.facebook.com/v21.0/me/permissions?access_token=${accessToken}`;
   const permissionsRes = await fetch(permissionsUrl);
   const permissionsData = await permissionsRes.json();
 
@@ -62,7 +62,7 @@ async function fetchUserPages(accessToken: string): Promise<{
 }> {
   // Method 1: Standard me/accounts endpoint
   console.log('Attempting to fetch pages via me/accounts...');
-  const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}&fields=id,name,access_token,category,tasks`;
+  const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?access_token=${accessToken}&fields=id,name,access_token,category,tasks`;
   const pagesRes = await fetch(pagesUrl);
   const pagesData = await pagesRes.json();
 
@@ -87,7 +87,7 @@ async function fetchUserPages(accessToken: string): Promise<{
 
   // Method 2: Try via businesses endpoint (for business accounts)
   console.log('No pages found via me/accounts, trying businesses endpoint...');
-  const businessesUrl = `https://graph.facebook.com/v19.0/me/businesses?access_token=${accessToken}&fields=id,name,owned_pages{id,name,access_token}`;
+  const businessesUrl = `https://graph.facebook.com/v21.0/me/businesses?access_token=${accessToken}&fields=id,name,owned_pages{id,name,access_token}`;
   const businessesRes = await fetch(businessesUrl);
   const businessesData = await businessesRes.json();
 
@@ -119,7 +119,7 @@ async function fetchUserPages(accessToken: string): Promise<{
 
   // Method 3: Check if user has any page roles
   console.log('Checking user page roles...');
-  const userUrl = `https://graph.facebook.com/v19.0/me?access_token=${accessToken}&fields=id,name`;
+  const userUrl = `https://graph.facebook.com/v21.0/me?access_token=${accessToken}&fields=id,name`;
   const userRes = await fetch(userUrl);
   const userData = await userRes.json();
 
@@ -220,7 +220,7 @@ serve(async (req) => {
         }
 
         // Exchange for long-lived token (60 days)
-        const exchangeUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&fb_exchange_token=${accessToken}`;
+        const exchangeUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&fb_exchange_token=${accessToken}`;
         
         const exchangeRes = await fetch(exchangeUrl);
         const exchangeData = await exchangeRes.json();
@@ -353,7 +353,7 @@ serve(async (req) => {
         }
 
         // First get ad accounts linked to the user
-        const adAccountsUrl = `https://graph.facebook.com/v19.0/me/adaccounts?access_token=${longLivedToken}&fields=id,name,account_id`;
+        const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${longLivedToken}&fields=id,name,account_id`;
         const adAccountsRes = await fetch(adAccountsUrl);
         const adAccountsData = await adAccountsRes.json();
 
@@ -371,7 +371,7 @@ serve(async (req) => {
         const allCampaigns: Array<{id: string, name: string, status: string, adAccountId: string}> = [];
         
         for (const adAccount of adAccountsData.data || []) {
-          const campaignsUrl = `https://graph.facebook.com/v19.0/${adAccount.id}/campaigns?access_token=${longLivedToken}&fields=id,name,status,objective&limit=100`;
+          const campaignsUrl = `https://graph.facebook.com/v21.0/${adAccount.id}/campaigns?access_token=${longLivedToken}&fields=id,name,status,objective&limit=100`;
           const campaignsRes = await fetch(campaignsUrl);
           const campaignsData = await campaignsRes.json();
 
@@ -411,7 +411,7 @@ serve(async (req) => {
         const allAdsets: Array<{id: string, name: string, status: string, campaignId: string}> = [];
         
         for (const campaignId of campaignIds) {
-          const adsetsUrl = `https://graph.facebook.com/v19.0/${campaignId}/adsets?access_token=${longLivedToken}&fields=id,name,status&limit=100`;
+          const adsetsUrl = `https://graph.facebook.com/v21.0/${campaignId}/adsets?access_token=${longLivedToken}&fields=id,name,status&limit=100`;
           const adsetsRes = await fetch(adsetsUrl);
           const adsetsData = await adsetsRes.json();
 
@@ -483,7 +483,7 @@ serve(async (req) => {
         console.log('Got page access token for:', selectedPage.name);
 
         // Subscribe to leadgen webhook
-        const subscribeUrl = `https://graph.facebook.com/v19.0/${pageId}/subscribed_apps`;
+        const subscribeUrl = `https://graph.facebook.com/v21.0/${pageId}/subscribed_apps`;
         const subscribeRes = await fetch(subscribeUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
