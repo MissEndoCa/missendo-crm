@@ -155,9 +155,102 @@ serve(async (req) => {
         });
       }
 
+      case 'campaigns': {
+        // Get campaigns for ad account
+        const { longLivedToken, pageId } = body;
+        
+        if (!longLivedToken) {
+          return new Response(JSON.stringify({ error: 'Token required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // First get ad accounts linked to the user
+        const adAccountsUrl = `https://graph.facebook.com/v19.0/me/adaccounts?access_token=${longLivedToken}&fields=id,name,account_id`;
+        const adAccountsRes = await fetch(adAccountsUrl);
+        const adAccountsData = await adAccountsRes.json();
+
+        if (adAccountsData.error) {
+          console.error('Ad accounts fetch error:', adAccountsData.error);
+          return new Response(JSON.stringify({ error: adAccountsData.error.message }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        console.log('Found', adAccountsData.data?.length || 0, 'ad accounts');
+
+        // Get campaigns from all ad accounts
+        const allCampaigns: Array<{id: string, name: string, status: string, adAccountId: string}> = [];
+        
+        for (const adAccount of adAccountsData.data || []) {
+          const campaignsUrl = `https://graph.facebook.com/v19.0/${adAccount.id}/campaigns?access_token=${longLivedToken}&fields=id,name,status,objective&limit=100`;
+          const campaignsRes = await fetch(campaignsUrl);
+          const campaignsData = await campaignsRes.json();
+
+          if (campaignsData.data) {
+            for (const campaign of campaignsData.data) {
+              // Only include LEAD_GENERATION campaigns or all active campaigns
+              if (campaign.objective === 'LEAD_GENERATION' || campaign.status === 'ACTIVE') {
+                allCampaigns.push({
+                  id: campaign.id,
+                  name: campaign.name,
+                  status: campaign.status,
+                  adAccountId: adAccount.id
+                });
+              }
+            }
+          }
+        }
+
+        console.log('Found', allCampaigns.length, 'lead/active campaigns');
+
+        return new Response(JSON.stringify({ campaigns: allCampaigns }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'adsets': {
+        // Get ad sets for selected campaigns
+        const { longLivedToken, campaignIds } = body;
+        
+        if (!longLivedToken || !campaignIds || !Array.isArray(campaignIds)) {
+          return new Response(JSON.stringify({ error: 'Token and campaign IDs required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const allAdsets: Array<{id: string, name: string, status: string, campaignId: string}> = [];
+        
+        for (const campaignId of campaignIds) {
+          const adsetsUrl = `https://graph.facebook.com/v19.0/${campaignId}/adsets?access_token=${longLivedToken}&fields=id,name,status&limit=100`;
+          const adsetsRes = await fetch(adsetsUrl);
+          const adsetsData = await adsetsRes.json();
+
+          if (adsetsData.data) {
+            for (const adset of adsetsData.data) {
+              allAdsets.push({
+                id: adset.id,
+                name: adset.name,
+                status: adset.status,
+                campaignId: campaignId
+              });
+            }
+          }
+        }
+
+        console.log('Found', allAdsets.length, 'ad sets');
+
+        return new Response(JSON.stringify({ adsets: allAdsets }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       case 'connect': {
-        // Connect a specific page - get its token and subscribe to webhook
-        const { longLivedToken, pageId, pageName, fbUserId } = body;
+        // Connect a specific page with optional campaign/adset filters
+        const { longLivedToken, pageId, pageName, fbUserId, selectedCampaigns, selectedAdsets } = body;
         
         if (!longLivedToken || !pageId) {
           return new Response(JSON.stringify({ error: 'Token and page ID required' }), {
@@ -209,7 +302,7 @@ serve(async (req) => {
           // Don't fail completely, token is still valid
         }
 
-        // Save to database
+        // Save to database with campaign/adset selections
         const { error: updateError } = await supabase
           .from('organizations')
           .update({
@@ -218,6 +311,8 @@ serve(async (req) => {
             fb_page_name: pageName || selectedPage.name,
             fb_connected_at: new Date().toISOString(),
             fb_user_id: fbUserId || null,
+            fb_selected_campaigns: selectedCampaigns || [],
+            fb_selected_adsets: selectedAdsets || [],
           })
           .eq('id', profile.organization_id);
 
@@ -230,12 +325,71 @@ serve(async (req) => {
         }
 
         console.log('Facebook page connected successfully for org:', profile.organization_id);
+        console.log('Selected campaigns:', selectedCampaigns?.length || 0, 'Selected adsets:', selectedAdsets?.length || 0);
 
         return new Response(JSON.stringify({ 
           success: true,
           pageName: selectedPage.name,
           pageId: pageId,
-          webhookSubscribed: !subscribeData.error
+          webhookSubscribed: !subscribeData.error,
+          campaignsCount: selectedCampaigns?.length || 0,
+          adsetsCount: selectedAdsets?.length || 0
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'update-filters': {
+        // Update campaign/adset filters for existing connection
+        const { selectedCampaigns, selectedAdsets } = body;
+
+        const { error: updateError } = await supabase
+          .from('organizations')
+          .update({
+            fb_selected_campaigns: selectedCampaigns || [],
+            fb_selected_adsets: selectedAdsets || [],
+          })
+          .eq('id', profile.organization_id);
+
+        if (updateError) {
+          console.error('Filter update error:', updateError);
+          return new Response(JSON.stringify({ error: 'Failed to update filters' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        console.log('Filters updated for org:', profile.organization_id);
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          campaignsCount: selectedCampaigns?.length || 0,
+          adsetsCount: selectedAdsets?.length || 0
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'get-filters': {
+        // Get current campaign/adset filters
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('fb_selected_campaigns, fb_selected_adsets, fb_page_access_token')
+          .eq('id', profile.organization_id)
+          .single();
+
+        if (orgError) {
+          console.error('Get filters error:', orgError);
+          return new Response(JSON.stringify({ error: 'Failed to get filters' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        return new Response(JSON.stringify({ 
+          selectedCampaigns: orgData?.fb_selected_campaigns || [],
+          selectedAdsets: orgData?.fb_selected_adsets || [],
+          hasToken: !!orgData?.fb_page_access_token
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -251,6 +405,8 @@ serve(async (req) => {
             fb_page_name: null,
             fb_connected_at: null,
             fb_user_id: null,
+            fb_selected_campaigns: [],
+            fb_selected_adsets: [],
           })
           .eq('id', profile.organization_id);
 

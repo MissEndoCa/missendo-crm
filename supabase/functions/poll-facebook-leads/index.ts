@@ -10,10 +10,18 @@ const corsHeaders = {
 interface FacebookLead {
   id: string;
   created_time: string;
+  ad_id?: string;
+  adset_id?: string;
+  campaign_id?: string;
   field_data: Array<{
     name: string;
     values: string[];
   }>;
+}
+
+interface SelectedItem {
+  id: string;
+  name: string;
 }
 
 interface Organization {
@@ -21,6 +29,8 @@ interface Organization {
   name: string;
   fb_page_id: string;
   fb_page_access_token: string;
+  fb_selected_campaigns: SelectedItem[];
+  fb_selected_adsets: SelectedItem[];
 }
 
 serve(async (req: Request) => {
@@ -39,7 +49,7 @@ serve(async (req: Request) => {
     // Get all organizations with Facebook connection
     const { data: organizations, error: orgError } = await supabase
       .from("organizations")
-      .select("id, name, fb_page_id, fb_page_access_token")
+      .select("id, name, fb_page_id, fb_page_access_token, fb_selected_campaigns, fb_selected_adsets")
       .not("fb_page_id", "is", null)
       .not("fb_page_access_token", "is", null);
 
@@ -88,10 +98,17 @@ serve(async (req: Request) => {
 
         let orgNewLeads = 0;
 
+        // Get campaign/adset filter IDs
+        const selectedCampaignIds = new Set((org.fb_selected_campaigns || []).map(c => c.id));
+        const selectedAdsetIds = new Set((org.fb_selected_adsets || []).map(a => a.id));
+        const hasFilters = selectedCampaignIds.size > 0 || selectedAdsetIds.size > 0;
+
+        console.log(`Org ${org.name} filters - Campaigns: ${selectedCampaignIds.size}, Adsets: ${selectedAdsetIds.size}`);
+
         for (const form of forms) {
-          // Get leads from the form (last 7 days)
+          // Get leads from the form with ad info (last 7 days)
           const leadsResponse = await fetch(
-            `https://graph.facebook.com/v21.0/${form.id}/leads?access_token=${org.fb_page_access_token}&limit=100`
+            `https://graph.facebook.com/v21.0/${form.id}/leads?access_token=${org.fb_page_access_token}&limit=100&fields=id,created_time,field_data,ad_id,adset_id,campaign_id`
           );
 
           if (!leadsResponse.ok) {
@@ -105,6 +122,28 @@ serve(async (req: Request) => {
           console.log(`Found ${leads.length} leads in form ${form.id}`);
 
           for (const lead of leads) {
+            // Check campaign/adset filters before processing
+            if (hasFilters) {
+              const leadCampaignId = lead.campaign_id;
+              const leadAdsetId = lead.adset_id;
+
+              // If we have campaign filters, check if this lead's campaign matches
+              if (selectedCampaignIds.size > 0 && leadCampaignId) {
+                if (!selectedCampaignIds.has(leadCampaignId)) {
+                  console.log(`Skipping lead ${lead.id} - campaign ${leadCampaignId} not in filter`);
+                  continue;
+                }
+              }
+
+              // If we have adset filters, check if this lead's adset matches
+              if (selectedAdsetIds.size > 0 && leadAdsetId) {
+                if (!selectedAdsetIds.has(leadAdsetId)) {
+                  console.log(`Skipping lead ${lead.id} - adset ${leadAdsetId} not in filter`);
+                  continue;
+                }
+              }
+            }
+
             // Parse lead data
             const fieldData = lead.field_data || [];
             let firstName = "";
