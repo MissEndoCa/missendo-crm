@@ -1256,13 +1256,13 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-primary" />
-              <span className="font-medium">Randevular:</span>
+              <span className="font-medium">Appointments:</span>
               <Badge variant="secondary">{appointments.length}</Badge>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <PhoneCall className="w-4 h-4 text-primary" />
-              <span className="font-medium">Arama:</span>
-              <Badge variant="secondary">{callLogCount} kez</Badge>
+              <span className="font-medium">Calls:</span>
+              <Badge variant="secondary">{callLogCount}</Badge>
             </div>
             {appointments.length === 0 && (
               <Button
@@ -1272,7 +1272,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                 onClick={() => setActiveTab('appointments')}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Randevu Oluştur
+                Create Appointment
               </Button>
             )}
           </div>
