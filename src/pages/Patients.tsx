@@ -816,7 +816,7 @@ export default function Patients() {
                       No patients found
                     </TableCell>
                   </TableRow> : filteredPatients.map(patient => <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell onClick={() => handleEdit(patient)}>
+                      <TableCell onClick={() => { setSelectedPatient(patient); setShowPatientDetails(true); }}>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
                             <AvatarImage src={patient.photo_url || ''} />
@@ -847,7 +847,7 @@ export default function Patients() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      {isSuperAdmin && <TableCell onClick={() => handleEdit(patient)}>
+                      {isSuperAdmin && <TableCell onClick={() => { setSelectedPatient(patient); setShowPatientDetails(true); }}>
                           <Badge variant="outline" className="flex items-center gap-1 w-fit">
                             <Building2 className="w-3 h-3" />
                             {patient.organizations?.name || '-'}

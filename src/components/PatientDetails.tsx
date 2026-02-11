@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video, Image, Scan, Cake } from 'lucide-react';
+import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video, Image, Scan, Cake, PhoneCall } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -138,6 +138,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [activeTab, setActiveTab] = useState('notes');
+  const [callLogCount, setCallLogCount] = useState<number>(0);
 
   const [appointmentForm, setAppointmentForm] = useState({
     appointment_date: '',
@@ -218,7 +219,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes, organizationsRes] = await Promise.all([
+      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes, organizationsRes, callLogsRes] = await Promise.all([
         supabase.from('appointments').select('*, treatments(name), hotels(hotel_name), transfer_services(company_name)').eq('patient_id', patientId),
         supabase.from('patient_documents').select('*').eq('patient_id', patientId),
         supabase.from('patient_notes').select('*, creator:profiles!patient_notes_created_by_fkey(first_name, last_name)').eq('patient_id', patientId).order('note_date', { ascending: false }),
@@ -229,7 +230,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         supabase.from('transfer_services').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('patient_treatments').select('final_price').eq('patient_id', patientId),
-        supabase.from('organizations').select('id, name').eq('is_active', true)
+        supabase.from('organizations').select('id, name').eq('is_active', true),
+        supabase.from('reminder_call_logs').select('id, reminders!inner(patient_id)', { count: 'exact', head: true }).eq('reminders.patient_id', patientId)
       ]);
 
       // Calculate total cost from patient treatments
@@ -261,6 +263,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       setTransfers(transfersRes.data || []);
       setTreatments(treatmentsRes.data || []);
       setOrganizations(organizationsRes.data || []);
+      setCallLogCount(callLogsRes.count || 0);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -1246,6 +1249,35 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Quick Stats Panel */}
+      <Card>
+        <CardContent className="py-3 px-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-primary" />
+              <span className="font-medium">Randevular:</span>
+              <Badge variant="secondary">{appointments.length}</Badge>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <PhoneCall className="w-4 h-4 text-primary" />
+              <span className="font-medium">Arama:</span>
+              <Badge variant="secondary">{callLogCount} kez</Badge>
+            </div>
+            {appointments.length === 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                onClick={() => setActiveTab('appointments')}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Randevu Oluştur
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Mobile: Dropdown Select for Tabs */}
