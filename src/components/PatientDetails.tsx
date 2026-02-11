@@ -139,6 +139,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [activeTab, setActiveTab] = useState('notes');
   const [callLogCount, setCallLogCount] = useState<number>(0);
+  const [showCallLogDialog, setShowCallLogDialog] = useState(false);
+  const [callLogForm, setCallLogForm] = useState({ call_result: 'reached', notes: '' });
+  const [savingCallLog, setSavingCallLog] = useState(false);
 
   const [appointmentForm, setAppointmentForm] = useState({
     appointment_date: '',
@@ -1160,6 +1163,70 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const totalPaid = downpayment + clinicPayment;
   const remainingDebt = finalPrice - totalPaid;
 
+  const handleLogCall = async () => {
+    setSavingCallLog(true);
+    try {
+      // Find or create a reminder for this patient to attach the call log
+      let reminderId: string;
+      const { data: existingReminders } = await supabase
+        .from('reminders')
+        .select('id')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (existingReminders && existingReminders.length > 0) {
+        reminderId = existingReminders[0].id;
+      } else {
+        // Create a general call reminder for this patient
+        const { data: newReminder, error: reminderError } = await supabase
+          .from('reminders')
+          .insert([{
+            title: `Call: ${patientInfo?.first_name} ${patientInfo?.last_name}`,
+            reminder_date: new Date().toISOString(),
+            reminder_type: 'call',
+            patient_id: patientId,
+            organization_id: profile?.organization_id,
+            created_by: profile?.id,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+          }])
+          .select('id')
+          .single();
+
+        if (reminderError) throw reminderError;
+        reminderId = newReminder.id;
+      }
+
+      const { error } = await supabase.from('reminder_call_logs').insert([{
+        reminder_id: reminderId,
+        call_result: callLogForm.call_result,
+        notes: callLogForm.notes || null,
+        called_by: profile?.id,
+      }]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Call log added successfully',
+      });
+
+      setCallLogForm({ call_result: 'reached', notes: '' });
+      setShowCallLogDialog(false);
+      loadData();
+    } catch (error) {
+      console.error('Error logging call:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to log call',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingCallLog(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Patient Profile Summary Card */}
@@ -1264,20 +1331,73 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               <span className="font-medium">Calls:</span>
               <Badge variant="secondary">{callLogCount}</Badge>
             </div>
-            {appointments.length === 0 && (
+            <div className="flex items-center gap-2 ml-auto">
               <Button
                 variant="outline"
                 size="sm"
-                className="ml-auto"
-                onClick={() => setActiveTab('appointments')}
+                onClick={() => setShowCallLogDialog(true)}
               >
-                <Plus className="w-4 h-4 mr-1" />
-                Create Appointment
+                <PhoneCall className="w-4 h-4 mr-1" />
+                Log Call
               </Button>
-            )}
+              {appointments.length === 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveTab('appointments')}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Create Appointment
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Log Call Dialog */}
+      <Dialog open={showCallLogDialog} onOpenChange={setShowCallLogDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Log Call</DialogTitle>
+            <DialogDescription>
+              Record a call for {patientInfo?.first_name} {patientInfo?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Result</Label>
+              <Select value={callLogForm.call_result} onValueChange={(v) => setCallLogForm(f => ({ ...f, call_result: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reached">Reached</SelectItem>
+                  <SelectItem value="no_answer">No Answer</SelectItem>
+                  <SelectItem value="busy">Busy</SelectItem>
+                  <SelectItem value="voicemail">Voicemail</SelectItem>
+                  <SelectItem value="wrong_number">Wrong Number</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Textarea
+                value={callLogForm.notes}
+                onChange={(e) => setCallLogForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Call notes..."
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCallLogDialog(false)}>Cancel</Button>
+              <Button onClick={handleLogCall} disabled={savingCallLog}>
+                {savingCallLog ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Mobile: Dropdown Select for Tabs */}
