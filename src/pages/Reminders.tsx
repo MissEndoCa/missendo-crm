@@ -604,7 +604,7 @@ export default function Reminders() {
                 New Reminder
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Reminder</DialogTitle>
               </DialogHeader>
@@ -1085,7 +1085,7 @@ export default function Reminders() {
 
         {/* Edit Reminder Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Reminder</DialogTitle>
             </DialogHeader>
