@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video, Image, Scan, Cake, PhoneCall } from 'lucide-react';
+import { Calendar, FileText, Plus, Upload, Download, Trash2, Eye, MessageSquare, CreditCard, Plane, DollarSign, User, Phone, Mail, MapPin, ExternalLink, ChevronLeft, ChevronRight, Pencil, Video, Image, Scan, Cake, PhoneCall, Bell, Clock } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -144,6 +144,10 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const [callLogForm, setCallLogForm] = useState({ call_result: 'reached', notes: '' });
   const [editingCallLog, setEditingCallLog] = useState<string | null>(null);
   const [savingCallLog, setSavingCallLog] = useState(false);
+  const [patientReminders, setPatientReminders] = useState<any[]>([]);
+  const [reminderForm, setReminderForm] = useState({ title: '', reminder_date: '', reminder_time: '09:00', reminder_type: 'call', notes: '' });
+  const [editingReminder, setEditingReminder] = useState<any | null>(null);
+  const [savingReminder, setSavingReminder] = useState(false);
 
   const [appointmentForm, setAppointmentForm] = useState({
     appointment_date: '',
@@ -224,7 +228,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes, organizationsRes, callLogsRes] = await Promise.all([
+      const [appointmentsRes, documentsRes, notesRes, paymentsRes, patientTransfersRes, patientRes, hotelsRes, transfersRes, treatmentsRes, patientTreatmentsRes, organizationsRes, callLogsRes, remindersRes] = await Promise.all([
         supabase.from('appointments').select('*, treatments(name), hotels(hotel_name), transfer_services(company_name)').eq('patient_id', patientId),
         supabase.from('patient_documents').select('*').eq('patient_id', patientId),
         supabase.from('patient_notes').select('*, creator:profiles!patient_notes_created_by_fkey(first_name, last_name)').eq('patient_id', patientId).order('note_date', { ascending: false }),
@@ -236,7 +240,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         supabase.from('treatments').select('*').eq('organization_id', profile?.organization_id),
         supabase.from('patient_treatments').select('final_price').eq('patient_id', patientId),
         supabase.from('organizations').select('id, name').eq('is_active', true),
-        supabase.from('reminder_call_logs').select('id, call_result, notes, called_at, called_by, caller:profiles!reminder_call_logs_called_by_fkey(first_name, last_name), reminders!inner(patient_id)').eq('reminders.patient_id', patientId).order('called_at', { ascending: false })
+        supabase.from('reminder_call_logs').select('id, call_result, notes, called_at, called_by, caller:profiles!reminder_call_logs_called_by_fkey(first_name, last_name), reminders!inner(patient_id)').eq('reminders.patient_id', patientId).order('called_at', { ascending: false }),
+        supabase.from('reminders').select('*, creator:profiles!reminders_created_by_fkey(first_name, last_name)').eq('patient_id', patientId).order('reminder_date', { ascending: false })
       ]);
 
       // Calculate total cost from patient treatments
@@ -271,6 +276,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       const callLogsData = (callLogsRes.data || []) as any[];
       setCallLogs(callLogsData);
       setCallLogCount(callLogsData.length);
+      setPatientReminders(remindersRes.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -1257,6 +1263,90 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
+  const handleAddReminder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reminderForm.title || !reminderForm.reminder_date) {
+      toast({ title: 'Error', description: 'Title and date are required', variant: 'destructive' });
+      return;
+    }
+    try {
+      setSavingReminder(true);
+      const reminderDateTime = `${reminderForm.reminder_date}T${reminderForm.reminder_time || '09:00'}:00`;
+      const { error } = await supabase.from('reminders').insert([{
+        patient_id: patientId,
+        organization_id: profile?.organization_id,
+        created_by: profile?.id,
+        title: reminderForm.title,
+        reminder_date: reminderDateTime,
+        reminder_type: reminderForm.reminder_type,
+        notes: reminderForm.notes || null,
+        status: 'pending',
+      }]);
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Reminder created' });
+      setReminderForm({ title: '', reminder_date: '', reminder_time: '09:00', reminder_type: 'call', notes: '' });
+      loadData();
+    } catch (error) {
+      console.error('Error creating reminder:', error);
+      toast({ title: 'Error', description: 'Failed to create reminder', variant: 'destructive' });
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleUpdateReminder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReminder) return;
+    try {
+      setSavingReminder(true);
+      const reminderDateTime = `${reminderForm.reminder_date}T${reminderForm.reminder_time || '09:00'}:00`;
+      const { error } = await supabase.from('reminders').update({
+        title: reminderForm.title,
+        reminder_date: reminderDateTime,
+        reminder_type: reminderForm.reminder_type,
+        notes: reminderForm.notes || null,
+      }).eq('id', editingReminder.id);
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Reminder updated' });
+      setEditingReminder(null);
+      setReminderForm({ title: '', reminder_date: '', reminder_time: '09:00', reminder_type: 'call', notes: '' });
+      loadData();
+    } catch (error) {
+      console.error('Error updating reminder:', error);
+      toast({ title: 'Error', description: 'Failed to update reminder', variant: 'destructive' });
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleDeleteReminder = async (reminderId: string) => {
+    try {
+      const { error } = await supabase.from('reminders').delete().eq('id', reminderId);
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Reminder deleted' });
+      loadData();
+    } catch (error) {
+      console.error('Error deleting reminder:', error);
+      toast({ title: 'Error', description: 'Failed to delete reminder', variant: 'destructive' });
+    }
+  };
+
+  const handleToggleReminderStatus = async (reminder: any) => {
+    try {
+      const newStatus = reminder.status === 'completed' ? 'pending' : 'completed';
+      const { error } = await supabase.from('reminders').update({
+        status: newStatus,
+        completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+      }).eq('id', reminder.id);
+      if (error) throw error;
+      toast({ title: 'Success', description: `Reminder ${newStatus === 'completed' ? 'completed' : 'reopened'}` });
+      loadData();
+    } catch (error) {
+      console.error('Error updating reminder status:', error);
+      toast({ title: 'Error', description: 'Failed to update reminder', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Patient Profile Summary Card */}
@@ -1352,9 +1442,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         <CardContent className="py-3 px-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-primary" />
-              <span className="font-medium">Appointments:</span>
-              <Badge variant="secondary">{appointments.length}</Badge>
+              <Bell className="w-4 h-4 text-primary" />
+              <span className="font-medium">Reminders:</span>
+              <Badge variant="secondary">{patientReminders.length}</Badge>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <PhoneCall className="w-4 h-4 text-primary" />
@@ -1373,9 +1463,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  window.location.href = `/reminders`;
-                }}
+                onClick={() => setActiveTab('reminders')}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Create Reminder
@@ -1447,6 +1535,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   {activeTab === 'transfers' && <Plane className="w-4 h-4" />}
                   {activeTab === 'appointments' && <Calendar className="w-4 h-4" />}
                   {activeTab === 'documents' && <FileText className="w-4 h-4" />}
+                  {activeTab === 'reminders' && <Bell className="w-4 h-4" />}
                   {activeTab === 'calls' && <PhoneCall className="w-4 h-4" />}
                   <span>
                     {activeTab === 'notes' && 'Notes'}
@@ -1454,6 +1543,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     {activeTab === 'transfers' && 'Transfers'}
                     {activeTab === 'appointments' && 'Appointments'}
                     {activeTab === 'documents' && 'Documents'}
+                    {activeTab === 'reminders' && 'Reminders'}
                     {activeTab === 'calls' && `Calls (${callLogCount})`}
                   </span>
                 </div>
@@ -1490,6 +1580,12 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                   Documents
                 </div>
               </SelectItem>
+              <SelectItem value="reminders">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Reminders
+                </div>
+              </SelectItem>
               <SelectItem value="calls">
                 <div className="flex items-center gap-2">
                   <PhoneCall className="w-4 h-4" />
@@ -1500,7 +1596,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           </Select>
         ) : (
           /* Desktop: Original TabsList */
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="notes">
               <MessageSquare className="w-4 h-4 mr-2" />
               Notes
@@ -1520,6 +1616,10 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             <TabsTrigger value="documents">
               <FileText className="w-4 h-4 mr-2" />
               Documents
+            </TabsTrigger>
+            <TabsTrigger value="reminders">
+              <Bell className="w-4 h-4 mr-2" />
+              Reminders
             </TabsTrigger>
             <TabsTrigger value="calls">
               <PhoneCall className="w-4 h-4 mr-2" />
@@ -2675,6 +2775,173 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                         </CardContent>
                       </Card>
                     ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Reminders Tab */}
+        <TabsContent value="reminders" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-base md:text-lg">
+                  <Bell className="h-5 w-5" />
+                  {editingReminder ? 'Edit Reminder' : 'Add Reminder'}
+                </div>
+                {editingReminder && (
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    setEditingReminder(null);
+                    setReminderForm({ title: '', reminder_date: '', reminder_time: '09:00', reminder_type: 'call', notes: '' });
+                  }}>
+                    Cancel
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={editingReminder ? handleUpdateReminder : handleAddReminder} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Title *</Label>
+                    <Input
+                      value={reminderForm.title}
+                      onChange={(e) => setReminderForm({ ...reminderForm, title: e.target.value })}
+                      placeholder="Reminder title"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select value={reminderForm.reminder_type} onValueChange={(v) => setReminderForm({ ...reminderForm, reminder_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="call">Call</SelectItem>
+                        <SelectItem value="follow_up">Follow Up</SelectItem>
+                        <SelectItem value="appointment">Appointment</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Date *</Label>
+                    <Input
+                      type="date"
+                      value={reminderForm.reminder_date}
+                      onChange={(e) => setReminderForm({ ...reminderForm, reminder_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Time</Label>
+                    <Input
+                      type="time"
+                      value={reminderForm.reminder_time}
+                      onChange={(e) => setReminderForm({ ...reminderForm, reminder_time: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    value={reminderForm.notes}
+                    onChange={(e) => setReminderForm({ ...reminderForm, notes: e.target.value })}
+                    placeholder="Additional notes..."
+                    rows={2}
+                  />
+                </div>
+                <Button type="submit" disabled={savingReminder}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  {savingReminder ? 'Saving...' : editingReminder ? 'Update Reminder' : 'Add Reminder'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Clock className="h-5 w-5" />
+                Reminder History ({patientReminders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {patientReminders.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">No reminders yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {patientReminders.map(reminder => {
+                    const statusColors: Record<string, string> = {
+                      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300',
+                      completed: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300',
+                    };
+                    const typeLabels: Record<string, string> = {
+                      call: 'Call',
+                      follow_up: 'Follow Up',
+                      appointment: 'Appointment',
+                      other: 'Other',
+                    };
+                    return (
+                      <div key={reminder.id} className="p-3 border rounded-lg bg-muted/30">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{reminder.title}</span>
+                              <Badge className={statusColors[reminder.status] || ''}>
+                                {reminder.status === 'completed' ? 'Completed' : 'Pending'}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {typeLabels[reminder.reminder_type] || reminder.reminder_type}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(reminder.reminder_date), 'dd.MM.yyyy HH:mm')}
+                            </p>
+                            {reminder.notes && <p className="text-sm text-muted-foreground">{reminder.notes}</p>}
+                            {reminder.creator && (
+                              <p className="text-xs text-muted-foreground">
+                                By: {reminder.creator.first_name} {reminder.creator.last_name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleToggleReminderStatus(reminder)}
+                              title={reminder.status === 'completed' ? 'Reopen' : 'Complete'}
+                            >
+                              {reminder.status === 'completed' ? (
+                                <Clock className="h-4 w-4" />
+                              ) : (
+                                <Bell className="h-4 w-4 text-primary" />
+                              )}
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              setEditingReminder(reminder);
+                              const date = new Date(reminder.reminder_date);
+                              setReminderForm({
+                                title: reminder.title,
+                                reminder_date: date.toISOString().split('T')[0],
+                                reminder_time: format(date, 'HH:mm'),
+                                reminder_type: reminder.reminder_type,
+                                notes: reminder.notes || '',
+                              });
+                            }}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteReminder(reminder.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
