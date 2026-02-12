@@ -1353,7 +1353,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-primary" />
-              <span className="font-medium">Reminders:</span>
+              <span className="font-medium">Appointments:</span>
               <Badge variant="secondary">{appointments.length}</Badge>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -1370,16 +1370,16 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                 <PhoneCall className="w-4 h-4 mr-1" />
                 Log Call
               </Button>
-              {appointments.length === 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setActiveTab('appointments')}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Create Reminder
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  window.location.href = `/reminders`;
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Create Reminder
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -1452,7 +1452,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     {activeTab === 'notes' && 'Notes'}
                     {activeTab === 'payments' && 'Payments'}
                     {activeTab === 'transfers' && 'Transfers'}
-                    {activeTab === 'appointments' && 'Reminders'}
+                    {activeTab === 'appointments' && 'Appointments'}
                     {activeTab === 'documents' && 'Documents'}
                     {activeTab === 'calls' && `Calls (${callLogCount})`}
                   </span>
@@ -1481,7 +1481,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
               <SelectItem value="appointments">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  Reminders
+                  Appointments
                 </div>
               </SelectItem>
               <SelectItem value="documents">
@@ -1515,7 +1515,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
             </TabsTrigger>
             <TabsTrigger value="appointments">
               <Calendar className="w-4 h-4 mr-2" />
-              Reminders
+              Appointments
             </TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="w-4 h-4 mr-2" />
