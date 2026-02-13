@@ -1,13 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
-
-function encodeUtf8Subject(subject: string): string {
-  const encoder = new TextEncoder();
-  const encoded = base64Encode(encoder.encode(subject));
-  return `=?UTF-8?B?${encoded}?=`;
-}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -273,7 +266,7 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
           await client.send({
             from: `${fromName} <${fromEmail}>`,
             to: recipientEmail,
-            subject: encodeUtf8Subject(`Reminder: ${reminder.title} - ${targetName}`),
+            subject: `Reminder: ${reminder.title} - ${targetName}`,
             html: emailHtml,
           });
           console.log(`Email sent to: ${recipientEmail}`);
