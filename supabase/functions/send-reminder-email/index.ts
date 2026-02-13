@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+
+function encodeUtf8Subject(subject: string): string {
+  const encoder = new TextEncoder();
+  const encoded = base64Encode(encoder.encode(subject));
+  return `=?UTF-8?B?${encoded}?=`;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,7 +203,7 @@ serve(async (req: Request) => {
 <!-- Header with Logo -->
 <tr>
 <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
-<img src="https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/email-assets/miss-endo-logo.webp?v=1" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
+<img src="https://missendo.com/miss-endo-logo.webp" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
 <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Reminder</h1>
 <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">${reminder.title}</p>
 </td>
@@ -266,7 +273,7 @@ ${reminder.notes ? `<tr><td style="height: 12px;"></td></tr>
           await client.send({
             from: `${fromName} <${fromEmail}>`,
             to: recipientEmail,
-            subject: `Reminder: ${reminder.title} - ${targetName}`,
+            subject: encodeUtf8Subject(`Reminder: ${reminder.title} - ${targetName}`),
             html: emailHtml,
           });
           console.log(`Email sent to: ${recipientEmail}`);
