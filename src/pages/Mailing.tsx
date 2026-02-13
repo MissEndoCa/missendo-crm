@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { CampaignDetailDialog } from "@/components/CampaignDetailDialog";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -184,6 +185,10 @@ export default function Mailing() {
   // Campaign Detail Dialog
   const [detailCampaign, setDetailCampaign] = useState<EmailCampaign | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+  // Delete Campaign Dialog
+  const [deleteCampaignId, setDeleteCampaignId] = useState<string | null>(null);
+  const [deleteCampaignDialogOpen, setDeleteCampaignDialogOpen] = useState(false);
 
   // Queries
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -613,6 +618,34 @@ export default function Mailing() {
     }
   });
 
+  // Delete campaign mutation
+  const deleteCampaignMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      // First delete campaign recipients
+      const { error: recipientsError } = await supabase
+        .from('campaign_recipients')
+        .delete()
+        .eq('campaign_id', campaignId);
+      if (recipientsError) throw recipientsError;
+
+      // Then delete the campaign
+      const { error } = await supabase
+        .from('email_campaigns')
+        .delete()
+        .eq('id', campaignId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-campaigns'] });
+      setDeleteCampaignDialogOpen(false);
+      setDeleteCampaignId(null);
+      toast({ title: "Kampanya başarıyla silindi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Kampanya silinirken hata oluştu", description: error.message, variant: "destructive" });
+    }
+  });
+
   // Form helpers
   const resetTemplateForm = () => {
     setTemplateForm({ name: "", subject: "", content: "", html_content: "" });
@@ -969,6 +1002,17 @@ export default function Mailing() {
                                 }}
                               >
                                 <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setDeleteCampaignId(campaign.id);
+                                  setDeleteCampaignDialogOpen(true);
+                                }}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
@@ -2065,6 +2109,20 @@ export default function Mailing() {
             setDetailDialogOpen(false);
             openEditCampaign(campaign);
           }}
+        />
+
+        {/* Delete Campaign Dialog */}
+        <DeleteConfirmDialog
+          open={deleteCampaignDialogOpen}
+          onOpenChange={setDeleteCampaignDialogOpen}
+          onConfirm={() => {
+            if (deleteCampaignId) {
+              deleteCampaignMutation.mutate(deleteCampaignId);
+            }
+          }}
+          title="Kampanyayı silmek istediğinize emin misiniz?"
+          description="Bu işlem geri alınamaz. Kampanya ve tüm alıcı kayıtları kalıcı olarak silinecektir."
+          isDeleting={deleteCampaignMutation.isPending}
         />
       </div>
     </Layout>
