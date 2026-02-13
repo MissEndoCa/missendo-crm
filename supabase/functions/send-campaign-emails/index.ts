@@ -99,8 +99,7 @@ serve(async (req: Request) => {
 
     // Generate HTML email template with tracking pixel
     const generateEmailHtml = (recipientId: string, recipientName: string, content: string) => {
-      // Logo hosted in public folder - use the preview/published app URL
-      const logoUrl = "https://id-preview--8ef91ecf-bcb6-494f-a1f9-5e4395cf6f20.lovable.app/miss-endo-logo.webp";
+      const logoUrl = "https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/email-assets/miss-endo-logo.png";
       
       // Tracking pixel URL
       const trackingUrl = `${supabaseUrl}/functions/v1/track-email-open?rid=${recipientId}`;
