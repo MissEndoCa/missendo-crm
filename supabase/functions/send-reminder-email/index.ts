@@ -196,7 +196,7 @@ serve(async (req: Request) => {
 <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
 <!-- Header with Logo -->
 <tr>
-<td style="background-color: #5B4A8A; padding: 30px; text-align: center;">
+<td style="background-color: #603f8b; padding: 30px; text-align: center;">
 <img src="https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/email-assets/miss-endo-logo.png" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
 <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Reminder</h1>
 <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">${reminder.title}</p>
