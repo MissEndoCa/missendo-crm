@@ -203,7 +203,7 @@ serve(async (req: Request) => {
 <!-- Header with Logo -->
 <tr>
 <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 30px; text-align: center;">
-<img src="https://missendo.com/miss-endo-logo.webp" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
+<img src="https://xzcpxatfzgusrxfreeoi.supabase.co/storage/v1/object/public/email-assets/miss-endo-logo.png" alt="Miss Endo" width="120" style="max-width: 120px; height: auto; margin-bottom: 15px;">
 <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Reminder</h1>
 <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">${reminder.title}</p>
 </td>
