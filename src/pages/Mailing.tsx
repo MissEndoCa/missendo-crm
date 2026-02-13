@@ -98,6 +98,39 @@ export default function Mailing() {
   const queryClient = useQueryClient();
   const organizationId = profile?.organization_id;
 
+  // Upload email logo to Supabase Storage (ensures correct logo is always available)
+  useEffect(() => {
+    const uploadEmailLogo = async () => {
+      try {
+        const response = await fetch("/miss-endo-logo.png");
+        if (!response.ok) return;
+        const contentType = response.headers.get("content-type");
+        if (!contentType?.startsWith("image/")) return;
+        const blob = await response.blob();
+        
+        // Check if the stored file matches our local file size
+        const { data: existingFiles } = await supabase.storage
+          .from("email-assets")
+          .list("", { search: "miss-endo-logo.png" });
+        const existingFile = existingFiles?.find(f => f.name === "miss-endo-logo.png");
+        if (existingFile && (existingFile as any).metadata?.size === blob.size) {
+          return; // Already correct
+        }
+
+        await supabase.storage.from("email-assets").remove(["miss-endo-logo.png"]);
+        const { error } = await supabase.storage.from("email-assets").upload("miss-endo-logo.png", blob, {
+          contentType: "image/png",
+          upsert: true,
+        });
+        if (error) console.error("Failed to upload email logo:", error);
+        else console.log("Email logo uploaded to Supabase Storage successfully");
+      } catch (err) {
+        console.error("Error uploading email logo:", err);
+      }
+    };
+    uploadEmailLogo();
+  }, []);
+
   // State
   const [activeTab, setActiveTab] = useState("campaigns");
   const [searchTerm, setSearchTerm] = useState("");
