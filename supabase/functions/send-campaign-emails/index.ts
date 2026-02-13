@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -158,20 +157,12 @@ ${content.replace(/\{\{name\}\}/g, recipientName)}
         
         const emailHtml = generateEmailHtml(recipient.id, recipient.recipient_name || 'Valued Customer', personalizedContent);
 
-        // Encode subject with emoji support
-        const encodedSubject = /[^\x00-\x7F]/.test(personalizedSubject)
-          ? `=?UTF-8?B?${base64Encode(new TextEncoder().encode(personalizedSubject))}?=`
-          : personalizedSubject;
-
         await client.send({
           from: `${fromName} <${fromEmail}>`,
           to: recipient.email,
-          subject: encodedSubject,
-          mimeContent: [{
-            mimeType: "text/html; charset=utf-8",
-            content: emailHtml,
-            transferEncoding: "base64",
-          }],
+          subject: personalizedSubject,
+          content: "auto",
+          html: emailHtml,
         });
 
         // Update recipient status to sent

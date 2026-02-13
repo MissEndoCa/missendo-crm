@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.0";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -186,17 +186,13 @@ serve(async (req: Request) => {
     // Send email to all recipients
     try {
       const rawSubject = `🎉 Yeni Lead: ${leadFullName} - ${orgName}`;
-      const encodedSubject = `=?UTF-8?B?${base64Encode(new TextEncoder().encode(rawSubject))}?=`;
 
       await client.send({
         from: `${smtpFromName} <${smtpFromEmail}>`,
         to: uniqueEmails,
-        subject: encodedSubject,
-        mimeContent: [{
-          mimeType: "text/html; charset=utf-8",
-          content: htmlContent,
-          transferEncoding: "base64",
-        }],
+        subject: rawSubject,
+        content: "auto",
+        html: htmlContent,
       });
 
       console.log("Email sent successfully");
