@@ -148,6 +148,9 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
   const [reminderForm, setReminderForm] = useState({ title: '', reminder_date: '', reminder_time: '09:00', reminder_type: 'call', notes: '' });
   const [editingReminder, setEditingReminder] = useState<any | null>(null);
   const [savingReminder, setSavingReminder] = useState(false);
+  const [reminderNotifyOption, setReminderNotifyOption] = useState<'only_me' | 'all_admins' | 'specific'>('only_me');
+  const [reminderSelectedAdmins, setReminderSelectedAdmins] = useState<string[]>([]);
+  const [superAdmins, setSuperAdmins] = useState<{ id: string; first_name: string; last_name: string; email: string }[]>([]);
 
   const [appointmentForm, setAppointmentForm] = useState({
     appointment_date: '',
@@ -223,7 +226,32 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
 
   useEffect(() => {
     loadData();
+    loadSuperAdmins();
   }, [patientId]);
+
+  const loadSuperAdmins = async () => {
+    try {
+      const { data: adminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'super_admin');
+      
+      if (adminRoles && adminRoles.length > 0) {
+        const adminIds = adminRoles.map(r => r.user_id);
+        const { data: adminProfiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', adminIds)
+          .eq('is_active', true);
+        
+        if (adminProfiles) {
+          setSuperAdmins(adminProfiles);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading super admins:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -1272,7 +1300,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     try {
       setSavingReminder(true);
       const reminderDateTime = `${reminderForm.reminder_date}T${reminderForm.reminder_time || '09:00'}:00`;
-      const { error } = await supabase.from('reminders').insert([{
+      const notifyAllAdmins = reminderNotifyOption === 'all_admins';
+      const { data: reminderData, error } = await supabase.from('reminders').insert([{
         patient_id: patientId,
         organization_id: profile?.organization_id,
         created_by: profile?.id,
@@ -1281,10 +1310,23 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         reminder_type: reminderForm.reminder_type,
         notes: reminderForm.notes || null,
         status: 'pending',
-      }]);
+        notify_all_admins: notifyAllAdmins,
+      }]).select().single();
       if (error) throw error;
+
+      // Save specific admin selections
+      if (reminderNotifyOption === 'specific' && reminderSelectedAdmins.length > 0 && reminderData) {
+        const notifyRows = reminderSelectedAdmins.map(userId => ({
+          reminder_id: reminderData.id,
+          user_id: userId,
+        }));
+        await supabase.from('reminder_notify_users').insert(notifyRows);
+      }
+
       toast({ title: 'Success', description: 'Reminder created' });
       setReminderForm({ title: '', reminder_date: '', reminder_time: '09:00', reminder_type: 'call', notes: '' });
+      setReminderNotifyOption('only_me');
+      setReminderSelectedAdmins([]);
       loadData();
     } catch (error) {
       console.error('Error creating reminder:', error);
@@ -2853,6 +2895,39 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
                     rows={2}
                   />
                 </div>
+                {!editingReminder && (
+                  <div className="space-y-2">
+                    <Label>Email Notification</Label>
+                    <Select value={reminderNotifyOption} onValueChange={(v: 'only_me' | 'all_admins' | 'specific') => setReminderNotifyOption(v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="only_me">Only Me</SelectItem>
+                        <SelectItem value="all_admins">All Admins</SelectItem>
+                        <SelectItem value="specific">Select Specific Admins</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {reminderNotifyOption === 'specific' && (
+                      <div className="space-y-2 mt-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                        {superAdmins.map(admin => (
+                          <label key={admin.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={reminderSelectedAdmins.includes(admin.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setReminderSelectedAdmins(prev => [...prev, admin.id]);
+                                } else {
+                                  setReminderSelectedAdmins(prev => prev.filter(id => id !== admin.id));
+                                }
+                              }}
+                            />
+                            {admin.first_name} {admin.last_name} ({admin.email})
+                          </label>
+                        ))}
+                        {superAdmins.length === 0 && <p className="text-xs text-muted-foreground">No admins found</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <Button type="submit" disabled={savingReminder}>
                   <Plus className="w-4 h-4 mr-1" />
                   {savingReminder ? 'Saving...' : editingReminder ? 'Update Reminder' : 'Add Reminder'}

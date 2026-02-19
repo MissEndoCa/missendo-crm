@@ -5,12 +5,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, Phone, Mail, Building2, Pencil, FileText, Trash2 } from 'lucide-react';
 
-type CrmStatus = 'new_lead' | 'called_answered' | 'called_no_answer' | 'photos_received' | 'treatment_plan_sent' | 'follow_up' | 'confirmed' | 'completed' | 'lost';
+type CrmStatus = 'new_lead' | 'called_answered' | 'called_no_answer' | 'waiting_photos' | 'photos_received' | 'treatment_plan_sent' | 'follow_up' | 'confirmed' | 'completed' | 'lost';
 
 const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; color: string; bgColor: string }> = {
   new_lead: { label: 'New Lead', color: 'text-slate-600', bgColor: 'bg-white border border-slate-300' },
-  called_answered: { label: 'Answered - Waiting Photos', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  called_answered: { label: 'Answered', color: 'text-blue-700', bgColor: 'bg-blue-100' },
   called_no_answer: { label: 'No Answer - Call Back', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
+  waiting_photos: { label: 'Waiting Photos', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
   photos_received: { label: 'Case Under Review', color: 'text-purple-700', bgColor: 'bg-purple-100' },
   treatment_plan_sent: { label: 'Treatment Plan Sent', color: 'text-orange-700', bgColor: 'bg-orange-100' },
   follow_up: { label: 'Follow-up - Pending', color: 'text-amber-700', bgColor: 'bg-amber-100' },

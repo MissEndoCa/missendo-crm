@@ -1,0 +1,1 @@
+ALTER TYPE crm_status ADD VALUE 'waiting_photos' AFTER 'called_no_answer';

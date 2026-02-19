@@ -1732,6 +1732,7 @@ export type Database = {
         | "new_lead"
         | "called_answered"
         | "called_no_answer"
+        | "waiting_photos"
         | "photos_received"
         | "treatment_plan_sent"
         | "follow_up"
@@ -1887,6 +1888,7 @@ export const Constants = {
         "new_lead",
         "called_answered",
         "called_no_answer",
+        "waiting_photos",
         "photos_received",
         "treatment_plan_sent",
         "follow_up",
