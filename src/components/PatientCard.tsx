@@ -9,7 +9,7 @@ type CrmStatus = 'new_lead' | 'called_answered' | 'called_no_answer' | 'waiting_
 
 const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; color: string; bgColor: string }> = {
   new_lead: { label: 'New Lead', color: 'text-slate-600', bgColor: 'bg-white border border-slate-300' },
-  called_answered: { label: 'Answered', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  called_answered: { label: 'Answered - Hang Up', color: 'text-blue-700', bgColor: 'bg-blue-100' },
   called_no_answer: { label: 'No Answer - Call Back', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
   waiting_photos: { label: 'Waiting Photos', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
   photos_received: { label: 'Case Under Review', color: 'text-purple-700', bgColor: 'bg-purple-100' },
