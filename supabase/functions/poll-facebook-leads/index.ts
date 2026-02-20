@@ -29,6 +29,7 @@ interface Organization {
   name: string;
   fb_page_id: string;
   fb_page_access_token: string;
+  fb_user_access_token: string | null;
   fb_ad_account_id: string | null;
   fb_selected_campaigns: SelectedItem[];
   fb_selected_adsets: SelectedItem[];
@@ -98,7 +99,7 @@ serve(async (req: Request) => {
 
     const { data: organizations, error: orgError } = await supabase
       .from("organizations")
-      .select("id, name, fb_page_id, fb_page_access_token, fb_ad_account_id, fb_selected_campaigns, fb_selected_adsets")
+      .select("id, name, fb_page_id, fb_page_access_token, fb_user_access_token, fb_ad_account_id, fb_selected_campaigns, fb_selected_adsets")
       .not("fb_page_id", "is", null)
       .not("fb_page_access_token", "is", null);
 
@@ -120,7 +121,9 @@ serve(async (req: Request) => {
     for (const org of organizations as Organization[]) {
       try {
         console.log(`Processing organization: ${org.name} (${org.id})`);
-        const token = org.fb_page_access_token;
+        // Use user access token for Ads API calls, fall back to page token
+        const userToken = org.fb_user_access_token || org.fb_page_access_token;
+        const pageToken = org.fb_page_access_token;
 
         // Step 1: Get campaign IDs to poll
         const selectedCampaignIds = (org.fb_selected_campaigns || []).map(c => c.id);
@@ -140,7 +143,7 @@ serve(async (req: Request) => {
             adAccountIds = [org.fb_ad_account_id.startsWith("act_") ? org.fb_ad_account_id : `act_${org.fb_ad_account_id}`];
           } else {
             const accounts = await fetchAllPages<{ id: string }>(
-              `${FB_BASE}/me/adaccounts?access_token=${token}&fields=id&limit=100`
+              `${FB_BASE}/me/adaccounts?access_token=${userToken}&fields=id&limit=100`
             );
             adAccountIds = accounts.map(a => a.id);
           }
@@ -149,7 +152,7 @@ serve(async (req: Request) => {
 
           for (const accountId of adAccountIds) {
             const campaigns = await fetchAllPages<{ id: string }>(
-              `${FB_BASE}/${accountId}/campaigns?access_token=${token}&fields=id&effective_status=["ACTIVE"]&limit=100`
+              `${FB_BASE}/${accountId}/campaigns?access_token=${userToken}&fields=id&effective_status=["ACTIVE"]&limit=100`
             );
             campaignIds.push(...campaigns.map(c => c.id));
           }
@@ -167,7 +170,7 @@ serve(async (req: Request) => {
 
         for (const campaignId of campaignIds) {
           const ads = await fetchAllPages<{ id: string }>(
-            `${FB_BASE}/${campaignId}/ads?access_token=${token}&fields=id,adset_id&limit=100`
+            `${FB_BASE}/${campaignId}/ads?access_token=${userToken}&fields=id,adset_id&limit=100`
           );
 
           console.log(`Campaign ${campaignId}: found ${ads.length} ads`);
@@ -180,7 +183,7 @@ serve(async (req: Request) => {
 
             // Step 3: Get leads from each ad
             const leads = await fetchAllPages<FacebookLead>(
-              `${FB_BASE}/${ad.id}/leads?access_token=${token}&fields=id,created_time,field_data,ad_id,adset_id,campaign_id&limit=100`
+              `${FB_BASE}/${ad.id}/leads?access_token=${pageToken}&fields=id,created_time,field_data,ad_id,adset_id,campaign_id&limit=100`
             );
 
             for (const lead of leads) {

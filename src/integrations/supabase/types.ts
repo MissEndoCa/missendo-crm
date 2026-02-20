@@ -796,6 +796,7 @@ export type Database = {
           fb_page_name: string | null
           fb_selected_adsets: Json | null
           fb_selected_campaigns: Json | null
+          fb_user_access_token: string | null
           fb_user_id: string | null
           id: string
           is_active: boolean | null
@@ -819,6 +820,7 @@ export type Database = {
           fb_page_name?: string | null
           fb_selected_adsets?: Json | null
           fb_selected_campaigns?: Json | null
+          fb_user_access_token?: string | null
           fb_user_id?: string | null
           id?: string
           is_active?: boolean | null
@@ -842,6 +844,7 @@ export type Database = {
           fb_page_name?: string | null
           fb_selected_adsets?: Json | null
           fb_selected_campaigns?: Json | null
+          fb_user_access_token?: string | null
           fb_user_id?: string | null
           id?: string
           is_active?: boolean | null

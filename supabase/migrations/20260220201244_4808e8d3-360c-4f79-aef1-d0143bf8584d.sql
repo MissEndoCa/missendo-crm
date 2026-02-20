@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN fb_user_access_token text;

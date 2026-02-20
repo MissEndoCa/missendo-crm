@@ -506,6 +506,7 @@ serve(async (req) => {
           .from('organizations')
           .update({
             fb_page_access_token: pageAccessToken,
+            fb_user_access_token: longLivedToken,
             fb_page_id: pageId,
             fb_page_name: pageName || selectedPage.name,
             fb_connected_at: new Date().toISOString(),
@@ -600,6 +601,7 @@ serve(async (req) => {
           .from('organizations')
           .update({
             fb_page_access_token: null,
+            fb_user_access_token: null,
             fb_page_id: null,
             fb_page_name: null,
             fb_connected_at: null,
