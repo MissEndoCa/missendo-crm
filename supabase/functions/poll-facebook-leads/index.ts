@@ -7,16 +7,16 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const FB_API_VERSION = "v21.0";
+const FB_BASE = `https://graph.facebook.com/${FB_API_VERSION}`;
+
 interface FacebookLead {
   id: string;
   created_time: string;
   ad_id?: string;
   adset_id?: string;
   campaign_id?: string;
-  field_data: Array<{
-    name: string;
-    values: string[];
-  }>;
+  field_data: Array<{ name: string; values: string[] }>;
 }
 
 interface SelectedItem {
@@ -29,12 +29,62 @@ interface Organization {
   name: string;
   fb_page_id: string;
   fb_page_access_token: string;
+  fb_ad_account_id: string | null;
   fb_selected_campaigns: SelectedItem[];
   fb_selected_adsets: SelectedItem[];
 }
 
+// Helper: fetch all pages from a paginated Facebook API response
+async function fetchAllPages<T>(url: string): Promise<T[]> {
+  const items: T[] = [];
+  let nextUrl: string | null = url;
+  while (nextUrl) {
+    const res = await fetch(nextUrl);
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("FB API error:", err);
+      break;
+    }
+    const json = await res.json();
+    if (json.data) items.push(...json.data);
+    nextUrl = json.paging?.next || null;
+  }
+  return items;
+}
+
+// Parse lead field_data into structured fields
+function parseLeadFields(fieldData: Array<{ name: string; values: string[] }>) {
+  let firstName = "";
+  let lastName = "";
+  let phone = "";
+  let email = "";
+  let country = "";
+
+  for (const field of fieldData) {
+    const value = field.values?.[0] || "";
+    const name = field.name.toLowerCase();
+
+    if (name.includes("first_name") || name === "ad") {
+      firstName = value;
+    } else if (name.includes("last_name") || name === "soyad") {
+      lastName = value;
+    } else if (name.includes("full_name") || name === "full name") {
+      const parts = value.split(" ");
+      firstName = parts[0] || "";
+      lastName = parts.slice(1).join(" ") || "";
+    } else if (name.includes("phone") || name.includes("telefon")) {
+      phone = value;
+    } else if (name.includes("email") || name.includes("e-posta")) {
+      email = value;
+    } else if (name.includes("country") || name.includes("ülke")) {
+      country = value;
+    }
+  }
+
+  return { firstName, lastName, phone, email, country };
+}
+
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -44,28 +94,20 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log("Starting Facebook lead polling...");
+    console.log("Starting Facebook lead polling (Ad Account method)...");
 
-    // Get all organizations with Facebook connection
     const { data: organizations, error: orgError } = await supabase
       .from("organizations")
-      .select("id, name, fb_page_id, fb_page_access_token, fb_selected_campaigns, fb_selected_adsets")
+      .select("id, name, fb_page_id, fb_page_access_token, fb_ad_account_id, fb_selected_campaigns, fb_selected_adsets")
       .not("fb_page_id", "is", null)
       .not("fb_page_access_token", "is", null);
 
-    if (orgError) {
-      console.error("Error fetching organizations:", orgError);
-      throw orgError;
-    }
+    if (orgError) throw orgError;
 
     if (!organizations || organizations.length === 0) {
       console.log("No organizations with Facebook connection found");
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "No organizations with Facebook connection",
-          newLeadsCount: 0 
-        }),
+        JSON.stringify({ success: true, message: "No organizations with Facebook connection", newLeadsCount: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -78,161 +120,123 @@ serve(async (req: Request) => {
     for (const org of organizations as Organization[]) {
       try {
         console.log(`Processing organization: ${org.name} (${org.id})`);
+        const token = org.fb_page_access_token;
 
-        // Get leadgen forms for the page
-        const formsResponse = await fetch(
-          `https://graph.facebook.com/v21.0/${org.fb_page_id}/leadgen_forms?access_token=${org.fb_page_access_token}`
-        );
+        // Step 1: Get campaign IDs to poll
+        const selectedCampaignIds = (org.fb_selected_campaigns || []).map(c => c.id);
+        const selectedAdsetIds = new Set((org.fb_selected_adsets || []).map(a => a.id));
+        let campaignIds: string[] = [];
 
-        if (!formsResponse.ok) {
-          const errorText = await formsResponse.text();
-          console.error(`Error fetching forms for ${org.name}:`, errorText);
-          results.push({ org: org.name, newLeads: 0, error: "Failed to fetch forms" });
+        if (selectedCampaignIds.length > 0) {
+          // Use pre-selected campaigns
+          campaignIds = selectedCampaignIds;
+          console.log(`Using ${campaignIds.length} selected campaigns for ${org.name}`);
+        } else {
+          // No filter: discover ad accounts and get all active campaigns
+          console.log(`No campaign filter for ${org.name}, discovering ad accounts...`);
+
+          let adAccountIds: string[] = [];
+          if (org.fb_ad_account_id) {
+            adAccountIds = [org.fb_ad_account_id.startsWith("act_") ? org.fb_ad_account_id : `act_${org.fb_ad_account_id}`];
+          } else {
+            const accounts = await fetchAllPages<{ id: string }>(
+              `${FB_BASE}/me/adaccounts?access_token=${token}&fields=id&limit=100`
+            );
+            adAccountIds = accounts.map(a => a.id);
+          }
+
+          console.log(`Found ${adAccountIds.length} ad accounts for ${org.name}`);
+
+          for (const accountId of adAccountIds) {
+            const campaigns = await fetchAllPages<{ id: string }>(
+              `${FB_BASE}/${accountId}/campaigns?access_token=${token}&fields=id&effective_status=["ACTIVE"]&limit=100`
+            );
+            campaignIds.push(...campaigns.map(c => c.id));
+          }
+          console.log(`Found ${campaignIds.length} active campaigns for ${org.name}`);
+        }
+
+        if (campaignIds.length === 0) {
+          console.log(`No campaigns found for ${org.name}, skipping`);
+          results.push({ org: org.name, newLeads: 0 });
           continue;
         }
 
-        const formsData = await formsResponse.json();
-        const forms = formsData.data || [];
-
-        console.log(`Found ${forms.length} leadgen forms for ${org.name}`);
-
+        // Step 2: Get ads from campaigns
         let orgNewLeads = 0;
 
-        // Get campaign/adset filter IDs
-        const selectedCampaignIds = new Set((org.fb_selected_campaigns || []).map(c => c.id));
-        const selectedAdsetIds = new Set((org.fb_selected_adsets || []).map(a => a.id));
-        const hasFilters = selectedCampaignIds.size > 0 || selectedAdsetIds.size > 0;
-
-        console.log(`Org ${org.name} filters - Campaigns: ${selectedCampaignIds.size}, Adsets: ${selectedAdsetIds.size}`);
-
-        for (const form of forms) {
-          // Get leads from the form with ad info (last 7 days)
-          const leadsResponse = await fetch(
-            `https://graph.facebook.com/v21.0/${form.id}/leads?access_token=${org.fb_page_access_token}&limit=100&fields=id,created_time,field_data,ad_id,adset_id,campaign_id`
+        for (const campaignId of campaignIds) {
+          const ads = await fetchAllPages<{ id: string }>(
+            `${FB_BASE}/${campaignId}/ads?access_token=${token}&fields=id,adset_id&limit=100`
           );
 
-          if (!leadsResponse.ok) {
-            console.error(`Error fetching leads from form ${form.id}`);
-            continue;
-          }
+          console.log(`Campaign ${campaignId}: found ${ads.length} ads`);
 
-          const leadsData = await leadsResponse.json();
-          const leads: FacebookLead[] = leadsData.data || [];
-
-          console.log(`Found ${leads.length} leads in form ${form.id}`);
-
-          for (const lead of leads) {
-            // Check campaign/adset filters before processing
-            if (hasFilters) {
-              const leadCampaignId = lead.campaign_id;
-              const leadAdsetId = lead.adset_id;
-
-              // If we have campaign filters, check if this lead's campaign matches
-              if (selectedCampaignIds.size > 0 && leadCampaignId) {
-                if (!selectedCampaignIds.has(leadCampaignId)) {
-                  console.log(`Skipping lead ${lead.id} - campaign ${leadCampaignId} not in filter`);
-                  continue;
-                }
-              }
-
-              // If we have adset filters, check if this lead's adset matches
-              if (selectedAdsetIds.size > 0 && leadAdsetId) {
-                if (!selectedAdsetIds.has(leadAdsetId)) {
-                  console.log(`Skipping lead ${lead.id} - adset ${leadAdsetId} not in filter`);
-                  continue;
-                }
-              }
-            }
-
-            // Parse lead data
-            const fieldData = lead.field_data || [];
-            let firstName = "";
-            let lastName = "";
-            let phone = "";
-            let email = "";
-            let country = "";
-
-            for (const field of fieldData) {
-              const value = field.values?.[0] || "";
-              const fieldName = field.name.toLowerCase();
-
-              if (fieldName.includes("first_name") || fieldName === "ad") {
-                firstName = value;
-              } else if (fieldName.includes("last_name") || fieldName === "soyad") {
-                lastName = value;
-              } else if (fieldName.includes("full_name") || fieldName === "full name") {
-                const parts = value.split(" ");
-                firstName = parts[0] || "";
-                lastName = parts.slice(1).join(" ") || "";
-              } else if (fieldName.includes("phone") || fieldName.includes("telefon")) {
-                phone = value;
-              } else if (fieldName.includes("email") || fieldName.includes("e-posta")) {
-                email = value;
-              } else if (fieldName.includes("country") || fieldName.includes("ülke")) {
-                country = value;
-              }
-            }
-
-            // Skip if no phone number
-            if (!phone) {
-              console.log(`Skipping lead ${lead.id} - no phone number`);
+          for (const ad of ads) {
+            // Filter by adset if filters exist
+            if (selectedAdsetIds.size > 0 && ad.adset_id && !selectedAdsetIds.has(ad.adset_id)) {
               continue;
             }
 
-            // Normalize phone number (remove spaces, dashes)
-            const normalizedPhone = phone.replace(/[\s\-\(\)]/g, "");
+            // Step 3: Get leads from each ad
+            const leads = await fetchAllPages<FacebookLead>(
+              `${FB_BASE}/${ad.id}/leads?access_token=${token}&fields=id,created_time,field_data,ad_id,adset_id,campaign_id&limit=100`
+            );
 
-            // Check for duplicate (same phone in same organization)
-            const { data: existingLead } = await supabase
-              .from("leads")
-              .select("id")
-              .eq("organization_id", org.id)
-              .eq("phone", normalizedPhone)
-              .maybeSingle();
+            for (const lead of leads) {
+              const { firstName, lastName, phone, email, country } = parseLeadFields(lead.field_data || []);
 
-            if (existingLead) {
-              console.log(`Skipping duplicate lead: ${normalizedPhone}`);
-              continue;
-            }
+              if (!phone) {
+                console.log(`Skipping lead ${lead.id} - no phone number`);
+                continue;
+              }
 
-            // Insert new lead
-            const { error: insertError } = await supabase.from("leads").insert({
-              first_name: firstName || "Unknown",
-              last_name: lastName || "",
-              phone: normalizedPhone,
-              email: email || null,
-              country: country || null,
-              organization_id: org.id,
-              source: "Facebook Lead Ads",
-              status: "new",
-              notes: `Facebook Lead ID: ${lead.id}`,
-            });
+              const normalizedPhone = phone.replace(/[\s\-\(\)]/g, "");
 
-            if (insertError) {
-              console.error(`Error inserting lead:`, insertError);
-            } else {
-              console.log(`New lead added: ${firstName} ${lastName} (${normalizedPhone})`);
-              orgNewLeads++;
-              totalNewLeads++;
+              // Duplicate check
+              const { data: existingLead } = await supabase
+                .from("leads")
+                .select("id")
+                .eq("organization_id", org.id)
+                .eq("phone", normalizedPhone)
+                .maybeSingle();
+
+              if (existingLead) continue;
+
+              const { error: insertError } = await supabase.from("leads").insert({
+                first_name: firstName || "Unknown",
+                last_name: lastName || "",
+                phone: normalizedPhone,
+                email: email || null,
+                country: country || null,
+                organization_id: org.id,
+                source: "Facebook Lead Ads",
+                status: "new",
+                notes: `Facebook Lead ID: ${lead.id}`,
+              });
+
+              if (insertError) {
+                console.error(`Error inserting lead:`, insertError);
+              } else {
+                console.log(`New lead added: ${firstName} ${lastName} (${normalizedPhone})`);
+                orgNewLeads++;
+                totalNewLeads++;
+              }
             }
           }
         }
 
         results.push({ org: org.name, newLeads: orgNewLeads });
-      } catch (orgError) {
-        console.error(`Error processing org ${org.name}:`, orgError);
-        results.push({ org: org.name, newLeads: 0, error: String(orgError) });
+      } catch (orgErr) {
+        console.error(`Error processing org ${org.name}:`, orgErr);
+        results.push({ org: org.name, newLeads: 0, error: String(orgErr) });
       }
     }
 
     console.log(`Polling complete. Total new leads: ${totalNewLeads}`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        newLeadsCount: totalNewLeads,
-        results,
-      }),
+      JSON.stringify({ success: true, newLeadsCount: totalNewLeads, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
