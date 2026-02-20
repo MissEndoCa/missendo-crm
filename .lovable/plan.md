@@ -1,58 +1,53 @@
 
+# Facebook Lead Polling - Permission Hatasi Cozumu
 
-# CRM Status Ayirma ve Reminder Mail Secimi
+## Sorun
 
-## 1. CRM Status: "Answered - Waiting Photos" Ayirma
+`poll-facebook-leads` edge function'i lead'leri cekmek icin `/{page_id}/leadgen_forms` endpoint'ini kullaniyor. Facebook bu endpoint icin **`pages_manage_ads`** iznini gerektiriyor ancak uygulamada bu izin yok ve Meta'dan almak da zor/gereksiz.
 
-Mevcut `called_answered` statusu "Answered - Waiting Photos" olarak birlesik. Bunu ikiye ayiracagiz.
+Mevcut izinler: `pages_show_list`, `pages_read_engagement`, `leads_retrieval`, `pages_manage_metadata`, `ads_read`
 
-### Veritabani Degisikligi
-- `crm_status` enum tipine yeni bir deger eklenecek: `waiting_photos`
-- Mevcut `called_answered` degeri korunacak, sadece label'i "Answered" olarak guncellenecek
+## Cozum
 
-### Kod Degisiklikleri
+Leadgen formlarina sayfa uzerinden erismek yerine, **`ads_read`** izniyle Ad Account uzerinden reklam bilgilerini cekip, her reklamdan lead'leri dogrudan alacagiz.
 
-**Dosya: `src/pages/Patients.tsx`**
-- `CrmStatus` type'ina `waiting_photos` eklenecek
-- `CRM_STATUS_CONFIG` icerisinde:
-  - `called_answered` label'i `"Answered"` olarak degisecek
-  - Yeni `waiting_photos` statusu eklenecek: `{ label: 'Waiting Photos', color: 'text-cyan-700', bgColor: 'bg-cyan-100' }`
-- Siralama: `new_lead` > `called_answered` > `called_no_answer` > `waiting_photos` > `photos_received` > ...
+### Yeni Akis
 
-**Dosya: `src/components/PatientCard.tsx`**
-- Ayni `CrmStatus` type ve `CRM_STATUS_CONFIG` guncellemeleri
-
----
-
-## 2. Reminder Olusturulurken Mail Alici Secimi
-
-Reminders sayfasinda (`src/pages/Reminders.tsx`) zaten "Sadece bana", "Tum adminlere" ve "Belirli adminlere" secenekleri mevcut. Ancak `PatientDetails.tsx` icerisindeki reminder olusturma formunda bu secenekler yok - `notify_all_admins: true` olarak sabit kodlanmis.
-
-### Kod Degisiklikleri
-
-**Dosya: `src/components/PatientDetails.tsx`**
-- Reminder olusturma formuna uc secenekli bir bildirim ayari eklenecek:
-  1. **Sadece bana** - sadece olusturan kisiye mail gider
-  2. **Tum Adminlere** - tum super adminlere mail gider
-  3. **Belirli Adminleri Sec** - secilen kisilere mail gider
-- Super admin listesi `profiles` + `user_roles` tablolarindan cekilecek (Reminders.tsx'teki mevcut pattern kullanilacak)
-- Secilen adminler `reminder_notify_users` tablosuna kaydedilecek
-- Form state'ine `notify_all_admins` ve `selected_admins` alanlari eklenecek
-
----
-
-## Teknik Detaylar
-
-### Veritabani Migrasyonu
-```sql
-ALTER TYPE crm_status ADD VALUE 'waiting_photos' AFTER 'called_no_answer';
+Mevcut (calismayan):
+```text
+Page -> leadgen_forms -> form_id -> leads (pages_manage_ads GEREKLI)
 ```
 
-### Degisecek Dosyalar
-| Dosya | Degisiklik |
-|-------|-----------|
-| DB Migration | `crm_status` enum'a `waiting_photos` ekleme |
-| `src/pages/Patients.tsx` | CrmStatus type + config guncelleme |
-| `src/components/PatientCard.tsx` | CrmStatus type + config guncelleme |
-| `src/components/PatientDetails.tsx` | Reminder formuna bildirim alici secimi ekleme |
+Yeni (calisacak):
+```text
+Ad Account -> Campaigns (filtered) -> Ads -> ad_id/leads (ads_read + leads_retrieval YETERLI)
+```
 
+### Degisecek Dosya
+
+**`supabase/functions/poll-facebook-leads/index.ts`**
+
+Mevcut `/{page_id}/leadgen_forms` yaklasimindan tamamen vazgecilecek. Yerine:
+
+1. Organizasyonun `fb_page_access_token` ile Facebook kullanicisinin ad account'larini cek (`/me/adaccounts`)
+2. Secili kampanyalari (`fb_selected_campaigns`) kullanarak bu kampanyalardaki reklamlari cek (`/{campaign_id}/ads`)
+3. Her reklam icin lead'leri cek (`/{ad_id}/leads`) - bu endpoint `leads_retrieval` + `ads_read` izniyle calisiyor
+4. Mevcut lead isleme mantigi (field_data parse, duplicate kontrolu, insert) aynen korunacak
+
+### Eger Kampanya Filtresi Yoksa
+
+Kampanya filtresi secilmemisse, tum ad account'lardaki aktif kampanyalardaki reklamlardan lead cekilecek.
+
+### Teknik Detaylar
+
+- `/{ad_id}/leads` endpoint'i `leads_retrieval` izniyle calisiyor
+- `/{campaign_id}/ads` endpoint'i `ads_read` izniyle calisiyor  
+- Pagination destegi eklenecek (Facebook API'nin `paging.next` alani)
+- Hata yonetimi her asamada korunacak
+- Mevcut duplicate kontrolu ve lead ekleme mantigi degismeyecek
+
+### Avantajlar
+
+- `pages_manage_ads` iznine ihtiyac kalmayacak
+- Mevcut izinlerle (`ads_read` + `leads_retrieval`) calisacak
+- Kampanya filtresi ile daha hedefli lead cekimi
