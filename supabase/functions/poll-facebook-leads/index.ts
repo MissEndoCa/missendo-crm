@@ -85,6 +85,22 @@ function parseLeadFields(fieldData: Array<{ name: string; values: string[] }>) {
   return { firstName, lastName, phone, email, country };
 }
 
+// Demo lead data pools
+const DEMO_FIRST_NAMES = ["Mehmet", "Ayşe", "Fatma", "Ali", "Zeynep", "Mustafa", "Elif", "Ahmet", "Emine", "Hasan", "Maria", "John", "Elena", "Ahmed", "Sara"];
+const DEMO_LAST_NAMES = ["Yılmaz", "Kaya", "Demir", "Çelik", "Şahin", "Öztürk", "Arslan", "Koç", "Schmidt", "Johnson", "Petrov", "Al-Rashid", "García"];
+const DEMO_COUNTRIES = ["Turkey", "Germany", "United Kingdom", "Netherlands", "France", "Saudi Arabia", "UAE", "Iraq", "Bulgaria"];
+
+function generateDemoLead() {
+  const firstName = DEMO_FIRST_NAMES[Math.floor(Math.random() * DEMO_FIRST_NAMES.length)];
+  const lastName = DEMO_LAST_NAMES[Math.floor(Math.random() * DEMO_LAST_NAMES.length)];
+  const country = DEMO_COUNTRIES[Math.floor(Math.random() * DEMO_COUNTRIES.length)];
+  const phone = `+90${Math.floor(5000000000 + Math.random() * 500000000)}`;
+  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(Math.random() * 100)}@gmail.com`;
+  const fbLeadId = `demo_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+  return { firstName, lastName, phone, email, country, fbLeadId };
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -94,6 +110,55 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check for demo mode
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch { /* no body */ }
+
+    const isDemo = body?.demo === true;
+    const organizationId = body?.organization_id;
+
+    if (isDemo && organizationId) {
+      console.log("Demo mode: generating test lead...");
+      const demo = generateDemoLead();
+
+      // Duplicate check
+      const { data: existingLead } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("phone", demo.phone)
+        .maybeSingle();
+
+      if (existingLead) {
+        return new Response(
+          JSON.stringify({ success: true, message: "Demo lead already exists", newLeadsCount: 0 }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error: insertError } = await supabase.from("leads").insert({
+        first_name: demo.firstName,
+        last_name: demo.lastName,
+        phone: demo.phone,
+        email: demo.email,
+        country: demo.country,
+        organization_id: organizationId,
+        source: "Facebook Lead Ads",
+        status: "new",
+        notes: `Facebook Lead ID: ${demo.fbLeadId}`,
+      });
+
+      if (insertError) throw insertError;
+
+      console.log(`Demo lead added: ${demo.firstName} ${demo.lastName} (${demo.phone})`);
+      return new Response(
+        JSON.stringify({ success: true, newLeadsCount: 1, results: [{ org: "demo", newLeads: 1 }] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     console.log("Starting Facebook lead polling (Ad Account method)...");
 
