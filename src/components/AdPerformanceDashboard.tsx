@@ -29,6 +29,7 @@ export function AdPerformanceDashboard() {
   const [datePreset, setDatePreset] = useState('last_30d');
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
+  const [currency, setCurrency] = useState<string>('USD');
 
   const fetchInsights = async () => {
     setLoading(true);
@@ -41,6 +42,9 @@ export function AdPerformanceDashboard() {
 
       if (fnError) throw new Error(fnError.message);
 
+      if (data?.currency) {
+        setCurrency(data.currency);
+      }
       if (data?.error) {
         setError(data.error);
         setCampaigns([]);
@@ -76,7 +80,13 @@ export function AdPerformanceDashboard() {
   const avgCpc = totals.clicks > 0 ? (totals.spend / totals.clicks).toFixed(2) : '0.00';
 
   const formatNumber = (n: number) => n.toLocaleString();
-  const formatCurrency = (n: number) => `$${n.toFixed(2)}`;
+  const formatCurrency = (n: number) => {
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+    } catch {
+      return `${n.toFixed(2)} ${currency}`;
+    }
+  };
 
   return (
     <Card>
