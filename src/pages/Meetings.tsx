@@ -131,10 +131,10 @@ export default function Meetings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('marketer_meetings' as any)
-        .select('*')
+        .select('*, profiles:created_by(first_name, last_name)')
         .order('meeting_date', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as Meeting[];
+      return (data || []) as unknown as (Meeting & { profiles: { first_name: string; last_name: string } | null })[];
     },
     enabled: !!orgId,
   });
@@ -472,7 +472,7 @@ export default function Meetings() {
                 <TableHead><SortHeader field="contact_name" label="Contact" /></TableHead>
                 <TableHead><SortHeader field="city" label="City" /></TableHead>
                 <TableHead><SortHeader field="result" label="Result" /></TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead>Created By</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -510,8 +510,8 @@ export default function Meetings() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                      {m.notes || '-'}
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(m as any).profiles ? `${(m as any).profiles.first_name} ${(m as any).profiles.last_name}` : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
