@@ -102,12 +102,39 @@
  
                    console.log('Parsed fields:', fields);
  
-                   // Extract common field names (Facebook uses various naming conventions)
-                   const firstName = fields.first_name || fields.firstname || fields.name?.split(' ')[0] || 'Facebook';
-                   const lastName = fields.last_name || fields.lastname || fields.name?.split(' ').slice(1).join(' ') || 'Lead';
-                   const email = fields.email || fields.e_mail || null;
-                   const phone = fields.phone_number || fields.phone || fields.telefon || fields.tel || 'N/A';
-                   const country = fields.country || fields.ulke || fields.ülke || null;
+                    // Extract common field names (Facebook uses various naming conventions per language)
+                    // Full name fields (check first, then split)
+                    const fullName = fields.full_name || fields['full name'] || fields.fullname ||
+                      fields['ad_soyad'] || fields['ad soyad'] || fields['tam ad'] || fields['tam_ad'] ||
+                      fields['полное_имя'] || fields['nome_completo'] || fields['nom_complet'] ||
+                      fields.name || '';
+                    
+                    const fnDirect = fields.first_name || fields.firstname || fields.ad || 
+                      fields['adınız'] || fields.isim || fields.имя || fields.nome || fields.prénom || '';
+                    const lnDirect = fields.last_name || fields.lastname || fields.soyad || 
+                      fields['soyadınız'] || fields.фамилия || fields.cognome || fields.nom || '';
+                    
+                    let firstName = fnDirect;
+                    let lastName = lnDirect;
+                    
+                    // If no direct first/last name, try full name
+                    if (!firstName && fullName) {
+                      const parts = fullName.trim().split(/\s+/);
+                      firstName = parts[0] || '';
+                      lastName = parts.slice(1).join(' ') || lastName;
+                    }
+                    
+                    firstName = firstName || 'Unknown';
+                    lastName = lastName || '';
+                    
+                    const email = fields.email || fields['e-posta'] || fields.eposta || 
+                      fields['e_mail'] || fields.mail || fields['эл._адрес'] || fields['электронная_почта'] || null;
+                    const phone = fields.phone_number || fields.phone || fields.telefon || 
+                      fields.tel || fields['cep_telefonu'] || fields['номер_телефона'] || fields.mobile || 'N/A';
+                    const country = fields.country || fields.ulke || fields.ülke || 
+                      fields.страна || fields.paese || fields.pays || null;
+                    
+                    console.log(`Parsed lead: firstName="${firstName}", lastName="${lastName}", phone="${phone}", email="${email}"`);
  
                    // Check for duplicate leads (same phone in same org)
                    const { data: existingLead } = await supabase
