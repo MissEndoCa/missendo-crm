@@ -96,6 +96,8 @@ function parseLeadFields(fieldData: Array<{ name: string; values: string[] }>) {
     else if (
       name === "full_name" || name === "full name" || name === "ad_soyad" ||
       name === "tam ad" || name === "tam_ad" || name === "fullname" ||
+      name === "imię_i_nazwisko" || name === "nombre_completo" || name === "vollständiger_name" ||
+      name === "nome_completo" || name === "nom_complet" ||
       name.includes("full_name") || name.includes("full name")
     ) {
       const parts = value.trim().split(/\s+/);
