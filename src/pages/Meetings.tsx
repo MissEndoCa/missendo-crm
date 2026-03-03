@@ -131,10 +131,27 @@ export default function Meetings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('marketer_meetings' as any)
-        .select('*, profiles:created_by(first_name, last_name)')
+        .select('*')
         .order('meeting_date', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as (Meeting & { profiles: { first_name: string; last_name: string } | null })[];
+
+      // Fetch creator profiles separately (no FK exists)
+      const creatorIds = [...new Set((data || []).map((m: any) => m.created_by).filter(Boolean))];
+      let profilesMap: Record<string, { first_name: string; last_name: string }> = {};
+      if (creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', creatorIds);
+        if (profiles) {
+          profilesMap = Object.fromEntries(profiles.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]));
+        }
+      }
+
+      return (data || []).map((m: any) => ({
+        ...m,
+        profiles: profilesMap[m.created_by] || null,
+      })) as (Meeting & { profiles: { first_name: string; last_name: string } | null })[];
     },
     enabled: !!orgId,
   });
