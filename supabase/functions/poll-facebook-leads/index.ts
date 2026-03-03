@@ -96,6 +96,8 @@ function parseLeadFields(fieldData: Array<{ name: string; values: string[] }>) {
     else if (
       name === "full_name" || name === "full name" || name === "ad_soyad" ||
       name === "tam ad" || name === "tam_ad" || name === "fullname" ||
+      name === "imię_i_nazwisko" || name === "nombre_completo" || name === "vollständiger_name" ||
+      name === "nome_completo" || name === "nom_complet" ||
       name.includes("full_name") || name.includes("full name")
     ) {
       const parts = value.trim().split(/\s+/);
@@ -107,6 +109,8 @@ function parseLeadFields(fieldData: Array<{ name: string; values: string[] }>) {
       name === "phone_number" || name === "phone" || name === "telefon" ||
       name === "tel" || name === "telefon_numarası" || name === "cep_telefonu" ||
       name === "mobile" || name === "cellphone" ||
+      name === "numer_telefonu" || name === "número_de_teléfono" || name === "telefonnummer" ||
+      name === "номер_телефона" ||
       name.includes("phone") || name.includes("telefon") || name.includes("tel_")
     ) {
       phone = value;
@@ -115,6 +119,8 @@ function parseLeadFields(fieldData: Array<{ name: string; values: string[] }>) {
     else if (
       name === "email" || name === "e-posta" || name === "eposta" ||
       name === "mail" || name === "e_posta" || name === "e-mail" ||
+      name === "adres_e-mail" || name === "correo_electrónico" || name === "e-mail-adresse" ||
+      name === "эл._адрес" || name === "электронная_почта" ||
       name.includes("email") || name.includes("e-posta") || name.includes("mail")
     ) {
       email = value;
