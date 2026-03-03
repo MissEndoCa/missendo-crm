@@ -19,6 +19,12 @@ const REQUIRED_PERMISSIONS = [
   'pages_manage_metadata'
 ];
 
+
+const normalizeAdAccountId = (adAccountId: string) => {
+  if (!adAccountId) return adAccountId;
+  return adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+};
+
 async function checkUserPermissions(accessToken: string): Promise<{
   granted: string[];
   declined: string[];
@@ -242,20 +248,22 @@ serve(async (req) => {
           });
         }
 
+        const normalizedAdAccountId = normalizeAdAccountId(adAccountId);
+
         // Step 1: Get all pages the user manages (with access tokens)
         const allPagesResult = await fetchUserPages(longLivedToken);
         const userManagedPages = allPagesResult.pages;
         console.log('User manages', userManagedPages.length, 'pages total');
 
         // Step 2: Get pages promoted under this ad account
-        const promoteUrl = `https://graph.facebook.com/v21.0/${adAccountId}/promote_pages?access_token=${longLivedToken}&fields=id,name&limit=100`;
+        const promoteUrl = `https://graph.facebook.com/v21.0/${normalizedAdAccountId}/promote_pages?access_token=${longLivedToken}&fields=id,name&limit=100`;
         const promoteRes = await fetch(promoteUrl);
         const promoteData = await promoteRes.json();
-        
+
         console.log('promote_pages response:', JSON.stringify(promoteData, null, 2));
 
         let adAccountPageIds = new Set<string>();
-        
+
         if (promoteData.data && promoteData.data.length > 0) {
           for (const p of promoteData.data) {
             adAccountPageIds.add(p.id);
@@ -264,10 +272,10 @@ serve(async (req) => {
         } else {
           // Fallback: try to get pages from campaigns in this ad account
           console.log('promote_pages returned empty, trying campaigns fallback...');
-          const campaignsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/campaigns?access_token=${longLivedToken}&fields=id,promoted_object&limit=50`;
+          const campaignsUrl = `https://graph.facebook.com/v21.0/${normalizedAdAccountId}/campaigns?access_token=${longLivedToken}&fields=id,promoted_object&limit=100`;
           const campaignsRes = await fetch(campaignsUrl);
           const campaignsData = await campaignsRes.json();
-          
+
           if (campaignsData.data) {
             for (const campaign of campaignsData.data) {
               if (campaign.promoted_object?.page_id) {
@@ -278,33 +286,36 @@ serve(async (req) => {
           console.log('Found', adAccountPageIds.size, 'pages from campaign promoted_objects');
         }
 
-        // Step 3: Intersect - only return pages the user manages AND that are in this ad account
-        let filteredPages;
-        if (adAccountPageIds.size > 0) {
-          filteredPages = userManagedPages
-            .filter(p => adAccountPageIds.has(p.id))
-            .map(p => ({ id: p.id, name: p.name }));
-          
-          // If intersection is empty but user has pages, show all managed pages with a warning
-          if (filteredPages.length === 0) {
-            console.log('No intersection found, returning all user pages with warning');
-            filteredPages = userManagedPages.map(p => ({ id: p.id, name: p.name }));
-            return new Response(JSON.stringify({ 
-              pages: filteredPages,
-              warning: 'Could not determine which pages are linked to this ad account. Showing all your pages.',
-              permissions: await checkUserPermissions(longLivedToken)
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          }
-        } else {
-          // No ad account page info available, return all managed pages
-          filteredPages = userManagedPages.map(p => ({ id: p.id, name: p.name }));
+        const permissionCheck = await checkUserPermissions(longLivedToken);
+
+        // Strict filtering: if we can't find pages for this ad account, do NOT fall back to all pages
+        if (adAccountPageIds.size === 0) {
+          return new Response(JSON.stringify({
+            pages: [],
+            error: 'No pages are linked to the selected ad account.',
+            errorCode: 'NO_PAGES_FOR_AD_ACCOUNT',
+            permissions: permissionCheck,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
 
-        console.log('Returning', filteredPages.length, 'filtered pages for ad account', adAccountId);
+        const filteredPages = userManagedPages
+          .filter((p) => adAccountPageIds.has(p.id))
+          .map((p) => ({ id: p.id, name: p.name }));
 
-        const permissionCheck = await checkUserPermissions(longLivedToken);
+        if (filteredPages.length === 0) {
+          return new Response(JSON.stringify({
+            pages: [],
+            error: 'This ad account has pages, but none are manageable with the current Facebook user.',
+            errorCode: 'NO_MANAGED_PAGES_FOR_AD_ACCOUNT',
+            permissions: permissionCheck,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        console.log('Returning', filteredPages.length, 'filtered pages for ad account', normalizedAdAccountId);
         return new Response(JSON.stringify({ pages: filteredPages, permissions: permissionCheck }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -377,8 +388,10 @@ serve(async (req) => {
           });
         }
 
-        console.log('Fetching campaigns for ad account:', targetAdAccountId);
-        const campaignsUrl = `https://graph.facebook.com/v21.0/${targetAdAccountId}/campaigns?access_token=${longLivedToken}&fields=id,name,status,objective&limit=100`;
+        const normalizedAdAccountId = normalizeAdAccountId(targetAdAccountId);
+
+        console.log('Fetching campaigns for ad account:', normalizedAdAccountId);
+        const campaignsUrl = `https://graph.facebook.com/v21.0/${normalizedAdAccountId}/campaigns?access_token=${longLivedToken}&fields=id,name,status,objective&limit=100`;
         const campaignsRes = await fetch(campaignsUrl);
         const campaignsData = await campaignsRes.json();
 
@@ -393,12 +406,12 @@ serve(async (req) => {
         for (const campaign of campaignsData.data || []) {
           if (campaign.objective === 'LEAD_GENERATION' || campaign.status === 'ACTIVE') {
             allCampaigns.push({
-              id: campaign.id, name: campaign.name, status: campaign.status, adAccountId: targetAdAccountId
+              id: campaign.id, name: campaign.name, status: campaign.status, adAccountId: normalizedAdAccountId
             });
           }
         }
 
-        console.log('Found', allCampaigns.length, 'lead/active campaigns for', targetAdAccountId);
+        console.log('Found', allCampaigns.length, 'lead/active campaigns for', normalizedAdAccountId);
         return new Response(JSON.stringify({ campaigns: allCampaigns }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -437,6 +450,10 @@ serve(async (req) => {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
+
+        const normalizedSelectedAdAccountId = selectedAdAccountId
+          ? normalizeAdAccountId(selectedAdAccountId)
+          : null;
 
         const pagesResult = await fetchUserPages(longLivedToken);
         if (pagesResult.error) {
@@ -479,7 +496,7 @@ serve(async (req) => {
             fb_page_name: pageName || selectedPage.name,
             fb_connected_at: new Date().toISOString(),
             fb_user_id: fbUserId || null,
-            fb_ad_account_id: selectedAdAccountId || null,
+            fb_ad_account_id: normalizedSelectedAdAccountId,
             fb_selected_campaigns: selectedCampaigns || [],
             fb_selected_adsets: selectedAdsets || [],
           })
@@ -492,10 +509,10 @@ serve(async (req) => {
           });
         }
 
-        console.log('Facebook connected for org:', profile.organization_id, 'Ad account:', selectedAdAccountId);
+        console.log('Facebook connected for org:', profile.organization_id, 'Ad account:', normalizedSelectedAdAccountId);
 
         return new Response(JSON.stringify({ 
-          success: true, pageName: selectedPage.name, pageId, adAccountId: selectedAdAccountId,
+          success: true, pageName: selectedPage.name, pageId, adAccountId: normalizedSelectedAdAccountId,
           webhookSubscribed: !subscribeData.error,
           campaignsCount: selectedCampaigns?.length || 0, adsetsCount: selectedAdsets?.length || 0
         }), {
