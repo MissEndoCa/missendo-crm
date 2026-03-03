@@ -33,6 +33,7 @@ import {
   Menu,
   Bell,
   Mail,
+  Handshake,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -73,6 +74,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/leads', icon: ClipboardList, label: 'Leads' },
     { path: '/patients', icon: Users, label: 'Patients' },
     { path: '/appointments', icon: Calendar, label: 'Appointments' },
+    { path: '/meetings', icon: Handshake, label: 'Görüşmeler' },
   ];
 
   // Add super admin only items
