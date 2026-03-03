@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 interface InsightData {
@@ -15,6 +15,28 @@ interface InsightData {
   cpc: string
   ctr: string
   actions?: Array<{ action_type: string; value: string }>
+}
+
+async function fetchAllPages(initialUrl: string): Promise<InsightData[]> {
+  const allData: InsightData[] = []
+  let url: string | null = initialUrl
+
+  while (url) {
+    const response = await fetch(url)
+    const json = await response.json()
+
+    if (json.error) {
+      throw json
+    }
+
+    if (json.data) {
+      allData.push(...json.data)
+    }
+
+    url = json.paging?.next || null
+  }
+
+  return allData
 }
 
 Deno.serve(async (req) => {
@@ -94,29 +116,41 @@ Deno.serve(async (req) => {
       // Use default
     }
 
-    // Fetch campaign-level insights from Facebook Graph API v21.0
+    // Fetch ad account currency
+    const accountUrl = `https://graph.facebook.com/v21.0/${adAccountId}?fields=currency&access_token=${accessToken}`
+    const accountResponse = await fetch(accountUrl)
+    const accountData = await accountResponse.json()
+    const currency = accountData?.currency || 'USD'
+
+    console.log(`Ad account currency: ${currency}`)
+
+    // Fetch campaign-level insights from Facebook Graph API v21.0 with pagination
     const fields = 'campaign_id,campaign_name,impressions,clicks,reach,spend,cpc,ctr,actions'
     const insightsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/insights?fields=${fields}&level=campaign&date_preset=${datePreset}&limit=50&access_token=${accessToken}`
 
     console.log(`Fetching ad insights for ${adAccountId} with date_preset=${datePreset}`)
 
-    const fbResponse = await fetch(insightsUrl)
-    const fbData = await fbResponse.json()
-
-    if (fbData.error) {
-      console.error('Facebook API error:', fbData.error)
-      return new Response(JSON.stringify({ 
-        error: fbData.error.message || 'Facebook API error',
-        errorCode: fbData.error.code,
-        campaigns: [] 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    let allInsights: InsightData[]
+    try {
+      allInsights = await fetchAllPages(insightsUrl)
+    } catch (fbError: any) {
+      if (fbError.error) {
+        console.error('Facebook API error:', fbError.error)
+        return new Response(JSON.stringify({ 
+          error: fbError.error.message || 'Facebook API error',
+          errorCode: fbError.error.code,
+          campaigns: [],
+          currency,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      throw fbError
     }
 
     // Transform the data
-    const campaigns = (fbData.data || []).map((insight: InsightData) => {
+    const campaigns = allInsights.map((insight: InsightData) => {
       const conversions = insight.actions?.find(
         (a) => a.action_type === 'offsite_conversion.fb_pixel_lead' || a.action_type === 'lead'
       )
@@ -136,7 +170,7 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully fetched ${campaigns.length} campaign insights`)
 
-    return new Response(JSON.stringify({ campaigns }), {
+    return new Response(JSON.stringify({ campaigns, currency }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
