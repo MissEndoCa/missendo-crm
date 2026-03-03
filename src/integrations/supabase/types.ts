@@ -737,6 +737,65 @@ export type Database = {
           },
         ]
       }
+      marketer_meetings: {
+        Row: {
+          address: string | null
+          business_name: string
+          business_type: string | null
+          city: string | null
+          contact_name: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          meeting_date: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          result: Database["public"]["Enums"]["meeting_result"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_name: string
+          business_type?: string | null
+          city?: string | null
+          contact_name: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          meeting_date: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          result?: Database["public"]["Enums"]["meeting_result"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_name?: string
+          business_type?: string | null
+          city?: string | null
+          contact_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          meeting_date?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          result?: Database["public"]["Enums"]["meeting_result"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketer_meetings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1752,6 +1811,7 @@ export type Database = {
         | "rejected"
         | "will_not_come"
         | "converted_to_patient"
+      meeting_result: "positive" | "negative" | "pending" | "follow_up"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1910,6 +1970,7 @@ export const Constants = {
         "will_not_come",
         "converted_to_patient",
       ],
+      meeting_result: ["positive", "negative", "pending", "follow_up"],
     },
   },
 } as const

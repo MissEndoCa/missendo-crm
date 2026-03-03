@@ -20,6 +20,7 @@ import Hotels from "./pages/Hotels";
 import Accounting from "./pages/Accounting";
 import Reminders from "./pages/Reminders";
 import Mailing from "./pages/Mailing";
+import Meetings from "./pages/Meetings";
 import NotFound from "./pages/NotFound";
  import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
  import Terms from "./pages/legal/Terms";
@@ -188,6 +189,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Mailing />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/meetings"
+              element={
+                <ProtectedRoute>
+                  <Meetings />
                 </ProtectedRoute>
               }
             />
