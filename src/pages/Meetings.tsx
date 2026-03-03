@@ -38,7 +38,6 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import {
   Plus,
   Search,
@@ -95,10 +94,10 @@ const emptyForm: MeetingForm = {
 };
 
 const resultLabels: Record<MeetingResult, string> = {
-  positive: 'Olumlu',
-  negative: 'Olumsuz',
-  pending: 'Beklemede',
-  follow_up: 'Takip Gerekli',
+  positive: 'Positive',
+  negative: 'Negative',
+  pending: 'Pending',
+  follow_up: 'Follow Up',
 };
 
 const resultColors: Record<MeetingResult, string> = {
@@ -170,13 +169,13 @@ export default function Meetings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['marketer-meetings'] });
-      toast({ title: editingId ? 'Görüşme güncellendi' : 'Görüşme eklendi' });
+      toast({ title: editingId ? 'Meeting updated' : 'Meeting added' });
       setDialogOpen(false);
       setEditingId(null);
       setForm(emptyForm);
     },
     onError: (err: any) => {
-      toast({ title: 'Hata', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
     },
   });
 
@@ -190,7 +189,7 @@ export default function Meetings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['marketer-meetings'] });
-      toast({ title: 'Görüşme silindi' });
+      toast({ title: 'Meeting deleted' });
       setDeleteId(null);
     },
   });
@@ -270,10 +269,10 @@ export default function Meetings() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Handshake className="h-6 w-6" />
-              Görüşmeler
+              Meetings
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Pazarlama görüşmelerini takip edin
+              Track your marketing meetings and visits
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -282,12 +281,12 @@ export default function Meetings() {
           }}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="h-4 w-4 mr-1" /> Yeni Görüşme
+                <Plus className="h-4 w-4 mr-1" /> New Meeting
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editingId ? 'Görüşme Düzenle' : 'Yeni Görüşme Ekle'}</DialogTitle>
+                <DialogTitle>{editingId ? 'Edit Meeting' : 'Add New Meeting'}</DialogTitle>
               </DialogHeader>
               <form
                 className="space-y-4"
@@ -299,42 +298,42 @@ export default function Meetings() {
               >
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>İşletme Adı *</Label>
+                    <Label>Business Name *</Label>
                     <Input
                       value={form.business_name}
                       onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}
-                      placeholder="Kuaför adı"
+                      placeholder="Business name"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Görüşülen Kişi *</Label>
+                    <Label>Contact Person *</Label>
                     <Input
                       value={form.contact_name}
                       onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
-                      placeholder="Kişi adı"
+                      placeholder="Contact name"
                       required
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>İşletme Türü</Label>
+                    <Label>Business Type</Label>
                     <Select
                       value={form.business_type}
                       onValueChange={v => setForm(f => ({ ...f, business_type: v }))}
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="hairdresser">Kuaför</SelectItem>
-                        <SelectItem value="beauty_salon">Güzellik Salonu</SelectItem>
-                        <SelectItem value="clinic">Klinik</SelectItem>
-                        <SelectItem value="other">Diğer</SelectItem>
+                        <SelectItem value="hairdresser">Hairdresser</SelectItem>
+                        <SelectItem value="beauty_salon">Beauty Salon</SelectItem>
+                        <SelectItem value="clinic">Clinic</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Telefon</Label>
+                    <Label>Phone</Label>
                     <Input
                       value={form.phone}
                       onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
@@ -344,15 +343,15 @@ export default function Meetings() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Şehir</Label>
+                    <Label>City</Label>
                     <Input
                       value={form.city}
                       onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                      placeholder="İstanbul"
+                      placeholder="Istanbul"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Görüşme Tarihi *</Label>
+                    <Label>Meeting Date *</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -364,8 +363,8 @@ export default function Meetings() {
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {form.meeting_date
-                            ? format(form.meeting_date, 'dd MMM yyyy', { locale: tr })
-                            : 'Tarih seç'}
+                            ? format(form.meeting_date, 'dd MMM yyyy')
+                            : 'Pick a date'}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -381,43 +380,43 @@ export default function Meetings() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Adres</Label>
+                  <Label>Address</Label>
                   <Input
                     value={form.address}
                     onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                    placeholder="Adres bilgisi"
+                    placeholder="Address"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Sonuç</Label>
+                  <Label>Result</Label>
                   <Select
                     value={form.result}
                     onValueChange={v => setForm(f => ({ ...f, result: v as MeetingResult }))}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="positive">Olumlu</SelectItem>
-                      <SelectItem value="negative">Olumsuz</SelectItem>
-                      <SelectItem value="pending">Beklemede</SelectItem>
-                      <SelectItem value="follow_up">Takip Gerekli</SelectItem>
+                      <SelectItem value="positive">Positive</SelectItem>
+                      <SelectItem value="negative">Negative</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="follow_up">Follow Up</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Notlar</Label>
+                  <Label>Notes</Label>
                   <Textarea
                     value={form.notes}
                     onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                    placeholder="Görüşme detayları..."
+                    placeholder="Meeting details..."
                     rows={3}
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    İptal
+                    Cancel
                   </Button>
                   <Button type="submit" disabled={saveMutation.isPending}>
-                    {saveMutation.isPending ? 'Kaydediliyor...' : editingId ? 'Güncelle' : 'Kaydet'}
+                    {saveMutation.isPending ? 'Saving...' : editingId ? 'Update' : 'Save'}
                   </Button>
                 </div>
               </form>
@@ -432,29 +431,29 @@ export default function Meetings() {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="İşletme, kişi, telefon ara..."
+              placeholder="Search business, contact, phone..."
               className="pl-9"
             />
           </div>
           <Select value={filterResult} onValueChange={setFilterResult}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Sonuç filtrele" />
+              <SelectValue placeholder="Filter by result" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tüm Sonuçlar</SelectItem>
-              <SelectItem value="positive">Olumlu</SelectItem>
-              <SelectItem value="negative">Olumsuz</SelectItem>
-              <SelectItem value="pending">Beklemede</SelectItem>
-              <SelectItem value="follow_up">Takip Gerekli</SelectItem>
+              <SelectItem value="all">All Results</SelectItem>
+              <SelectItem value="positive">Positive</SelectItem>
+              <SelectItem value="negative">Negative</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="follow_up">Follow Up</SelectItem>
             </SelectContent>
           </Select>
           {cities.length > 0 && (
             <Select value={filterCity} onValueChange={setFilterCity}>
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Şehir filtrele" />
+                <SelectValue placeholder="Filter by city" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tüm Şehirler</SelectItem>
+                <SelectItem value="all">All Cities</SelectItem>
                 {cities.map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
@@ -468,33 +467,33 @@ export default function Meetings() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead><SortHeader field="meeting_date" label="Tarih" /></TableHead>
-                <TableHead><SortHeader field="business_name" label="İşletme" /></TableHead>
-                <TableHead><SortHeader field="contact_name" label="Kişi" /></TableHead>
-                <TableHead><SortHeader field="city" label="Şehir" /></TableHead>
-                <TableHead><SortHeader field="result" label="Sonuç" /></TableHead>
-                <TableHead>Notlar</TableHead>
-                <TableHead className="w-[80px]">İşlem</TableHead>
+                <TableHead><SortHeader field="meeting_date" label="Date" /></TableHead>
+                <TableHead><SortHeader field="business_name" label="Business" /></TableHead>
+                <TableHead><SortHeader field="contact_name" label="Contact" /></TableHead>
+                <TableHead><SortHeader field="city" label="City" /></TableHead>
+                <TableHead><SortHeader field="result" label="Result" /></TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Yükleniyor...
+                    Loading...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Henüz görüşme kaydı yok
+                    No meetings found
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="whitespace-nowrap">
-                      {format(new Date(m.meeting_date), 'dd MMM yyyy', { locale: tr })}
+                      {format(new Date(m.meeting_date), 'dd MMM yyyy')}
                     </TableCell>
                     <TableCell className="font-medium">{m.business_name}</TableCell>
                     <TableCell>
@@ -541,25 +540,25 @@ export default function Meetings() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="rounded-lg border bg-card p-4 text-center">
               <div className="text-2xl font-bold text-foreground">{meetings.length}</div>
-              <div className="text-xs text-muted-foreground">Toplam Görüşme</div>
+              <div className="text-xs text-muted-foreground">Total Meetings</div>
             </div>
             <div className="rounded-lg border bg-card p-4 text-center">
               <div className="text-2xl font-bold text-primary">
                 {meetings.filter(m => m.result === 'positive').length}
               </div>
-              <div className="text-xs text-muted-foreground">Olumlu</div>
+              <div className="text-xs text-muted-foreground">Positive</div>
             </div>
             <div className="rounded-lg border bg-card p-4 text-center">
               <div className="text-2xl font-bold text-accent-foreground">
                 {meetings.filter(m => m.result === 'follow_up').length}
               </div>
-              <div className="text-xs text-muted-foreground">Takip Gerekli</div>
+              <div className="text-xs text-muted-foreground">Follow Up</div>
             </div>
             <div className="rounded-lg border bg-card p-4 text-center">
               <div className="text-2xl font-bold text-destructive">
                 {meetings.filter(m => m.result === 'negative').length}
               </div>
-              <div className="text-xs text-muted-foreground">Olumsuz</div>
+              <div className="text-xs text-muted-foreground">Negative</div>
             </div>
           </div>
         )}
@@ -569,8 +568,8 @@ export default function Meetings() {
         open={!!deleteId}
         onOpenChange={open => !open && setDeleteId(null)}
         onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
-        title="Görüşmeyi Sil"
-        description="Bu görüşme kaydını silmek istediğinize emin misiniz?"
+        title="Delete Meeting"
+        description="Are you sure you want to delete this meeting record?"
       />
     </Layout>
   );
