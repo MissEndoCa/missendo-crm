@@ -412,8 +412,26 @@ export function FacebookConnectButton() {
     }
 
     if (!permissionInfo) return { title: 'Page Not Found', description: 'No Facebook page was found where you are an administrator.' };
-    if (permissionInfo.declined.length > 0) return { title: 'Permissions Declined', description: `Declined: ${permissionInfo.declined.join(', ')}` };
-    if (permissionInfo.missing.length > 0) return { title: 'Missing Permissions', description: `Missing: ${permissionInfo.missing.join(', ')}` };
+    if (permissionInfo.declined.length > 0) return { title: 'Permissions Declined', description: `You declined these permissions during login: ${permissionInfo.declined.join(', ')}. Please remove the app and reconnect.` };
+    if (permissionInfo.missing.length > 0) {
+      // Separate critical (page/lead) from non-critical (ads_read) permissions
+      const criticalMissing = permissionInfo.missing.filter(p => !['ads_read'].includes(p));
+      const nonCriticalMissing = permissionInfo.missing.filter(p => ['ads_read'].includes(p));
+      
+      if (criticalMissing.length > 0) {
+        return {
+          title: 'Facebook Did Not Grant Required Permissions',
+          description: `Your Facebook account did not grant: ${criticalMissing.join(', ')}. This usually means your account lacks admin/full-control access on the page, or you previously denied these permissions. Remove the app from Facebook Settings and reconnect.`,
+        };
+      }
+      // Only ads_read missing — not critical for lead sync
+      if (nonCriticalMissing.length > 0) {
+        return {
+          title: 'Ad Performance Access Limited',
+          description: 'Lead sync will work, but ad performance metrics require ads_read permission. You can proceed without it.',
+        };
+      }
+    }
     return { title: 'Page Not Found', description: 'Make sure you are a page administrator in Meta Business Suite.' };
   };
 
@@ -691,11 +709,14 @@ export function FacebookConnectButton() {
           <div className="space-y-4 py-4">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>What Should You Do?</AlertTitle>
-              <AlertDescription className="space-y-2">
-                <p>1. Go to <strong>Meta Business Suite</strong></p>
-                <p>2. Verify that you have an <strong>admin</strong> role on the relevant page</p>
-                <p>3. Check this app's permissions under Facebook &gt; Settings &gt; Apps</p>
+              <AlertTitle>How to Fix This</AlertTitle>
+              <AlertDescription className="space-y-2 mt-2">
+                <p className="font-semibold">Step 1: Remove the app from your Facebook</p>
+                <p className="text-xs">Go to Facebook → Settings → Apps and Websites → Find this app → Remove it completely.</p>
+                <p className="font-semibold mt-2">Step 2: Verify your page role</p>
+                <p className="text-xs">In Meta Business Suite → Settings → Pages → Make sure you have <strong>Full Control</strong> or <strong>Admin</strong> access on the page you want to connect.</p>
+                <p className="font-semibold mt-2">Step 3: Reconnect</p>
+                <p className="text-xs">Click "Revoke & Reconnect" below. When Facebook asks for permissions, make sure to <strong>allow all requested permissions</strong>.</p>
               </AlertDescription>
             </Alert>
             {permissionInfo && (
@@ -708,12 +729,19 @@ export function FacebookConnectButton() {
                     </div>
                   </div>
                 )}
-                {permissionInfo.missing.length > 0 && (
+                {permissionInfo.missing.filter(p => p !== 'ads_read').length > 0 && (
                   <div className="p-3 bg-destructive/10 rounded-lg">
-                    <p className="text-sm font-medium text-destructive mb-1">✗ Missing Permissions</p>
+                    <p className="text-sm font-medium text-destructive mb-1">✗ Not Granted by Facebook</p>
                     <div className="flex flex-wrap gap-1">
-                      {permissionInfo.missing.map(p => <Badge key={p} variant="outline" className="text-xs text-destructive border-destructive">{p}</Badge>)}
+                      {permissionInfo.missing.filter(p => p !== 'ads_read').map(p => <Badge key={p} variant="outline" className="text-xs text-destructive border-destructive">{p}</Badge>)}
                     </div>
+                    <p className="text-xs text-muted-foreground mt-1">Your account did not grant these — likely due to missing page admin role or previously denied permissions.</p>
+                  </div>
+                )}
+                {permissionInfo.missing.filter(p => p === 'ads_read').length > 0 && (
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-sm font-medium text-muted-foreground mb-1">ℹ ads_read (optional)</p>
+                    <p className="text-xs text-muted-foreground">Only needed for ad performance metrics. Lead sync works without it.</p>
                   </div>
                 )}
                 {permissionInfo.declined.length > 0 && (
@@ -727,14 +755,18 @@ export function FacebookConnectButton() {
               </div>
             )}
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => window.open('https://business.facebook.com/settings/pages', '_blank')}>
-              <ExternalLink className="w-4 h-4 mr-2" /> Meta Business Suite
+          <DialogFooter className="flex-col gap-2">
+            <Button variant="default" className="w-full" onClick={() => {
+              window.open(`https://www.facebook.com/settings?tab=applications&app_id=${FB_APP_ID}`, '_blank');
+            }}>
+              <Settings2 className="w-4 h-4 mr-2" /> Step 1: Remove App from Facebook
             </Button>
-            <Button variant="outline" className="flex-1" onClick={() => window.open(`https://www.facebook.com/settings?tab=applications&app_id=${FB_APP_ID}`, '_blank')}>
-              <Settings2 className="w-4 h-4 mr-2" /> App Permissions
+            <Button variant="outline" className="w-full" onClick={() => window.open('https://business.facebook.com/settings/pages', '_blank')}>
+              <ExternalLink className="w-4 h-4 mr-2" /> Step 2: Check Page Role in Business Suite
             </Button>
-            <Button onClick={() => { setShowPermissionError(false); resetState(); handleFacebookLogin(); }}>Try Again</Button>
+            <Button variant="default" className="w-full" style={{ backgroundColor: '#1877F2' }} onClick={() => { setShowPermissionError(false); resetState(); handleFacebookLogin(); }}>
+              <Facebook className="w-4 h-4 mr-2" /> Step 3: Reconnect with Facebook
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
