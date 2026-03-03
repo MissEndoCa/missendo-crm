@@ -101,9 +101,7 @@ export default function Leads() {
     
     setIsPolling(true);
     try {
-      const { data, error } = await supabase.functions.invoke('poll-facebook-leads', {
-        body: { demo: true, organization_id: profile?.organization_id }
-      });
+      const { data, error } = await supabase.functions.invoke('poll-facebook-leads');
       
       if (error) throw error;
       
