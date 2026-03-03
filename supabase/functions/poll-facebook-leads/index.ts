@@ -61,27 +61,78 @@ function parseLeadFields(fieldData: Array<{ name: string; values: string[] }>) {
   let email = "";
   let country = "";
 
+  // Log raw field_data for debugging
+  console.log("Raw field_data:", JSON.stringify(fieldData));
+
   for (const field of fieldData) {
     const value = field.values?.[0] || "";
-    const name = field.name.toLowerCase();
+    const name = field.name.toLowerCase().trim();
 
-    if (name.includes("first_name") || name === "ad") {
-      firstName = value;
-    } else if (name.includes("last_name") || name === "soyad") {
+    // First name variations
+    if (
+      name === "first_name" || name === "first name" || name === "ad" ||
+      name === "nome" || name === "isim" || name === "ad_" ||
+      name === "ad soyad" || name === "adınız" || name === "name" ||
+      name.includes("first_name") || name.includes("first name")
+    ) {
+      // "ad soyad" or "name" could be full name
+      if (name === "ad soyad" || name === "name") {
+        const parts = value.trim().split(/\s+/);
+        firstName = parts[0] || "";
+        lastName = parts.slice(1).join(" ") || "";
+      } else {
+        firstName = value;
+      }
+    }
+    // Last name variations
+    else if (
+      name === "last_name" || name === "last name" || name === "soyad" ||
+      name === "soyadınız" || name === "surname" || name === "cognome" ||
+      name.includes("last_name") || name.includes("last name")
+    ) {
       lastName = value;
-    } else if (name.includes("full_name") || name === "full name") {
-      const parts = value.split(" ");
+    }
+    // Full name variations
+    else if (
+      name === "full_name" || name === "full name" || name === "ad_soyad" ||
+      name === "tam ad" || name === "tam_ad" || name === "fullname" ||
+      name.includes("full_name") || name.includes("full name")
+    ) {
+      const parts = value.trim().split(/\s+/);
       firstName = parts[0] || "";
       lastName = parts.slice(1).join(" ") || "";
-    } else if (name.includes("phone") || name.includes("telefon")) {
+    }
+    // Phone variations
+    else if (
+      name === "phone_number" || name === "phone" || name === "telefon" ||
+      name === "tel" || name === "telefon_numarası" || name === "cep_telefonu" ||
+      name === "mobile" || name === "cellphone" ||
+      name.includes("phone") || name.includes("telefon") || name.includes("tel_")
+    ) {
       phone = value;
-    } else if (name.includes("email") || name.includes("e-posta")) {
+    }
+    // Email variations
+    else if (
+      name === "email" || name === "e-posta" || name === "eposta" ||
+      name === "mail" || name === "e_posta" || name === "e-mail" ||
+      name.includes("email") || name.includes("e-posta") || name.includes("mail")
+    ) {
       email = value;
-    } else if (name.includes("country") || name.includes("ülke")) {
+    }
+    // Country variations
+    else if (
+      name === "country" || name === "ülke" || name === "ulke" ||
+      name.includes("country") || name.includes("ülke")
+    ) {
       country = value;
+    }
+    // Log unrecognized fields
+    else {
+      console.log(`Unrecognized lead field: "${field.name}" = "${value}"`);
     }
   }
 
+  console.log(`Parsed lead: firstName="${firstName}", lastName="${lastName}", phone="${phone}", email="${email}", country="${country}"`);
   return { firstName, lastName, phone, email, country };
 }
 
