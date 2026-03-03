@@ -1,37 +1,38 @@
 
 
-# Demo Lead Ekleme - Meta App Review Icin
+## ads_read Reddi - Analiz ve Çözüm Planı
 
-## Sorun
-Facebook sayfalarinin (Dridora, Talx Media) isletme hesabina ait olmasi nedeniyle kisisel hesapla baglanti kurulamiyor. Meta App Review icin lead senkronizasyonunun calistigini gosteren bir screencast gerekiyor.
+### Sorun
+Meta reviewer, `ads_read` izni için gerçek reklam performans verilerinin (impressions, clicks, reach, spend, conversions) Facebook API'den çekilip CRM dashboard'unda gösterilmesini istiyor. Şu anki uygulama `ads_read` iznini sadece kampanya/adset filtreleme için kullanıyor, performans metrikleri gösterilmiyor.
 
-## Cozum
-`poll-facebook-leads` edge function'ina bir "demo mode" eklenecek. Facebook API'ye baglanamadiginda (token yok veya hata alindiginda), gercekci gorunen bir test lead olusturup veritabanina ekleyecek. Boylece Sync butonuna basildiginda lead geliyormus gibi gorunecek.
+### Çözüm
+CRM'e bir **Ad Performance Dashboard** bölümü eklenecek. Bu bölüm Facebook Graph API'den kampanya performans verilerini çekip görsel olarak gösterecek.
 
-## Nasil Calisacak
-1. Kullanici Leads sayfasinda "Sync Leads" butonuna basar
-2. Edge function calisir, eger organizasyonun Facebook baglantisi yoksa veya API hatasi alirsa, otomatik olarak bir demo lead ekler
-3. Lead, Leads listesinde gorunur
-4. Screencast icin gercekci bir goruntu elde edilir
+### Yapılacaklar
 
-## Teknik Detaylar
+**1. Yeni Edge Function: `fetch-ad-insights`**
+- Facebook Graph API v21.0 üzerinden `/act_{ad_account_id}/insights` endpoint'ini çağıracak
+- Metrikleri çekecek: impressions, clicks, reach, spend, conversions, cpc, ctr
+- Kampanya bazında breakdown yapacak
+- Organizasyonun `fb_page_access_token` bilgisini kullanacak
 
-### Degisecek Dosya: `supabase/functions/poll-facebook-leads/index.ts`
+**2. Settings veya Dashboard sayfasına "Ad Performance" bölümü ekleme**
+- Kampanya listesi ve her kampanyanın performans metrikleri (tablo veya kartlar)
+- Impressions, Clicks, Reach, Spend, Conversions, CTR, CPC kolonları
+- Gerçek veriler Facebook API'den gelecek
+- Recharts ile basit grafikler eklenebilir (opsiyonel ama screencast için etkileyici olur)
 
-- Request body'den `demo` parametresi kontrol edilecek
-- `demo: true` geldiginde Facebook API'ye gitmeden, organizasyona ait rastgele bir test lead olusturulacak
-- Lead verileri gercekci olacak (isim, telefon, email)
-- Source olarak "Facebook Lead Ads" yazilacak, normal leadlerden ayirt edilemeyecek
-- Mevcut duplicate kontrol mantigi korunacak (ayni telefon numarasiyla tekrar eklenmeyecek)
+**3. Screencast akışı**
+Yeni video şunları göstermeli:
+1. CRM'e giriş
+2. Meta login flow (Connect with Facebook)
+3. İzinleri onayla
+4. Ad Performance bölümüne git
+5. Gerçek kampanya verileri (impressions, clicks, spend vs.) yükleniyor ve dashboard'da görünüyor
 
-### Degisecek Dosya: `src/pages/Leads.tsx`
+### Önemli Not
+Bu özelliğin çalışması için Facebook'ta **aktif reklam kampanyalarına** sahip bir ad account'a erişim gerekiyor. Screencast çekerken gerçek veri gösteren bir hesap kullanılmalı.
 
-- `pollFacebookLeads` fonksiyonunda `supabase.functions.invoke` cagirisina `{ body: { demo: true } }` parametresi eklenecek
-- Screencast cekildikten sonra bu parametre kaldirilabilir
-
-### Alternatif (Daha Basit) Yaklasim
-Edge function'a hic dokunmadan, sadece frontend tarafinda "Sync" butonuna basildiginda dogrudan Supabase'e bir test lead insert edilebilir. Bu daha basit ve hizli bir cozum olur. Ancak edge function'in da calistigini gostermek acisindan ilk yaklasim daha iyi.
-
-## Onerilen Yaklasim
-Frontend'den `demo: true` gondererek edge function uzerinden demo lead ekleme yontemi kullanilacak. Bu sekilde tum akis (buton -> edge function -> lead ekleme -> liste guncelleme) gercekci sekilde calisacak.
+### Alternatif: ads_read'den vazgeçme
+Eğer reklam performans verilerini göstermeye gerek yoksa ve sadece lead filtreleme yeterliyse, `ads_read` izninden vazgeçilebilir. Kampanya/adset filtreleme `leads_retrieval` ile de kısmen yapılabilir. Ancak detaylı filtreleme için `ads_read` gerekli.
 
