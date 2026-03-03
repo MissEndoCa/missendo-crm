@@ -289,14 +289,12 @@ serve(async (req) => {
 
         if (criticalMissing.length > 0) {
           console.warn('Missing critical permissions:', criticalMissing);
-          // Still try to fetch pages, but include warning
         }
 
         // Fetch pages with fallback methods
         const pagesResult = await fetchUserPages(longLivedToken);
 
         if (pagesResult.pages.length === 0) {
-          // Detailed error message based on what we found
           let errorMessage = 'No Facebook page found.';
           let errorCode = 'NO_PAGES';
           
@@ -341,9 +339,9 @@ serve(async (req) => {
         });
       }
 
-      case 'campaigns': {
-        // Get campaigns for ad account
-        const { longLivedToken, pageId } = body;
+      case 'adaccounts': {
+        // Get ad accounts accessible to the user
+        const { longLivedToken } = body;
         
         if (!longLivedToken) {
           return new Response(JSON.stringify({ error: 'Token required' }), {
@@ -352,45 +350,94 @@ serve(async (req) => {
           });
         }
 
-        // First get ad accounts linked to the user
-        const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${longLivedToken}&fields=id,name,account_id`;
+        const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${longLivedToken}&fields=id,name,account_id,account_status&limit=100`;
         const adAccountsRes = await fetch(adAccountsUrl);
         const adAccountsData = await adAccountsRes.json();
 
         if (adAccountsData.error) {
           console.error('Ad accounts fetch error:', adAccountsData.error);
-          return new Response(JSON.stringify({ error: adAccountsData.error.message }), {
+          // ads_read permission may not be granted — return empty list instead of error
+          return new Response(JSON.stringify({ 
+            adAccounts: [],
+            error: adAccountsData.error.message 
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const adAccounts = (adAccountsData.data || []).map((acc: any) => ({
+          id: acc.id,            // e.g. "act_123456"
+          name: acc.name,
+          accountId: acc.account_id,  // e.g. "123456"
+          status: acc.account_status, // 1=ACTIVE, 2=DISABLED, etc.
+        }));
+
+        console.log('Found', adAccounts.length, 'ad accounts');
+
+        return new Response(JSON.stringify({ adAccounts }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'campaigns': {
+        // Get campaigns for a specific ad account (or from DB-stored ad account)
+        const { longLivedToken, adAccountId } = body;
+        
+        if (!longLivedToken) {
+          return new Response(JSON.stringify({ error: 'Token required' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
-        console.log('Found', adAccountsData.data?.length || 0, 'ad accounts');
+        // Determine which ad account to use
+        let targetAdAccountId = adAccountId;
 
-        // Get campaigns from all ad accounts
+        // If no adAccountId provided, try to get it from the DB
+        if (!targetAdAccountId) {
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('fb_ad_account_id')
+            .eq('id', profile.organization_id)
+            .single();
+          
+          targetAdAccountId = orgData?.fb_ad_account_id;
+        }
+
+        if (!targetAdAccountId) {
+          console.log('No ad account ID specified, returning empty campaigns');
+          return new Response(JSON.stringify({ campaigns: [] }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        console.log('Fetching campaigns for ad account:', targetAdAccountId);
+
+        const campaignsUrl = `https://graph.facebook.com/v21.0/${targetAdAccountId}/campaigns?access_token=${longLivedToken}&fields=id,name,status,objective&limit=100`;
+        const campaignsRes = await fetch(campaignsUrl);
+        const campaignsData = await campaignsRes.json();
+
+        if (campaignsData.error) {
+          console.error('Campaigns fetch error:', campaignsData.error);
+          return new Response(JSON.stringify({ error: campaignsData.error.message, campaigns: [] }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
         const allCampaigns: Array<{id: string, name: string, status: string, adAccountId: string}> = [];
         
-        for (const adAccount of adAccountsData.data || []) {
-          const campaignsUrl = `https://graph.facebook.com/v21.0/${adAccount.id}/campaigns?access_token=${longLivedToken}&fields=id,name,status,objective&limit=100`;
-          const campaignsRes = await fetch(campaignsUrl);
-          const campaignsData = await campaignsRes.json();
-
-          if (campaignsData.data) {
-            for (const campaign of campaignsData.data) {
-              // Only include LEAD_GENERATION campaigns or all active campaigns
-              if (campaign.objective === 'LEAD_GENERATION' || campaign.status === 'ACTIVE') {
-                allCampaigns.push({
-                  id: campaign.id,
-                  name: campaign.name,
-                  status: campaign.status,
-                  adAccountId: adAccount.id
-                });
-              }
-            }
+        for (const campaign of campaignsData.data || []) {
+          if (campaign.objective === 'LEAD_GENERATION' || campaign.status === 'ACTIVE') {
+            allCampaigns.push({
+              id: campaign.id,
+              name: campaign.name,
+              status: campaign.status,
+              adAccountId: targetAdAccountId
+            });
           }
         }
 
-        console.log('Found', allCampaigns.length, 'lead/active campaigns');
+        console.log('Found', allCampaigns.length, 'lead/active campaigns for', targetAdAccountId);
 
         return new Response(JSON.stringify({ campaigns: allCampaigns }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -435,8 +482,8 @@ serve(async (req) => {
       }
 
       case 'connect': {
-        // Connect a specific page with optional campaign/adset filters
-        const { longLivedToken, pageId, pageName, fbUserId, selectedCampaigns, selectedAdsets } = body;
+        // Connect a specific page with ad account and optional campaign/adset filters
+        const { longLivedToken, pageId, pageName, fbUserId, selectedAdAccountId, selectedCampaigns, selectedAdsets } = body;
         
         if (!longLivedToken || !pageId) {
           return new Response(JSON.stringify({ error: 'Token and page ID required' }), {
@@ -498,10 +545,9 @@ serve(async (req) => {
 
         if (subscribeData.error) {
           console.error('Webhook subscribe error:', subscribeData.error);
-          // Don't fail completely, token is still valid
         }
 
-        // Save to database with campaign/adset selections
+        // Save to database with ad account and campaign/adset selections
         const { error: updateError } = await supabase
           .from('organizations')
           .update({
@@ -511,6 +557,7 @@ serve(async (req) => {
             fb_page_name: pageName || selectedPage.name,
             fb_connected_at: new Date().toISOString(),
             fb_user_id: fbUserId || null,
+            fb_ad_account_id: selectedAdAccountId || null,
             fb_selected_campaigns: selectedCampaigns || [],
             fb_selected_adsets: selectedAdsets || [],
           })
@@ -525,12 +572,13 @@ serve(async (req) => {
         }
 
         console.log('Facebook page connected successfully for org:', profile.organization_id);
-        console.log('Selected campaigns:', selectedCampaigns?.length || 0, 'Selected adsets:', selectedAdsets?.length || 0);
+        console.log('Ad account:', selectedAdAccountId, 'Selected campaigns:', selectedCampaigns?.length || 0, 'Selected adsets:', selectedAdsets?.length || 0);
 
         return new Response(JSON.stringify({ 
           success: true,
           pageName: selectedPage.name,
           pageId: pageId,
+          adAccountId: selectedAdAccountId,
           webhookSubscribed: !subscribeData.error,
           campaignsCount: selectedCampaigns?.length || 0,
           adsetsCount: selectedAdsets?.length || 0
@@ -574,7 +622,7 @@ serve(async (req) => {
         // Get current campaign/adset filters
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
-          .select('fb_selected_campaigns, fb_selected_adsets, fb_page_access_token')
+          .select('fb_selected_campaigns, fb_selected_adsets, fb_page_access_token, fb_ad_account_id')
           .eq('id', profile.organization_id)
           .single();
 
@@ -589,6 +637,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           selectedCampaigns: orgData?.fb_selected_campaigns || [],
           selectedAdsets: orgData?.fb_selected_adsets || [],
+          adAccountId: orgData?.fb_ad_account_id || null,
           hasToken: !!orgData?.fb_page_access_token
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -606,6 +655,7 @@ serve(async (req) => {
             fb_page_name: null,
             fb_connected_at: null,
             fb_user_id: null,
+            fb_ad_account_id: null,
             fb_selected_campaigns: [],
             fb_selected_adsets: [],
           })

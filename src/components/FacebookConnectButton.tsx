@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Facebook, Check, X, Loader2, AlertCircle, ChevronRight, Filter, Settings2, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Facebook, Check, X, Loader2, AlertCircle, ChevronRight, Filter, Settings2, ExternalLink, AlertTriangle, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,13 @@ const FB_APP_ID = '1722864942230149';
 interface FacebookPage {
   id: string;
   name: string;
+}
+
+interface AdAccount {
+  id: string;
+  name: string;
+  accountId: string;
+  status: number;
 }
 
 interface Campaign {
@@ -82,6 +89,12 @@ export function FacebookConnectButton() {
   const [fbUserId, setFbUserId] = useState<string | null>(null);
   const [selectedPage, setSelectedPage] = useState<FacebookPage | null>(null);
   
+  // Ad Account selection state
+  const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
+  const [showAdAccountDialog, setShowAdAccountDialog] = useState(false);
+  const [selectedAdAccount, setSelectedAdAccount] = useState<AdAccount | null>(null);
+  const [loadingAdAccounts, setLoadingAdAccounts] = useState(false);
+
   // Campaign/Adset selection state
   const [showCampaignDialog, setShowCampaignDialog] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -301,12 +314,62 @@ export function FacebookConnectButton() {
   const handlePageSelect = async (page: FacebookPage) => {
     setSelectedPage(page);
     setShowPageDialog(false);
+    
+    // After page selection, fetch ad accounts
+    setLoadingAdAccounts(true);
+    setShowAdAccountDialog(true);
+
+    try {
+      const adAccountsRes = await supabase.functions.invoke('facebook-oauth', {
+        body: { action: 'adaccounts', longLivedToken },
+      });
+
+      if (adAccountsRes.error) {
+        console.error('Ad accounts fetch error:', adAccountsRes.error);
+        setAdAccounts([]);
+      } else {
+        const accounts = adAccountsRes.data?.adAccounts || [];
+        setAdAccounts(accounts);
+        
+        // If only 1 ad account, auto-select and skip to campaigns
+        if (accounts.length === 1) {
+          setShowAdAccountDialog(false);
+          handleAdAccountSelect(accounts[0], page);
+          return;
+        }
+        
+        // If no ad accounts, skip to campaigns (page-level only)
+        if (accounts.length === 0) {
+          setShowAdAccountDialog(false);
+          proceedToCampaigns(page, null);
+          return;
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching ad accounts:', error);
+      setAdAccounts([]);
+    } finally {
+      setLoadingAdAccounts(false);
+    }
+  };
+
+  const handleAdAccountSelect = async (adAccount: AdAccount, page?: FacebookPage) => {
+    setSelectedAdAccount(adAccount);
+    setShowAdAccountDialog(false);
+    proceedToCampaigns(page || selectedPage, adAccount);
+  };
+
+  const proceedToCampaigns = async (page: FacebookPage | null, adAccount: AdAccount | null) => {
     setLoadingCampaigns(true);
     setShowCampaignDialog(true);
 
     try {
       const campaignsRes = await supabase.functions.invoke('facebook-oauth', {
-        body: { action: 'campaigns', longLivedToken, pageId: page.id },
+        body: { 
+          action: 'campaigns', 
+          longLivedToken, 
+          adAccountId: adAccount?.id,
+        },
       });
 
       if (campaignsRes.error) {
@@ -385,6 +448,7 @@ export function FacebookConnectButton() {
           pageId: selectedPage.id, 
           pageName: selectedPage.name,
           fbUserId,
+          selectedAdAccountId: selectedAdAccount?.id || null,
           selectedCampaigns,
           selectedAdsets,
         },
@@ -394,13 +458,14 @@ export function FacebookConnectButton() {
         throw new Error(connectRes.error.message || 'Connection failed');
       }
 
+      const adAccountInfo = selectedAdAccount ? ` Ad Account: ${selectedAdAccount.name}.` : '';
       const filterInfo = selectedCampaigns.length > 0 
         ? ` ${selectedCampaigns.length} campaign(s) and ${selectedAdsets.length} ad set(s) selected.`
         : ' All leads will be synced.';
 
       toast({
         title: 'Connection Successful! 🎉',
-        description: `${selectedPage.name} page has been connected to the CRM.${filterInfo}`,
+        description: `${selectedPage.name} page has been connected.${adAccountInfo}${filterInfo}`,
       });
 
       await loadConnectionStatus();
@@ -530,6 +595,8 @@ export function FacebookConnectButton() {
     setFbUserId(null);
     setPages([]);
     setSelectedPage(null);
+    setAdAccounts([]);
+    setSelectedAdAccount(null);
     setCampaigns([]);
     setAdsets([]);
     setSelectedCampaigns([]);
@@ -718,6 +785,69 @@ export function FacebookConnectButton() {
         </DialogContent>
       </Dialog>
 
+      {/* Ad Account Selection Dialog */}
+      <Dialog open={showAdAccountDialog} onOpenChange={(open) => {
+        setShowAdAccountDialog(open);
+        if (!open) resetState();
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Select Ad Account
+            </DialogTitle>
+            <DialogDescription>
+              Choose the ad account whose campaigns and ads you want to track for {selectedPage?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingAdAccounts ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading ad accounts...</span>
+            </div>
+          ) : (
+            <div className="space-y-2 mt-4">
+              {adAccounts.map((account) => (
+                <Button
+                  key={account.id}
+                  variant="outline"
+                  className="w-full justify-between h-auto py-3"
+                  onClick={() => handleAdAccountSelect(account)}
+                  disabled={loading}
+                >
+                  <div className="flex items-center">
+                    <Building2 className="w-4 h-4 mr-3 text-primary" />
+                    <div className="text-left">
+                      <p className="font-medium">{account.name}</p>
+                      <p className="text-xs text-muted-foreground">ID: {account.accountId}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={account.status === 1 ? 'default' : 'secondary'} className="text-xs">
+                      {account.status === 1 ? 'Active' : 'Inactive'}
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </Button>
+              ))}
+              
+              {/* Option to skip ad account selection */}
+              <Button
+                variant="ghost"
+                className="w-full justify-center h-auto py-3 text-muted-foreground"
+                onClick={() => {
+                  setShowAdAccountDialog(false);
+                  proceedToCampaigns(selectedPage, null);
+                }}
+              >
+                Skip — sync all leads without ad account filtering
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Campaign & Adset Selection Dialog */}
       <Dialog open={showCampaignDialog} onOpenChange={(open) => {
         setShowCampaignDialog(open);
@@ -727,8 +857,11 @@ export function FacebookConnectButton() {
           <DialogHeader>
             <DialogTitle>Campaign & Ad Set Selection</DialogTitle>
             <DialogDescription>
-              Select which campaigns to receive leads from for the {selectedPage?.name} page.
-              If you don't select any, all leads will be synced.
+              {selectedAdAccount 
+                ? `Select campaigns from ${selectedAdAccount.name} for the ${selectedPage?.name} page.`
+                : `Select which campaigns to receive leads from for the ${selectedPage?.name} page.`
+              }
+              {' '}If you don't select any, all leads will be synced.
             </DialogDescription>
           </DialogHeader>
           
