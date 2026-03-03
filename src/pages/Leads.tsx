@@ -29,10 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ColumnFilter } from '@/components/ColumnFilter';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 
 interface Lead {
   id: string;
@@ -69,8 +70,9 @@ interface Organization {
 }
 
 export default function Leads() {
-  const { profile, isSuperAdmin } = useAuth();
+  const { profile, isSuperAdmin, isClinicAdmin } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -348,6 +350,20 @@ export default function Leads() {
       });
     } finally {
       setIsConverting(false);
+    }
+  };
+
+  const handleDeleteLead = async () => {
+    if (!deleteTarget) return;
+    try {
+      const { error } = await supabase.from('leads').delete().eq('id', deleteTarget.id);
+      if (error) throw error;
+      toast({ title: "Success", description: "Lead deleted successfully" });
+      setDeleteTarget(null);
+      loadLeads();
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast({ title: "Error", description: "Failed to delete lead", variant: "destructive" });
     }
   };
 
@@ -700,6 +716,16 @@ export default function Leads() {
                             Convert to Patient
                           </Button>
                         )}
+                        {(isSuperAdmin || isClinicAdmin) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(lead); }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -708,6 +734,14 @@ export default function Leads() {
             </TableBody>
           </Table>
         </div>
+
+        <DeleteConfirmDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          onConfirm={handleDeleteLead}
+          title="Lead Sil"
+          description={`${deleteTarget?.first_name} ${deleteTarget?.last_name} lead kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+        />
       </div>
     </Layout>
   );
