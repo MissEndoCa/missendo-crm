@@ -1,24 +1,45 @@
 
+Sorunun anlamı ve neden aynı yerde kaldığı (kısa cevap):
+- Bu ekran, kullanıcının Facebook OAuth sonunda gerekli izinleri gerçekten alamadığını gösteriyor.
+- Incognito bunu değiştirmez; çünkü izin kararı tarayıcıda değil Facebook hesabı + Meta Business yetki yapısında tutulur.
 
-## Problem
+Kod ve loglardan net bulgu:
+1) Frontend şu scope’ları istiyor:
+- `pages_show_list,pages_read_engagement,leads_retrieval,pages_manage_metadata`
+2) Edge function loglarında son denemede Facebook’un verdiği sonuç:
+- Granted: `pages_manage_metadata`, `public_profile`
+- Missing: `pages_show_list`, `pages_read_engagement`, `leads_retrieval`
+3) Bu yüzden akış “Missing Permissions” ekranına geri düşüyor.
+4) Yani problem şu an “scope istenmiyor” değil; “istenen scope Facebook tarafından bu kullanıcıya grant edilmiyor”.
 
-Facebook OAuth login scope'unda `ads_read` izni isteniyor ancak bu izin Meta App Review'da **"Not approved"** durumunda. Facebook, onaylanmamış izin istendiğinde harici kullanıcılara (App Role'ü olmayan) "Missing Permissions" hatası gösteriyor.
+Neden Live + onaylı olsa da olabilir:
+- App permission’larının Advanced Access olması tek başına yetmez.
+- Bağlanmaya çalışan kullanıcının ilgili sayfa üzerinde doğru Business/Page yetkileri (özellikle admin/full control + leads erişimi) yoksa Facebook bu izinleri grant etmeyebilir.
+- Kullanıcı daha önce app access ekranında bazı izinleri kapattıysa da tekrar aynı döngü olur.
 
-## Çözüm
+Uygulanacak plan:
+1) Operasyonel doğrulama (kodsuz, en hızlı)
+- Klinik kullanıcı Facebook > Business Integrations/App Permissions’tan bu uygulamayı tamamen kaldırıp yeniden authorize etsin.
+- Meta Business Suite’te ilgili sayfada kullanıcının yetkileri kontrol edilsin (full control/admin + leads erişimi).
+- Tekrar bağlantı denensin.
+- Aynı anda edge logs’ta `permissions` çıktısı kontrol edilsin; hedef: missing listesinin boşalması.
 
-`ads_read` iznini OAuth scope'undan kaldırmak. Sistem zaten `ads_read` olmadan da lead senkronizasyonu yapabiliyor (sayfa düzeyinde `/{page_id}/leads` polling fallback mekanizması mevcut). Sadece reklam performans metrikleri (CPL, harcama vs.) bu izin olmadan çalışmayacak.
+2) Ürün tarafı iyileştirme (kullanıcı “aynı yerde kaldım” demesin)
+- Permission error dialog metnini daha net ayır:
+  - “App reviewed ama kullanıcıya page/business yetkisi eksik”
+  - “Bu izinleri bu hesap grant etmedi”
+- “Try Again” yanında “Revoke app access and reconnect” adımını açıkça göster.
 
-## Değişiklikler
+3) Akış dayanıklılığı iyileştirmesi
+- `adaccounts` çağrısı `ads_read` yoksa zaten `#200 Missing Permissions` döndürüyor; bu hatayı sessizce “normal fallback” olarak ele alıp kullanıcıyı gereksiz korkutmayan mesaj standardize edilecek.
+- Ana bloklayıcı olarak sadece page/lead izinleri gösterilecek.
 
-### 1. `src/components/FacebookConnectButton.tsx`
-- Satır 176'daki OAuth scope'undan `ads_read` kaldırılacak
-- Scope: `pages_show_list,pages_read_engagement,leads_retrieval,pages_manage_metadata`
+4) Doğrulama kriteri
+- Başarılı senaryoda log’da:
+  - Granted içinde en az `pages_show_list`, `pages_read_engagement`, `leads_retrieval`, `pages_manage_metadata`
+  - `/me/accounts` boş dönmemeli (veya fallback ile yönetilebilir sayfa bulunmalı)
+- Sonrasında page seçimi ekranına geçmeli ve bağlantı tamamlanmalı.
 
-### 2. Opsiyonel: Reklam performans özelliklerinde uyarı
-- `ads_read` olmadan Ad Performance Dashboard çalışmayacak, bu bölümde kullanıcıya bilgi verilebilir
-
-## Etki
-- Harici klinik kullanıcıları Facebook'a bağlanabilecek
-- Lead senkronizasyonu normal çalışmaya devam edecek
-- Reklam performans metrikleri (CPL, spend vb.) görüntülenemeyecek (`ads_read` onaylanana kadar)
-
+Teknik not:
+- Mevcut koddaki scope doğru görünüyor; sorun büyük ihtimalle kullanıcı-level grant/business role tarafında.
+- Bu yüzden “incognito denedik ama olmadı” beklenen bir sonuç.
