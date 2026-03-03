@@ -390,6 +390,27 @@ export function FacebookConnectButton() {
   };
 
   const getPermissionErrorMessage = () => {
+    if (errorCode === 'NO_PAGES_FOR_AD_ACCOUNT') {
+      return {
+        title: 'No Pages Linked to This Ad Account',
+        description: 'The selected ad account has no promotable pages. Please choose another ad account.',
+      };
+    }
+
+    if (errorCode === 'NO_VISIBLE_PAGES_FOR_AD_ACCOUNT' || errorCode === 'NO_MANAGED_PAGES_FOR_AD_ACCOUNT') {
+      return {
+        title: 'Page Access Required',
+        description: 'This ad account has pages, but your Facebook user cannot manage them from this app. Grant page access in Meta Business Suite and try again.',
+      };
+    }
+
+    if (errorCode === 'NO_PAGE_TOKEN') {
+      return {
+        title: 'Page Token Not Available',
+        description: 'The page was found but no page access token could be generated. Ensure this user has admin/page access in Business Suite.',
+      };
+    }
+
     if (!permissionInfo) return { title: 'Page Not Found', description: 'No Facebook page was found where you are an administrator.' };
     if (permissionInfo.declined.length > 0) return { title: 'Permissions Declined', description: `Declined: ${permissionInfo.declined.join(', ')}` };
     if (permissionInfo.missing.length > 0) return { title: 'Missing Permissions', description: `Missing: ${permissionInfo.missing.join(', ')}` };

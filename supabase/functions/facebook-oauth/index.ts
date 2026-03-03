@@ -240,7 +240,7 @@ serve(async (req) => {
       }
 
       case 'pages-by-adaccount': {
-        // Get pages promoted under a specific ad account, cross-referenced with user's managed pages
+        // Get pages promoted under a specific ad account, then resolve page names
         const { longLivedToken, adAccountId } = body;
         if (!longLivedToken || !adAccountId) {
           return new Response(JSON.stringify({ error: 'Token and ad account ID required' }), {
@@ -250,9 +250,10 @@ serve(async (req) => {
 
         const normalizedAdAccountId = normalizeAdAccountId(adAccountId);
 
-        // Step 1: Get all pages the user manages (with access tokens)
+        // Step 1: Get all pages the user manages (includes access_token when available)
         const allPagesResult = await fetchUserPages(longLivedToken);
         const userManagedPages = allPagesResult.pages;
+        const userManagedMap = new Map(userManagedPages.map((p) => [p.id, p]));
         console.log('User manages', userManagedPages.length, 'pages total');
 
         // Step 2: Get pages promoted under this ad account
@@ -262,15 +263,15 @@ serve(async (req) => {
 
         console.log('promote_pages response:', JSON.stringify(promoteData, null, 2));
 
-        let adAccountPageIds = new Set<string>();
+        const candidatePages = new Map<string, { id: string; name?: string }>();
 
         if (promoteData.data && promoteData.data.length > 0) {
           for (const p of promoteData.data) {
-            adAccountPageIds.add(p.id);
+            candidatePages.set(p.id, { id: p.id, name: p.name });
           }
-          console.log('Ad account promotes', adAccountPageIds.size, 'pages');
+          console.log('Ad account promotes', candidatePages.size, 'pages');
         } else {
-          // Fallback: try to get pages from campaigns in this ad account
+          // Fallback: derive page IDs from campaign promoted_object.page_id
           console.log('promote_pages returned empty, trying campaigns fallback...');
           const campaignsUrl = `https://graph.facebook.com/v21.0/${normalizedAdAccountId}/campaigns?access_token=${longLivedToken}&fields=id,promoted_object&limit=100`;
           const campaignsRes = await fetch(campaignsUrl);
@@ -279,17 +280,16 @@ serve(async (req) => {
           if (campaignsData.data) {
             for (const campaign of campaignsData.data) {
               if (campaign.promoted_object?.page_id) {
-                adAccountPageIds.add(campaign.promoted_object.page_id);
+                candidatePages.set(campaign.promoted_object.page_id, { id: campaign.promoted_object.page_id });
               }
             }
           }
-          console.log('Found', adAccountPageIds.size, 'pages from campaign promoted_objects');
+          console.log('Found', candidatePages.size, 'pages from campaign promoted_objects');
         }
 
         const permissionCheck = await checkUserPermissions(longLivedToken);
 
-        // Strict filtering: if we can't find pages for this ad account, do NOT fall back to all pages
-        if (adAccountPageIds.size === 0) {
+        if (candidatePages.size === 0) {
           return new Response(JSON.stringify({
             pages: [],
             error: 'No pages are linked to the selected ad account.',
@@ -300,23 +300,44 @@ serve(async (req) => {
           });
         }
 
-        const filteredPages = userManagedPages
-          .filter((p) => adAccountPageIds.has(p.id))
-          .map((p) => ({ id: p.id, name: p.name }));
+        // Step 3: Resolve final page list (prefer managed page data; fallback to direct page lookup)
+        const resolvedPages: Array<{ id: string; name: string }> = [];
 
-        if (filteredPages.length === 0) {
+        for (const candidate of candidatePages.values()) {
+          const managedPage = userManagedMap.get(candidate.id);
+          if (managedPage) {
+            resolvedPages.push({ id: managedPage.id, name: managedPage.name });
+            continue;
+          }
+
+          // Fallback for Business Manager-shared pages not returned by me/accounts
+          const pageInfoUrl = `https://graph.facebook.com/v21.0/${candidate.id}?fields=id,name&access_token=${longLivedToken}`;
+          const pageInfoRes = await fetch(pageInfoUrl);
+          const pageInfoData = await pageInfoRes.json();
+
+          if (!pageInfoData.error && pageInfoData.id && pageInfoData.name) {
+            resolvedPages.push({ id: pageInfoData.id, name: pageInfoData.name });
+          } else if (candidate.name) {
+            // Keep page visible if promote_pages already returned a valid name
+            resolvedPages.push({ id: candidate.id, name: candidate.name });
+          }
+        }
+
+        const uniquePages = Array.from(new Map(resolvedPages.map((p) => [p.id, p])).values());
+
+        if (uniquePages.length === 0) {
           return new Response(JSON.stringify({
             pages: [],
-            error: 'This ad account has pages, but none are manageable with the current Facebook user.',
-            errorCode: 'NO_MANAGED_PAGES_FOR_AD_ACCOUNT',
+            error: 'This ad account has pages, but none are visible to the current Facebook user.',
+            errorCode: 'NO_VISIBLE_PAGES_FOR_AD_ACCOUNT',
             permissions: permissionCheck,
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
-        console.log('Returning', filteredPages.length, 'filtered pages for ad account', normalizedAdAccountId);
-        return new Response(JSON.stringify({ pages: filteredPages, permissions: permissionCheck }), {
+        console.log('Returning', uniquePages.length, 'pages for ad account', normalizedAdAccountId);
+        return new Response(JSON.stringify({ pages: uniquePages, permissions: permissionCheck }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -462,16 +483,36 @@ serve(async (req) => {
           });
         }
 
-        const selectedPage = pagesResult.pages.find((p: any) => p.id === pageId);
+        let selectedPage = pagesResult.pages.find((p: any) => p.id === pageId);
+        let pageAccessToken = selectedPage?.access_token;
+
+        // Fallback: some Business Manager pages may not appear in me/accounts, try direct page lookup
+        if (!selectedPage || !pageAccessToken) {
+          const directPageUrl = `https://graph.facebook.com/v21.0/${pageId}?fields=id,name,access_token&access_token=${longLivedToken}`;
+          const directPageRes = await fetch(directPageUrl);
+          const directPageData = await directPageRes.json();
+
+          if (!directPageData.error && directPageData.id) {
+            selectedPage = {
+              id: directPageData.id,
+              name: directPageData.name || pageName || 'Selected Page',
+              access_token: directPageData.access_token,
+            };
+            pageAccessToken = directPageData.access_token;
+          }
+        }
+
         if (!selectedPage) {
           return new Response(JSON.stringify({ error: 'Page not found or access denied.', errorCode: 'PAGE_NOT_FOUND' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
-        const pageAccessToken = selectedPage.access_token;
         if (!pageAccessToken) {
-          return new Response(JSON.stringify({ error: 'Could not retrieve page access token.', errorCode: 'NO_PAGE_TOKEN' }), {
+          return new Response(JSON.stringify({
+            error: 'Could not retrieve page access token for this page. Please make sure this Facebook user has Page access in Meta Business Suite.',
+            errorCode: 'NO_PAGE_TOKEN'
+          }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
