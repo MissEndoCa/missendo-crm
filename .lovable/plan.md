@@ -1,43 +1,34 @@
 
 
-## Sorun Özeti
+## Fix Ad Performance Dashboard: Currency & Date Range Issues
 
-1. **`fb_ad_account_id` hiçbir zaman kaydedilmiyor** — `connect` action'ında sayfa bağlanırken reklam hesabı tespit edilip DB'ye yazılmıyor
-2. **`campaigns` action'ı tüm ad account'ları döndürüyor** — sayfa ile ilişkili olanı filtrelemiyor
-3. **Ad Performance dashboard tüm hesapların verilerini gösteriyor** — çünkü `fb_ad_account_id` NULL
+### Problem Analysis
 
-## Plan
+1. **Currency**: The dashboard hardcodes `$` in `formatCurrency`, but the ad account uses TL (Turkish Lira). Facebook API returns spend/cpc values in the ad account's native currency, so we need to fetch the account's currency and display it correctly.
 
-### 1. `facebook-oauth` edge function — `connect` action'ına ad account tespiti ekleme
+2. **Last 30 days returning no data**: The campaign appears to be newly created (today). Facebook's `last_30d` preset should still return today's data, but there may be edge cases. The fix is to also request `time_increment=1` or use `time_range` with explicit dates as a fallback approach. More importantly, we should add pagination support since Facebook may return data across multiple pages.
 
-Sayfa bağlantısı sırasında:
-- `me/adaccounts` endpoint'inden kullanıcının tüm ad account'larını çek
-- Her ad account için `/{ad_account_id}/campaigns` sorgusu yap ve seçilen sayfanın ID'siyle ilişkili olanı bul (veya `/{page_id}?fields=promotable_ads` ya da page'in `promotion_eligible` ad account'unu kullan)
-- Alternatif ve daha basit yol: Bağlantı akışında kullanıcıya **ad account seçtir** (sayfa seçiminden sonra, kampanya seçiminden önce)
-- Seçilen `fb_ad_account_id`'yi DB'ye kaydet
+### Changes
 
-### 2. `facebook-oauth` — `campaigns` action'ını filtreleme
+#### 1. Edge Function (`fetch-ad-insights/index.ts`)
+- Fetch the ad account's currency via `GET /{adAccountId}?fields=currency` before fetching insights
+- Return the `currency` field alongside `campaigns` in the response
+- Add pagination: follow `fbData.paging.next` to collect all results
 
-- Şu an `me/adaccounts` ile tüm hesapları çekip tümünün kampanyalarını listeliyor
-- Bağlantı akışında ad account seçildikten sonra, sadece o hesabın kampanyalarını göster
-- Eğer `fb_ad_account_id` zaten DB'de varsa (filter dialog), sadece o hesabı kullan
+#### 2. Frontend (`AdPerformanceDashboard.tsx`)
+- Accept `currency` from the API response and store it in state
+- Replace hardcoded `$` in `formatCurrency` with the actual currency symbol (e.g., `TL` for TRY, using `Intl.NumberFormat` or a simple mapping)
+- Update all places that display monetary values: Spend summary card, Avg CPC card, table cells, chart tooltips
 
-### 3. Frontend — Ad Account seçim adımı ekleme
+### Technical Details
 
-`FacebookConnectButton.tsx`'te sayfa seçiminden sonra, kampanya seçiminden önce bir **ad account seçim adımı** ekle:
-- `me/adaccounts` sonucunu listele (id + name)
-- Kullanıcı birini seçsin
-- Seçim sonrası kampanyalar sadece o hesaptan çekilsin
-- Eğer sadece 1 ad account varsa otomatik seç
+**Currency mapping approach**: Use `Intl.NumberFormat` with `style: 'currency'` and the ISO currency code returned by Facebook (e.g., `TRY` for Turkish Lira). This automatically handles symbol placement and formatting.
 
-### 4. `fetch-ad-insights` — Mevcut mantık zaten doğru
+**Edge function currency fetch**:
+```
+GET https://graph.facebook.com/v21.0/{adAccountId}?fields=currency&access_token=...
+```
+Returns `{ "currency": "TRY", "id": "act_xxx" }`.
 
-Bu function zaten `fb_ad_account_id` kullanıyor. Sorun sadece bu alanın NULL olması. Yukarıdaki değişikliklerle otomatik düzelecek.
-
-### Teknik Detaylar
-
-- Yeni Facebook Graph API endpoint: `GET /v21.0/me/adaccounts?fields=id,name,account_id`
-- `facebook-oauth` edge function'a yeni action: `adaccounts` (ad account listesi döndürür)
-- DB update: `connect` action'ında `fb_ad_account_id` alanını set et
-- Frontend: Sayfa → Ad Account → Kampanya → Bağlantı tamamla akışı
+**Pagination fix**: After the initial fetch, check `fbData.paging?.next` and follow it to get all campaign data pages, merging results.
 
