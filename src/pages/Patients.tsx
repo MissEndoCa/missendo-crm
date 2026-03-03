@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, User, Phone, Mail, Upload, X, Building2, Pencil, Trash2, FileText, DollarSign } from 'lucide-react';
+import { Plus, Search, User, Phone, Mail, Upload, X, Building2, Pencil, Trash2, FileText, DollarSign, PhoneCall } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -20,6 +20,7 @@ import { PatientDetails } from '@/components/PatientDetails';
 import { ColumnFilter } from '@/components/ColumnFilter';
 import { PatientCard } from '@/components/PatientCard';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 type CrmStatus = 'new_lead' | 'called_answered' | 'called_no_answer' | 'waiting_photos' | 'photos_received' | 'treatment_plan_sent' | 'follow_up' | 'confirmed' | 'completed' | 'lost';
 
 const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; color: string; bgColor: string }> = {
@@ -111,13 +112,13 @@ export default function Patients() {
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFromLead, setIsFromLead] = useState(false);
+  const [callCounts, setCallCounts] = useState<Record<string, { count: number; lastCallAt: string | null; lastResult: string | null }>>({});
   useEffect(() => {
-    // Wait until auth context finishes loading; otherwise we may never trigger the initial fetch
-    // (e.g., profile/roles still null) and the table stays stuck on "Loading...".
     if (authLoading) return;
     if (!user) return;
 
     loadPatients();
+    loadCallCounts();
     if (isSuperAdmin) {
       loadOrganizations();
     }
@@ -174,6 +175,31 @@ export default function Patients() {
       setLoading(false);
     }
   };
+
+  const loadCallCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reminder_call_logs')
+        .select('id, called_at, call_result, reminder_id, reminders!inner(patient_id)')
+        .order('called_at', { ascending: false });
+
+      if (error) throw error;
+
+      const counts: Record<string, { count: number; lastCallAt: string | null; lastResult: string | null }> = {};
+      (data || []).forEach((log: any) => {
+        const patientId = log.reminders?.patient_id;
+        if (!patientId) return;
+        if (!counts[patientId]) {
+          counts[patientId] = { count: 0, lastCallAt: log.called_at, lastResult: log.call_result };
+        }
+        counts[patientId].count++;
+      });
+      setCallCounts(counts);
+    } catch (error) {
+      console.error('Error loading call counts:', error);
+    }
+  };
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -794,6 +820,7 @@ export default function Patients() {
                 <TableRow>
                   <TableHead>Patient</TableHead>
                   <TableHead>CRM Status</TableHead>
+                  <TableHead className="text-center w-20">Calls</TableHead>
                   {isSuperAdmin && (
                     <TableHead className="p-0">
                       <ColumnFilter
@@ -809,11 +836,11 @@ export default function Patients() {
               </TableHeader>
               <TableBody>
                 {loading ? <TableRow>
-                    <TableCell colSpan={isSuperAdmin ? 4 : 3} className="text-center py-8">
+                    <TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center py-8">
                       Loading patients...
                     </TableCell>
                   </TableRow> : filteredPatients.length === 0 ? <TableRow>
-                    <TableCell colSpan={isSuperAdmin ? 4 : 3} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center py-8 text-muted-foreground">
                       No patients found
                     </TableCell>
                   </TableRow> : filteredPatients.map(patient => <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
@@ -847,6 +874,38 @@ export default function Patients() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </TableCell>
+                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        {(() => {
+                          const info = callCounts[patient.id];
+                          const count = info?.count || 0;
+                          if (count === 0) {
+                            return <span className="text-xs text-muted-foreground">—</span>;
+                          }
+                          return (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 px-2 gap-1">
+                                  <PhoneCall className="w-3 h-3" />
+                                  <span className="text-xs font-medium">{count}</span>
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-3" align="center">
+                                <div className="space-y-1 text-sm">
+                                  <div className="font-medium">Last Call</div>
+                                  <div className="text-muted-foreground">
+                                    {info?.lastCallAt ? format(new Date(info.lastCallAt), 'dd MMM yyyy HH:mm') : '—'}
+                                  </div>
+                                  {info?.lastResult && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Result: {info.lastResult}
+                                    </div>
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          );
+                        })()}
                       </TableCell>
                       {isSuperAdmin && <TableCell onClick={() => { setSelectedPatient(patient); setShowPatientDetails(true); }}>
                           <Badge variant="outline" className="flex items-center gap-1 w-fit">
