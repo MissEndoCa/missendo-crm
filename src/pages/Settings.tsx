@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import { ActivityLogs } from '@/components/ActivityLogs';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import { FacebookConnectButton } from '@/components/FacebookConnectButton';
+import { AdPerformanceDashboard } from '@/components/AdPerformanceDashboard';
 
 export default function Settings() {
   const { profile, isSuperAdmin } = useAuth();
@@ -178,6 +179,9 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Ad Performance Dashboard */}
+        <AdPerformanceDashboard />
 
         {/* Save Button */}
         <div className="flex justify-end">

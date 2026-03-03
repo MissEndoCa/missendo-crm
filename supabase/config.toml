@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.send-new-lead-email]
 verify_jwt = false
+
+[functions.fetch-ad-insights]
+verify_jwt = false
