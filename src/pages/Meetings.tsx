@@ -250,7 +250,8 @@ export default function Meetings() {
           m.contact_name.toLowerCase().includes(q) ||
           m.business_name.toLowerCase().includes(q) ||
           (m.phone && m.phone.includes(q)) ||
-          (m.city && m.city.toLowerCase().includes(q))
+          (m.city && m.city.toLowerCase().includes(q)) ||
+          (m.address && m.address.toLowerCase().includes(q))
       );
     }
     if (filterResult !== 'all') {
