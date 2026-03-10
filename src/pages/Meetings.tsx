@@ -488,6 +488,7 @@ export default function Meetings() {
                 <TableHead><SortHeader field="business_name" label="Business" /></TableHead>
                 <TableHead><SortHeader field="contact_name" label="Contact" /></TableHead>
                 <TableHead><SortHeader field="city" label="City" /></TableHead>
+                <TableHead>Address</TableHead>
                 <TableHead><SortHeader field="result" label="Result" /></TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead>Created By</TableHead>
