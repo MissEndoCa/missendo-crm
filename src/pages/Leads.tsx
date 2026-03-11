@@ -457,12 +457,12 @@ export default function Leads() {
               <DialogTrigger asChild>
                 <Button onClick={resetForm} className="flex-1 sm:flex-none">
                   <Plus className="w-4 h-4 mr-2" />
-                  Lead Ekle
+                  Add Lead
                 </Button>
               </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{selectedLead ? 'Lead Düzenle' : 'Yeni Lead Ekle'}</DialogTitle>
+                <DialogTitle>{selectedLead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
