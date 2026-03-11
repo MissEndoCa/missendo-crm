@@ -9,6 +9,7 @@ import { Settings as SettingsIcon, Key, MessageSquare, Save } from 'lucide-react
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { ActivityLogs } from '@/components/ActivityLogs';
+import { BatchWebPConverter } from '@/components/BatchWebPConverter';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import { FacebookConnectButton } from '@/components/FacebookConnectButton';
 import { AdPerformanceDashboard } from '@/components/AdPerformanceDashboard';
