@@ -924,6 +924,7 @@ export type Database = {
           file_path: string
           file_size: number | null
           id: string
+          is_sensitive: boolean
           notes: string | null
           organization_id: string
           patient_id: string
@@ -938,6 +939,7 @@ export type Database = {
           file_path: string
           file_size?: number | null
           id?: string
+          is_sensitive?: boolean
           notes?: string | null
           organization_id: string
           patient_id: string
@@ -952,6 +954,7 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           id?: string
+          is_sensitive?: boolean
           notes?: string | null
           organization_id?: string
           patient_id?: string
