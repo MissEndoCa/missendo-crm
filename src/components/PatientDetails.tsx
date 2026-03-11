@@ -591,7 +591,7 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     });
   };
 
-
+  const handleDownloadDocument = async (filePath: string, fileName: string) => {
     try {
       const { data, error } = await supabase.storage
         .from('patient-documents')
