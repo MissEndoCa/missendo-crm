@@ -281,7 +281,8 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
       setAppointments(appointmentsRes.data || []);
       setDocuments((documentsRes.data || []).map(doc => ({
         ...doc,
-        category: (doc.category as 'photo' | 'xray' | 'document') || 'document'
+        category: (doc.category as 'photo' | 'xray' | 'document') || 'document',
+        is_sensitive: (doc as any).is_sensitive ?? false
       })));
       setNotes((notesRes.data || []) as PatientNote[]);
       setPayments(paymentsRes.data || []);
