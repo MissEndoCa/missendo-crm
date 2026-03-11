@@ -82,7 +82,9 @@ export default function Layout({ children }: LayoutProps) {
   if (isSuperAdmin) {
     navItems.push({ path: '/reminders', icon: Bell, label: 'Reminders' });
     navItems.push({ path: '/mailing', icon: Mail, label: 'Mailing' });
-    navItems.push({ path: '/media', icon: ImageIcon, label: 'Media' });
+    if (profile?.email === 'info@talxmedia.com.tr') {
+      navItems.push({ path: '/media', icon: ImageIcon, label: 'Media' });
+    }
     navItems.push({ path: '/organizations', icon: Building2, label: 'Organizations' });
   }
 
