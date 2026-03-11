@@ -564,7 +564,34 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
     }
   };
 
-  const handleDownloadDocument = async (filePath: string, fileName: string) => {
+  const toggleSensitive = async (docId: string, currentValue: boolean) => {
+    const newValue = !currentValue;
+    const { error } = await supabase
+      .from('patient_documents')
+      .update({ is_sensitive: newValue })
+      .eq('id', docId);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to update sensitivity', variant: 'destructive' });
+      return;
+    }
+
+    setDocuments(prev => prev.map(d => d.id === docId ? { ...d, is_sensitive: newValue } : d));
+    // If marking as sensitive, remove from revealed set
+    if (newValue) {
+      setRevealedSensitive(prev => { const next = new Set(prev); next.delete(docId); return next; });
+    }
+  };
+
+  const toggleReveal = (docId: string) => {
+    setRevealedSensitive(prev => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId); else next.add(docId);
+      return next;
+    });
+  };
+
+
     try {
       const { data, error } = await supabase.storage
         .from('patient-documents')
