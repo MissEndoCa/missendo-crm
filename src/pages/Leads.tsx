@@ -784,11 +784,11 @@ export default function Leads() {
                         </PopoverTrigger>
                         <PopoverContent className="w-72 p-3" align="start">
                           <div className="space-y-2">
-                            <Label className="text-xs font-medium">Not</Label>
+                            <Label className="text-xs font-medium">Note</Label>
                             <Textarea
                               value={noteEditValue}
                               onChange={(e) => setNoteEditValue(e.target.value)}
-                              placeholder="Lead hakkında not ekleyin..."
+                              placeholder="Add a note about this lead..."
                               rows={3}
                               className="text-sm"
                               autoFocus
