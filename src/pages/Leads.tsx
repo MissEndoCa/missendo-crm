@@ -860,8 +860,8 @@ export default function Leads() {
           open={!!deleteTarget}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
           onConfirm={handleDeleteLead}
-          title="Lead Sil"
-          description={`${deleteTarget?.first_name} ${deleteTarget?.last_name} lead kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+          title="Delete Lead"
+          description={`Are you sure you want to delete the lead ${deleteTarget?.first_name} ${deleteTarget?.last_name}? This action cannot be undone.`}
         />
       </div>
     </Layout>
