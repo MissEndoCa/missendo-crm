@@ -50,14 +50,30 @@ export default function Media() {
     try {
       const { data, error } = await supabase
         .from('patient_documents')
-        .select('id, document_name, document_type, file_path, file_size, category, created_at, patient_id, organization_id, patients:patient_id(first_name, last_name)')
+        .select('id, document_name, document_type, file_path, file_size, category, created_at, patient_id, organization_id')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
+      // Fetch patient names separately
+      const patientIds = [...new Set((data || []).map(d => d.patient_id))];
+      const patientMap: Record<string, { first_name: string; last_name: string }> = {};
+      
+      if (patientIds.length > 0) {
+        // Batch in chunks of 50
+        for (let i = 0; i < patientIds.length; i += 50) {
+          const chunk = patientIds.slice(i, i + 50);
+          const { data: patients } = await supabase
+            .from('patients')
+            .select('id, first_name, last_name')
+            .in('id', chunk);
+          (patients || []).forEach(p => { patientMap[p.id] = { first_name: p.first_name, last_name: p.last_name }; });
+        }
+      }
+
       const mapped = (data || []).map((d: any) => ({
         ...d,
-        patient: d.patients,
+        patient: patientMap[d.patient_id] || null,
       }));
       setDocuments(mapped);
     } catch (err) {
