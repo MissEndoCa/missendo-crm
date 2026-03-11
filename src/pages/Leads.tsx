@@ -544,12 +544,12 @@ export default function Leads() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-muted-foreground">Mevcut lead'lerde organizasyon değiştirilemez</p>
+                        <p className="text-xs text-muted-foreground">Organization cannot be changed for existing leads</p>
                       </div>
                     ) : (
                       <Select value={formData.organization_id} onValueChange={(value) => setFormData({ ...formData, organization_id: value })}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Organizasyon seçin" />
+                          <SelectValue placeholder="Select organization" />
                         </SelectTrigger>
                         <SelectContent>
                           {organizations.map((org) => (
