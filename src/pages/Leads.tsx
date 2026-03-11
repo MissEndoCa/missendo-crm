@@ -451,7 +451,7 @@ export default function Leads() {
               ) : (
                 <RefreshCw className="w-4 h-4 mr-2" />
               )}
-              {isPolling ? 'Senkronize ediliyor...' : 'Lead Senkronize Et'}
+              {isPolling ? 'Syncing...' : 'Sync Leads'}
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
