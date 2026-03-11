@@ -615,12 +615,12 @@ export default function Leads() {
 
                 {formData.will_come === false && (
                   <div className="space-y-2">
-                    <Label htmlFor="will_not_come_reason">Gelmeme Sebebi</Label>
+                    <Label htmlFor="will_not_come_reason">Reason for Not Coming</Label>
                     <Textarea
                       id="will_not_come_reason"
                       value={formData.will_not_come_reason}
                       onChange={(e) => setFormData({ ...formData, will_not_come_reason: e.target.value })}
-                      placeholder="Hastanın gelmeme sebebini girin"
+                      placeholder="Enter the reason the patient won't come"
                       rows={3}
                     />
                   </div>
