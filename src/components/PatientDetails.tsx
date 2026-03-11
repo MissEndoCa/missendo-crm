@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { convertToWebP } from '@/lib/imageUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TimePicker } from '@/components/TimePicker';
