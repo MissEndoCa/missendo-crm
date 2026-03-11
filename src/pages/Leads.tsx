@@ -286,13 +286,13 @@ export default function Leads() {
 
         if (error) throw error;
         
-        toast({ title: "Lead güncellendi" });
+        toast({ title: "Lead updated" });
       } else {
         const { error } = await supabase.from('leads').insert([leadData]);
 
         if (error) throw error;
         
-        toast({ title: "Lead oluşturuldu" });
+        toast({ title: "Lead created" });
       }
 
       setIsDialogOpen(false);
