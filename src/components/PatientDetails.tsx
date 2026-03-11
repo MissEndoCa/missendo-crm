@@ -53,6 +53,7 @@ interface Document {
   created_at: string;
   notes: string | null;
   category: 'photo' | 'xray' | 'document';
+  is_sensitive: boolean;
 }
 
 interface PatientNote {
