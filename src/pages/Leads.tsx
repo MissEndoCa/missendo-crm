@@ -564,7 +564,7 @@ export default function Leads() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="status">Durum</Label>
+                  <Label htmlFor="status">Status</Label>
                   <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
                     <SelectTrigger>
                       <SelectValue />
@@ -573,7 +573,7 @@ export default function Leads() {
                       {editableStatuses.map(s => (
                         <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                       ))}
-                      <SelectItem value="converted_to_patient">Hasta Oldu</SelectItem>
+                      <SelectItem value="converted_to_patient">Became Patient</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
