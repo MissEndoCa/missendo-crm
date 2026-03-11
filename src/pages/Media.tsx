@@ -341,7 +341,7 @@ export default function Media() {
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <FileText className="h-12 w-12 mb-3 opacity-40" />
-                  <p>Belge bulunamadı</p>
+                  <p>No documents found</p>
                 </CardContent>
               </Card>
             ) : (
