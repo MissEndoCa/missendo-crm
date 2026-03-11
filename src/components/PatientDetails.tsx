@@ -3315,14 +3315,14 @@ export function PatientDetails({ patientId, onClose }: PatientDetailsProps) {
         onOpenChange={(open) => !open && setDeleteDialog({ open: false, type: null, id: '', extra: '' })}
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
-        title="Bu işlemi yapmak istediğinize emin misiniz?"
+        title="Are you sure?"
         description={
-          deleteDialog.type === 'document' ? "Bu döküman kalıcı olarak silinecektir." :
-          deleteDialog.type === 'appointment' ? "Bu randevu kalıcı olarak silinecektir." :
-          deleteDialog.type === 'note' ? "Bu not kalıcı olarak silinecektir." :
-          deleteDialog.type === 'payment' ? "Bu ödeme kaydı kalıcı olarak silinecektir." :
-          deleteDialog.type === 'transfer' ? "Bu transfer kaydı kalıcı olarak silinecektir." :
-          "Bu kayıt kalıcı olarak silinecektir."
+          deleteDialog.type === 'document' ? "This document will be permanently deleted." :
+          deleteDialog.type === 'appointment' ? "This appointment will be permanently deleted." :
+          deleteDialog.type === 'note' ? "This note will be permanently deleted." :
+          deleteDialog.type === 'payment' ? "This payment record will be permanently deleted." :
+          deleteDialog.type === 'transfer' ? "This transfer record will be permanently deleted." :
+          "This record will be permanently deleted."
         }
       />
     </div>
