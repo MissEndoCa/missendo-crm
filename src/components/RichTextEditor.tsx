@@ -199,10 +199,10 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
       // Insert image into editor
       editor.chain().focus().setImage({ src: publicUrl }).run();
       setImagePopoverOpen(false);
-      toast.success('Görsel başarıyla eklendi');
+      toast.success('Image added successfully');
     } catch (error: any) {
       console.error('Image upload error:', error);
-      toast.error('Görsel yüklenirken hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
+      toast.error('Failed to upload image: ' + (error.message || 'Unknown error'));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
