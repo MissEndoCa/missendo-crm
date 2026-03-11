@@ -581,7 +581,7 @@ export default function Leads() {
                 {(formData.status === 'appointment_scheduled' || formData.status === 'converted_to_patient') && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="appointment_scheduled_date">Randevu Tarihi</Label>
+                      <Label htmlFor="appointment_scheduled_date">Appointment Date</Label>
                       <Input
                         id="appointment_scheduled_date"
                         type="date"
