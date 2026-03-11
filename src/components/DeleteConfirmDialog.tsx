@@ -22,8 +22,8 @@ export function DeleteConfirmDialog({
   open,
   onOpenChange,
   onConfirm,
-  title = "Bu işlemi yapmak istediğinize emin misiniz?",
-  description = "Bu işlem geri alınamaz. Kayıt kalıcı olarak silinecektir.",
+  title = "Are you sure?",
+  description = "This action cannot be undone. The record will be permanently deleted.",
   isDeleting = false,
 }: DeleteConfirmDialogProps) {
   return (
