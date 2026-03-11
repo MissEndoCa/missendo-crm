@@ -21,6 +21,7 @@ import Accounting from "./pages/Accounting";
 import Reminders from "./pages/Reminders";
 import Mailing from "./pages/Mailing";
 import Meetings from "./pages/Meetings";
+import Media from "./pages/Media";
 import NotFound from "./pages/NotFound";
  import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
  import Terms from "./pages/legal/Terms";
