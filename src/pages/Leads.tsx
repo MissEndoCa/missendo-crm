@@ -398,7 +398,7 @@ export default function Leads() {
     try {
       const { error } = await supabase.from('leads').delete().eq('id', deleteTarget.id);
       if (error) throw error;
-      toast({ title: "Lead silindi" });
+      toast({ title: "Lead deleted" });
       setDeleteTarget(null);
       loadLeads();
     } catch (error) {
