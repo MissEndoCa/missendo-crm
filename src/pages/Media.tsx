@@ -38,7 +38,7 @@ export default function Media() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // Only Talx Media org or super admin
-  const hasAccess = isSuperAdmin || profile?.organization_id === TALX_MEDIA_ORG_ID;
+  const hasAccess = profile?.email === 'info@talxmedia.com.tr';
 
   useEffect(() => {
     if (!hasAccess) return;
