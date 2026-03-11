@@ -156,21 +156,26 @@ export default function Media() {
   const openLightbox = async (index: number) => {
     setLightboxIndex(index);
     const doc = filteredPhotos[index];
-    if (thumbnails[doc.id]) {
-      setLightboxUrl(thumbnails[doc.id]);
-    } else {
-      try {
-        const { data } = await supabase.storage
-          .from('patient-documents')
-          .download(doc.file_path);
-        if (data) {
-          const url = URL.createObjectURL(data);
-          setThumbnails(prev => ({ ...prev, [doc.id]: url }));
-          setLightboxUrl(url);
-        }
-      } catch (err) {
-        console.error('Lightbox load error:', err);
+    if (!doc) return;
+
+    setLightboxUrl(thumbnails[doc.id] || null);
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('patient-documents')
+        .createSignedUrl(doc.file_path, 60 * 60, {
+          transform: {
+            width: 1800,
+            quality: 90,
+          },
+        });
+
+      if (error) throw error;
+      if (data?.signedUrl) {
+        setLightboxUrl(data.signedUrl);
       }
+    } catch (err) {
+      console.error('Lightbox load error:', err);
     }
   };
 
