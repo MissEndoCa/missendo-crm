@@ -71,9 +71,13 @@ serve(async (req) => {
                 continue;
               }
 
-              // Prefer org matching by page_id, fallback to trying all tokens
+              // Strict page_id matching — do NOT fallback to all orgs
               const matchedOrgs = (orgs || []).filter(o => o.fb_page_id === pageId);
-              const orgsToTry = matchedOrgs.length > 0 ? matchedOrgs : (orgs || []);
+              if (matchedOrgs.length === 0) {
+                console.log(`No organization matched page_id=${pageId}, skipping lead`);
+                continue;
+              }
+              const orgsToTry = matchedOrgs;
 
               for (const org of orgsToTry) {
                 try {
