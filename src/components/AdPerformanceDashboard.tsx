@@ -177,7 +177,7 @@ export function AdPerformanceDashboard({ autoFetch = false }: { autoFetch?: bool
         {hasFetched && !loading && campaigns.length > 0 && (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Eye className="w-3.5 h-3.5" />
@@ -226,6 +226,13 @@ export function AdPerformanceDashboard({ autoFetch = false }: { autoFetch?: bool
                   Avg CPC
                 </div>
                 <p className="text-lg font-bold">{formatCurrency(parseFloat(avgCpc))}</p>
+              </div>
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  CPL
+                </div>
+                <p className="text-lg font-bold">{totals.conversions > 0 ? formatCurrency(parseFloat(avgCpl)) : '—'}</p>
               </div>
             </div>
 
