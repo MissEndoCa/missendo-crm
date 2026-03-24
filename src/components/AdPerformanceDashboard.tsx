@@ -66,6 +66,15 @@ export function AdPerformanceDashboard({ autoFetch = false }: { autoFetch?: bool
     }
   };
 
+  // Auto-fetch on mount when connected
+  useEffect(() => {
+    if (autoFetch && !initialLoaded) {
+      setInitialLoaded(true);
+      fetchInsights();
+    }
+  }, [autoFetch, initialLoaded]);
+
+
   const totals = campaigns.reduce(
     (acc, c) => ({
       impressions: acc.impressions + c.impressions,
