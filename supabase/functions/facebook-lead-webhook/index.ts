@@ -104,40 +104,40 @@ serve(async (req) => {
                       console.log(`Test/organic lead ACCEPTED for org ${org.id} (no ad_id, leadgen_id=${leadgenId})`);
                       // Skip campaign filtering, proceed to insert
                     } else {
+                      // We have ad_id, verify it belongs to a selected campaign
+                      const userToken = org.fb_user_access_token || org.fb_page_access_token;
+                      const adInfoRes = await fetch(
+                        `https://graph.facebook.com/${FB_API_VERSION}/${adId}?fields=campaign_id,adset_id&access_token=${userToken}`
+                      );
 
-                    // We have ad_id, verify it belongs to a selected campaign
-                    const userToken = org.fb_user_access_token || org.fb_page_access_token;
-                    const adInfoRes = await fetch(
-                      `https://graph.facebook.com/${FB_API_VERSION}/${adId}?fields=campaign_id,adset_id&access_token=${userToken}`
-                    );
-
-                    if (!adInfoRes.ok) {
-                      console.log(`Lead REJECTED for org ${org.id}: could not verify ad ${adId} campaign (API error), rejecting for safety`);
-                      break;
-                    }
-
-                    const adInfo = await adInfoRes.json();
-                    const adCampaignId = adInfo.campaign_id;
-                    const adAdsetId = adInfo.adset_id;
-
-                    console.log(`Ad ${adId} belongs to campaign=${adCampaignId}, adset=${adAdsetId}`);
-
-                    const campaignIds = selectedCampaigns.map(c => c.id);
-                    if (!campaignIds.includes(adCampaignId)) {
-                      console.log(`Lead REJECTED: campaign ${adCampaignId} not in selected campaigns [${campaignIds.join(', ')}]`);
-                      break;
-                    }
-
-                    // Also check adset filter if set
-                    if (selectedAdsets.length > 0 && adAdsetId) {
-                      const adsetIds = selectedAdsets.map(a => a.id);
-                      if (!adsetIds.includes(adAdsetId)) {
-                        console.log(`Lead REJECTED: adset ${adAdsetId} not in selected adsets [${adsetIds.join(', ')}]`);
+                      if (!adInfoRes.ok) {
+                        console.log(`Lead REJECTED for org ${org.id}: could not verify ad ${adId} campaign (API error), rejecting for safety`);
                         break;
                       }
-                    }
 
-                    console.log('Lead ACCEPTED: matches campaign/adset filter');
+                      const adInfo = await adInfoRes.json();
+                      const adCampaignId = adInfo.campaign_id;
+                      const adAdsetId = adInfo.adset_id;
+
+                      console.log(`Ad ${adId} belongs to campaign=${adCampaignId}, adset=${adAdsetId}`);
+
+                      const campaignIds = selectedCampaigns.map(c => c.id);
+                      if (!campaignIds.includes(adCampaignId)) {
+                        console.log(`Lead REJECTED: campaign ${adCampaignId} not in selected campaigns [${campaignIds.join(', ')}]`);
+                        break;
+                      }
+
+                      // Also check adset filter if set
+                      if (selectedAdsets.length > 0 && adAdsetId) {
+                        const adsetIds = selectedAdsets.map(a => a.id);
+                        if (!adsetIds.includes(adAdsetId)) {
+                          console.log(`Lead REJECTED: adset ${adAdsetId} not in selected adsets [${adsetIds.join(', ')}]`);
+                          break;
+                        }
+                      }
+
+                      console.log('Lead ACCEPTED: matches campaign/adset filter');
+                    }
                   }
 
                   // Parse lead fields
