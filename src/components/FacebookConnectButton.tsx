@@ -495,10 +495,38 @@ export function FacebookConnectButton() {
                   <Settings2 className="w-4 h-4" />
                 </Button>
               </div>
-              <Button variant="outline" onClick={handleDisconnect} disabled={loading} className="w-full">
-                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
-                Disconnect
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleDisconnect} disabled={loading} className="flex-1">
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
+                  Disconnect
+                </Button>
+                <Button variant="outline" onClick={() => connectionStatus.pageId && checkDiagnostics(connectionStatus.pageId)} disabled={diagLoading}>
+                  {diagLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Check Status
+                </Button>
+              </div>
+              {diagResult && (
+                <div className="p-3 bg-muted/50 border rounded-lg space-y-1.5">
+                  {diagResult.error ? (
+                    <p className="text-sm text-destructive">{diagResult.error}</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        {diagResult.webhookActive ? <CheckCircle2 className="w-4 h-4 text-success" /> : <XCircle className="w-4 h-4 text-destructive" />}
+                        <span className={`text-sm ${diagResult.webhookActive ? 'text-success' : 'text-destructive'}`}>
+                          {diagResult.webhookActive ? 'Webhook subscription active' : 'Webhook subscription not found'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {diagResult.leadgenSubscribed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <XCircle className="w-4 h-4 text-destructive" />}
+                        <span className={`text-sm ${diagResult.leadgenSubscribed ? 'text-success' : 'text-destructive'}`}>
+                          {diagResult.leadgenSubscribed ? 'Leadgen field subscribed' : 'Leadgen field not subscribed'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
             </div>
           ) : (
             <div className="space-y-4">
