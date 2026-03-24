@@ -6,11 +6,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Facebook, Check, X, Loader2, AlertCircle, ChevronRight, Filter, Settings2, ExternalLink, AlertTriangle, Building2 } from 'lucide-react';
+import { Facebook, Check, X, Loader2, AlertCircle, ChevronRight, Filter, Settings2, ExternalLink, AlertTriangle, Building2, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+interface DiagnosticResult {
+  webhookActive: boolean;
+  leadgenSubscribed: boolean;
+  forms: Array<{ id: string; name: string; status: string }>;
+  error?: string;
+}
 
 const FB_APP_ID = '1722864942230149';
 
@@ -66,6 +73,26 @@ export function FacebookConnectButton() {
   const [showPermissionError, setShowPermissionError] = useState(false);
   const [permissionInfo, setPermissionInfo] = useState<PermissionCheck | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+
+  // Diagnostics state
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagResult, setDiagResult] = useState<DiagnosticResult | null>(null);
+
+  const checkDiagnostics = async (pageId: string) => {
+    setDiagLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('facebook-oauth', {
+        body: { action: 'diagnostics', pageId },
+      });
+      if (error) throw error;
+      setDiagResult(data);
+    } catch (err: any) {
+      console.error('Diagnostics error:', err);
+      setDiagResult({ webhookActive: false, leadgenSubscribed: false, forms: [], error: err.message });
+    } finally {
+      setDiagLoading(false);
+    }
+  };
 
   const loadConnectionStatus = useCallback(async () => {
     if (!profile?.organization_id) return;
@@ -468,10 +495,39 @@ export function FacebookConnectButton() {
                   <Settings2 className="w-4 h-4" />
                 </Button>
               </div>
-              <Button variant="outline" onClick={handleDisconnect} disabled={loading} className="w-full">
-                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
-                Disconnect
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleDisconnect} disabled={loading} className="flex-1">
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
+                  Disconnect
+                </Button>
+                <Button variant="outline" onClick={() => connectionStatus.pageId && checkDiagnostics(connectionStatus.pageId)} disabled={diagLoading}>
+                  {diagLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Check Status
+                </Button>
+              </div>
+              {diagResult && (
+                <div className="p-3 bg-muted/50 border rounded-lg space-y-1.5">
+                  {diagResult.error ? (
+                    <p className="text-sm text-destructive">{diagResult.error}</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        {diagResult.webhookActive ? <CheckCircle2 className="w-4 h-4 text-success" /> : <XCircle className="w-4 h-4 text-destructive" />}
+                        <span className={`text-sm ${diagResult.webhookActive ? 'text-success' : 'text-destructive'}`}>
+                          {diagResult.webhookActive ? 'Webhook subscription active' : 'Webhook subscription not found'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {diagResult.leadgenSubscribed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <XCircle className="w-4 h-4 text-destructive" />}
+                        <span className={`text-sm ${diagResult.leadgenSubscribed ? 'text-success' : 'text-destructive'}`}>
+                          {diagResult.leadgenSubscribed ? 'Leadgen field subscribed' : 'Leadgen field not subscribed'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
             </div>
           ) : (
             <div className="space-y-4">

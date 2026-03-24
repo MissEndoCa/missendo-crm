@@ -13,14 +13,12 @@ import { BatchWebPConverter } from '@/components/BatchWebPConverter';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import { FacebookConnectButton } from '@/components/FacebookConnectButton';
 import { AdPerformanceDashboard } from '@/components/AdPerformanceDashboard';
-import { ConnectionDiagnostics } from '@/components/ConnectionDiagnostics';
+
 
 export default function Settings() {
   const { profile, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [fbPageId, setFbPageId] = useState<string | null>(null);
-  const [fbConnected, setFbConnected] = useState(false);
   const [orgData, setOrgData] = useState({
     wa_phone_number_id: '',
     wa_access_token: '',
@@ -36,7 +34,7 @@ export default function Settings() {
     try {
       const { data, error } = await supabase
         .from('organizations')
-        .select('wa_phone_number_id, wa_access_token, fb_page_id')
+        .select('wa_phone_number_id, wa_access_token')
         .eq('id', profile.organization_id)
         .single();
 
@@ -47,8 +45,6 @@ export default function Settings() {
           wa_phone_number_id: data.wa_phone_number_id || '',
           wa_access_token: data.wa_access_token || '',
         });
-        setFbPageId(data.fb_page_id || null);
-        setFbConnected(!!data.fb_page_id);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -155,8 +151,7 @@ export default function Settings() {
           </Card>
         </div>
 
-        {/* Connection Diagnostics */}
-        {fbConnected && <ConnectionDiagnostics pageId={fbPageId} />}
+
 
         {/* General Information */}
         <Card>
@@ -190,7 +185,7 @@ export default function Settings() {
         </Card>
 
         {/* Ad Performance Dashboard */}
-        <AdPerformanceDashboard autoFetch={fbConnected} />
+        <AdPerformanceDashboard autoFetch={true} />
 
         {/* Save Button */}
         <div className="flex justify-end">
