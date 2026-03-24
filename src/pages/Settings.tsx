@@ -155,6 +155,9 @@ export default function Settings() {
           </Card>
         </div>
 
+        {/* Connection Diagnostics */}
+        {fbConnected && <ConnectionDiagnostics pageId={fbPageId} />}
+
         {/* General Information */}
         <Card>
           <CardHeader>
