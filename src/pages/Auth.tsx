@@ -7,8 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { Shield } from 'lucide-react';
+import { Shield, Mail } from 'lucide-react';
 import missEndoLogo from '@/assets/miss-endo-logo.webp';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const signinSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }),
@@ -17,6 +24,7 @@ const signinSchema = z.object({
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
+  const [showSignupInfo, setShowSignupInfo] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -115,7 +123,14 @@ export default function Auth() {
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              New accounts can only be created by a super admin.
+              Don't have an account?{' '}
+              <button
+                type="button"
+                onClick={() => setShowSignupInfo(true)}
+                className="text-primary hover:underline font-medium"
+              >
+                Sign up
+              </button>
             </p>
           </form>
 
@@ -127,6 +142,25 @@ export default function Auth() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showSignupInfo} onOpenChange={setShowSignupInfo}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Account Information</DialogTitle>
+            <DialogDescription className="pt-2 text-sm leading-relaxed">
+              Organizations are created by us, and only organizations we've created can log in and view their own data. We only create and provide organization accounts to companies with whom we have contracts. If you own an organization, you can send an email to <strong>info@missendo.com</strong> to apply for an account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-2">
+            <Button asChild>
+              <a href="mailto:info@missendo.com">
+                <Mail className="w-4 h-4" />
+                Contact Us
+              </a>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
