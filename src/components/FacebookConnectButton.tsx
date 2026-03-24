@@ -86,25 +86,28 @@ export function FacebookConnectButton() {
 
   // Load Facebook SDK
   useEffect(() => {
-    if (window.FB) { setSdkLoaded(true); return; }
+    const initFB = () => {
+      window.FB.init({ appId: FB_APP_ID, cookie: true, xfbml: true, version: 'v21.0' });
+      setSdkLoaded(true);
+      console.log('Facebook SDK initialized successfully with App ID:', FB_APP_ID);
+    };
+
+    if (window.FB) { initFB(); return; }
+
     const existingScript = document.querySelector('script[src*="connect.facebook.net"]');
     if (existingScript) {
       const checkFB = setInterval(() => {
-        if (window.FB) {
-          window.FB.init({ appId: FB_APP_ID, cookie: true, xfbml: true, version: 'v19.0' });
-          setSdkLoaded(true); clearInterval(checkFB);
-        }
+        if (window.FB) { initFB(); clearInterval(checkFB); }
       }, 100);
       setTimeout(() => clearInterval(checkFB), 10000);
       return;
     }
-    window.fbAsyncInit = function() {
-      window.FB.init({ appId: FB_APP_ID, cookie: true, xfbml: true, version: 'v19.0' });
-      setSdkLoaded(true);
-    };
+
+    window.fbAsyncInit = function() { initFB(); };
     const script = document.createElement('script');
     script.src = 'https://connect.facebook.net/en_US/sdk.js';
     script.async = true; script.defer = true; script.crossOrigin = 'anonymous';
+    script.onerror = () => console.error('Failed to load Facebook SDK script');
     document.body.appendChild(script);
   }, []);
 
