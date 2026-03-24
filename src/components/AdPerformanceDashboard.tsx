@@ -274,6 +274,7 @@ export function AdPerformanceDashboard({ autoFetch = false }: { autoFetch?: bool
                     <TableHead className="text-right">Spend</TableHead>
                     <TableHead className="text-right">CTR</TableHead>
                     <TableHead className="text-right">CPC</TableHead>
+                    <TableHead className="text-right">CPL</TableHead>
                     <TableHead className="text-right">Conversions</TableHead>
                   </TableRow>
                 </TableHeader>
