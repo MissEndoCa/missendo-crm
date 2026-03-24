@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,7 +22,7 @@ interface CampaignInsight {
   conversions: number;
 }
 
-export function AdPerformanceDashboard() {
+export function AdPerformanceDashboard({ autoFetch = false }: { autoFetch?: boolean }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [campaigns, setCampaigns] = useState<CampaignInsight[]>([]);
@@ -30,6 +30,7 @@ export function AdPerformanceDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
   const [currency, setCurrency] = useState<string>('USD');
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const fetchInsights = async () => {
     setLoading(true);
@@ -65,6 +66,15 @@ export function AdPerformanceDashboard() {
     }
   };
 
+  // Auto-fetch on mount when connected
+  useEffect(() => {
+    if (autoFetch && !initialLoaded) {
+      setInitialLoaded(true);
+      fetchInsights();
+    }
+  }, [autoFetch, initialLoaded]);
+
+
   const totals = campaigns.reduce(
     (acc, c) => ({
       impressions: acc.impressions + c.impressions,
@@ -78,6 +88,7 @@ export function AdPerformanceDashboard() {
 
   const avgCtr = totals.impressions > 0 ? ((totals.clicks / totals.impressions) * 100).toFixed(2) : '0.00';
   const avgCpc = totals.clicks > 0 ? (totals.spend / totals.clicks).toFixed(2) : '0.00';
+  const avgCpl = totals.conversions > 0 ? (totals.spend / totals.conversions).toFixed(2) : '0.00';
 
   const formatNumber = (n: number) => n.toLocaleString();
   const formatCurrency = (n: number) => {
@@ -166,7 +177,7 @@ export function AdPerformanceDashboard() {
         {hasFetched && !loading && campaigns.length > 0 && (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Eye className="w-3.5 h-3.5" />
@@ -216,6 +227,13 @@ export function AdPerformanceDashboard() {
                 </div>
                 <p className="text-lg font-bold">{formatCurrency(parseFloat(avgCpc))}</p>
               </div>
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  CPL
+                </div>
+                <p className="text-lg font-bold">{totals.conversions > 0 ? formatCurrency(parseFloat(avgCpl)) : '—'}</p>
+              </div>
             </div>
 
             {/* Bar Chart */}
@@ -256,6 +274,7 @@ export function AdPerformanceDashboard() {
                     <TableHead className="text-right">Spend</TableHead>
                     <TableHead className="text-right">CTR</TableHead>
                     <TableHead className="text-right">CPC</TableHead>
+                    <TableHead className="text-right">CPL</TableHead>
                     <TableHead className="text-right">Conversions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -269,6 +288,7 @@ export function AdPerformanceDashboard() {
                       <TableCell className="text-right">{formatCurrency(c.spend)}</TableCell>
                       <TableCell className="text-right">{c.ctr.toFixed(2)}%</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.cpc)}</TableCell>
+                      <TableCell className="text-right">{c.conversions > 0 ? formatCurrency(c.spend / c.conversions) : '—'}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant={c.conversions > 0 ? 'default' : 'secondary'}>
                           {c.conversions}

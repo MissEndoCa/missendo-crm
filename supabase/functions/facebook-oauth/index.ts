@@ -604,6 +604,68 @@ serve(async (req) => {
         });
       }
 
+      case 'diagnostics': {
+        const { pageId: diagPageId } = body;
+        
+        // Get org's page access token
+        const { data: orgDiag } = await supabase
+          .from('organizations')
+          .select('fb_page_access_token, fb_page_id')
+          .eq('id', profile.organization_id)
+          .single();
+
+        const tokenToUse = orgDiag?.fb_page_access_token;
+        const targetPageId = diagPageId || orgDiag?.fb_page_id;
+
+        if (!tokenToUse || !targetPageId) {
+          return new Response(JSON.stringify({ error: 'Facebook not connected' }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Check webhook subscriptions
+        let webhookActive = false;
+        let leadgenSubscribed = false;
+        try {
+          const subsUrl = `https://graph.facebook.com/v21.0/${targetPageId}/subscribed_apps?access_token=${tokenToUse}`;
+          const subsRes = await fetch(subsUrl);
+          const subsData = await subsRes.json();
+          console.log('Subscribed apps:', JSON.stringify(subsData));
+          if (subsData.data && subsData.data.length > 0) {
+            webhookActive = true;
+            for (const app of subsData.data) {
+              if (app.subscribed_fields?.includes('leadgen')) {
+                leadgenSubscribed = true;
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Webhook check error:', e);
+        }
+
+        // Get lead forms
+        let forms: Array<{ id: string; name: string; status: string }> = [];
+        try {
+          const formsUrl = `https://graph.facebook.com/v21.0/${targetPageId}/leadgen_forms?fields=id,name,status&access_token=${tokenToUse}`;
+          const formsRes = await fetch(formsUrl);
+          const formsData = await formsRes.json();
+          if (formsData.data) {
+            forms = formsData.data.map((f: any) => ({
+              id: f.id,
+              name: f.name || 'Unnamed Form',
+              status: f.status || 'UNKNOWN',
+            }));
+          }
+        } catch (e) {
+          console.error('Forms check error:', e);
+        }
+
+        return new Response(JSON.stringify({ webhookActive, leadgenSubscribed, forms }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       case 'disconnect': {
         const { error: updateError } = await supabase
           .from('organizations')
