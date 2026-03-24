@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import Layout from '@/components/Layout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -286,28 +286,28 @@ export default function Organizations() {
   // Show loading while authentication is being checked
   if (authLoading) {
     return (
-      <Layout>
+      <>
         <div className="text-center py-12">
           <p className="text-muted-foreground">Loading...</p>
         </div>
-      </Layout>
+      </>
     );
   }
 
   if (!isSuperAdmin) {
     return (
-      <Layout>
+      <>
         <div className="text-center py-12">
           <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
           <p className="text-muted-foreground">Only super administrators can access this page.</p>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="space-y-4 md:space-y-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
@@ -639,6 +639,6 @@ export default function Organizations() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>
+    </>
   );
 }

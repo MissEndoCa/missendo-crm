@@ -1,5 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, memo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -43,7 +44,7 @@ import missEndoLogo from '@/assets/miss-endo-logo.webp';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 interface SidebarContentProps {
@@ -185,7 +186,7 @@ function SidebarContent({
   );
 }
 
-export default function Layout({ children }: LayoutProps) {
+function LayoutInner({ children }: LayoutProps) {
   const { profile, isSuperAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -276,9 +277,11 @@ export default function Layout({ children }: LayoutProps) {
           <Header />
         )}
         <div className={`${isMobile ? 'p-4' : 'p-8'}`}>
-          {children}
+          {children || <Outlet />}
         </div>
       </main>
     </div>
   );
 }
+
+export default memo(LayoutInner);

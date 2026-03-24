@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, ClipboardList, Calendar, DollarSign, TrendingUp, Activity } from 'lucide-react';
-import Layout from '@/components/Layout';
+
 
 interface DashboardStats {
   totalLeads: number;
@@ -271,7 +271,7 @@ export default function Dashboard() {
   };
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6 md:space-y-8">
         {/* Header */}
         <div>
@@ -370,6 +370,6 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

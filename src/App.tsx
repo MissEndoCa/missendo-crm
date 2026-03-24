@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { ReactNode } from "react";
+import Layout from "./components/Layout";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Auth from "./pages/Auth";
@@ -71,6 +72,27 @@ function PublicRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function ProtectedLayout() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <Layout />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -89,126 +111,24 @@ const App = () => (
                 </PublicRoute>
               }
             />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/leads"
-              element={
-                <ProtectedRoute>
-                  <Leads />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patients"
-              element={
-                <ProtectedRoute>
-                  <Patients />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/appointments"
-              element={
-                <ProtectedRoute>
-                  <Appointments />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/organizations"
-              element={
-                <ProtectedRoute>
-                  <Organizations />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/treatments"
-              element={
-                <ProtectedRoute>
-                  <Treatments />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/transfers"
-              element={
-                <ProtectedRoute>
-                  <Transfers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/hotels"
-              element={
-                <ProtectedRoute>
-                  <Hotels />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/accounting"
-              element={
-                <ProtectedRoute>
-                  <Accounting />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reminders"
-              element={
-                <ProtectedRoute>
-                  <Reminders />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/mailing"
-              element={
-                <ProtectedRoute>
-                  <Mailing />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/meetings"
-              element={
-                <ProtectedRoute>
-                  <Meetings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/media"
-              element={
-                <ProtectedRoute>
-                  <Media />
-                </ProtectedRoute>
-              }
-            />
+            {/* All protected routes share a single Layout instance */}
+            <Route element={<ProtectedLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/leads" element={<Leads />} />
+              <Route path="/patients" element={<Patients />} />
+              <Route path="/appointments" element={<Appointments />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/organizations" element={<Organizations />} />
+              <Route path="/treatments" element={<Treatments />} />
+              <Route path="/transfers" element={<Transfers />} />
+              <Route path="/hotels" element={<Hotels />} />
+              <Route path="/accounting" element={<Accounting />} />
+              <Route path="/reminders" element={<Reminders />} />
+              <Route path="/mailing" element={<Mailing />} />
+              <Route path="/meetings" element={<Meetings />} />
+              <Route path="/media" element={<Media />} />
+            </Route>
              {/* Public Legal Pages */}
              <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
              <Route path="/legal/terms" element={<Terms />} />

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import Layout from '@/components/Layout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -431,7 +431,7 @@ export default function Leads() {
   });
 
   return (
-    <Layout>
+    <>
       <div className="space-y-4 md:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -864,6 +864,6 @@ export default function Leads() {
           description={`Are you sure you want to delete the lead ${deleteTarget?.first_name} ${deleteTarget?.last_name}? This action cannot be undone.`}
         />
       </div>
-    </Layout>
+    </>
   );
 }

@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToWebP } from '@/lib/imageUtils';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -186,7 +186,7 @@ export default function Profile() {
   const initials = `${formData.first_name[0] || ''}${formData.last_name[0] || ''}`;
 
   return (
-    <Layout>
+    <>
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Profile</h1>
@@ -384,6 +384,6 @@ export default function Profile() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </>
   );
 }
