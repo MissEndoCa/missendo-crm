@@ -80,6 +80,13 @@ serve(async (req) => {
       });
     }
 
+    if (!isSuperAdmin) {
+      return new Response(JSON.stringify({ error: 'Only super admins can create users and assign roles' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Parse request body
     const { email, password, firstName, lastName, phone, role, organizationId } = await req.json();
 

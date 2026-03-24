@@ -312,7 +312,7 @@ export default function Organizations() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Organizations</h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage dental clinics and their settings</p>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage clinics, users, and access roles</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>

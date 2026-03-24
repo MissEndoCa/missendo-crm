@@ -154,7 +154,8 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
   const [selectedUserForRoleEdit, setSelectedUserForRoleEdit] = useState<User | null>(null);
   const [newRoleForUser, setNewRoleForUser] = useState<AppRole>('clinic_user');
   const { toast } = useToast();
-  const { isSuperAdmin, isClinicAdmin } = useAuth();
+  const { isSuperAdmin } = useAuth();
+  const canManageUsers = isSuperAdmin;
 
   const [formData, setFormData] = useState({
     email: '',
@@ -360,7 +361,7 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="flex justify-end">
+            {canManageUsers && <div className="flex justify-end">
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button onClick={resetForm}>
@@ -451,7 +452,7 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
                   </form>
                 </DialogContent>
               </Dialog>
-            </div>
+            </div>}
 
             <div className="border rounded-lg">
               <Table>
@@ -517,7 +518,7 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            {(isSuperAdmin || isClinicAdmin) && (
+                            {canManageUsers && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -574,7 +575,7 @@ export default function OrganizationUsers({ organizationId, organizationName }: 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {isSuperAdmin && (
+                  {canManageUsers && (
                     <SelectItem value="super_admin">Super Admin</SelectItem>
                   )}
                   <SelectItem value="clinic_admin">Clinic Admin</SelectItem>
