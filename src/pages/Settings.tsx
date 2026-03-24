@@ -45,8 +45,6 @@ export default function Settings() {
           wa_phone_number_id: data.wa_phone_number_id || '',
           wa_access_token: data.wa_access_token || '',
         });
-        setFbPageId(data.fb_page_id || null);
-        setFbConnected(!!data.fb_page_id);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
