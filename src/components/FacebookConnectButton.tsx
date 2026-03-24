@@ -496,11 +496,11 @@ export function FacebookConnectButton() {
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleDisconnect} disabled={loading} className="flex-1">
+                <Button variant="destructive" onClick={handleDisconnect} disabled={loading} className="flex-1">
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
                   Disconnect
                 </Button>
-                <Button variant="outline" onClick={() => connectionStatus.pageId && checkDiagnostics(connectionStatus.pageId)} disabled={diagLoading}>
+                <Button variant="outline" onClick={() => connectionStatus.pageId && checkDiagnostics(connectionStatus.pageId)} disabled={diagLoading} className="flex-1">
                   {diagLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   Check Status
                 </Button>
