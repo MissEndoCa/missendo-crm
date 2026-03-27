@@ -24,9 +24,11 @@ import Mailing from "./pages/Mailing";
 import Meetings from "./pages/Meetings";
 import Media from "./pages/Media";
 import NotFound from "./pages/NotFound";
- import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
- import Terms from "./pages/legal/Terms";
- import DataDeletion from "./pages/legal/DataDeletion";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import Terms from "./pages/legal/Terms";
+import DataDeletion from "./pages/legal/DataDeletion";
+import AboutUs from "./pages/legal/AboutUs";
+import Contact from "./pages/legal/Contact";
 
 const queryClient = new QueryClient();
 
@@ -129,10 +131,12 @@ const App = () => (
               <Route path="/meetings" element={<Meetings />} />
               <Route path="/media" element={<Media />} />
             </Route>
-             {/* Public Legal Pages */}
-             <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
-             <Route path="/legal/terms" element={<Terms />} />
-             <Route path="/legal/data-deletion" element={<DataDeletion />} />
+            {/* Public Legal Pages */}
+            <Route path="/legal/about" element={<AboutUs />} />
+            <Route path="/legal/contact" element={<Contact />} />
+            <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/legal/terms" element={<Terms />} />
+            <Route path="/legal/data-deletion" element={<DataDeletion />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>

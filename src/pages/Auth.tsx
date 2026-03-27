@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { Shield, Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import missEndoLogo from '@/assets/miss-endo-logo.webp';
 import {
   Dialog,
@@ -133,10 +134,17 @@ export default function Auth() {
             </div>
           </form>
 
-          <div className="mt-6 pt-6 border-t">
+          <div className="mt-6 pt-6 border-t space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="w-4 h-4" />
               <span>Secure healthcare CRM platform</span>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <Link to="/legal/about" className="hover:text-foreground hover:underline transition-colors">About Us</Link>
+              <Link to="/legal/contact" className="hover:text-foreground hover:underline transition-colors">Contact</Link>
+              <Link to="/legal/privacy-policy" className="hover:text-foreground hover:underline transition-colors">Privacy Policy</Link>
+              <Link to="/legal/terms" className="hover:text-foreground hover:underline transition-colors">Terms of Use</Link>
+              <Link to="/legal/data-deletion" className="hover:text-foreground hover:underline transition-colors">Data Deletion</Link>
             </div>
           </div>
         </CardContent>
