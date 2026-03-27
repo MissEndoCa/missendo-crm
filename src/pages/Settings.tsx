@@ -192,7 +192,7 @@ export default function Settings() {
 
         {/* Save Button */}
         <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={loading} size="lg">
+          <Button onClick={handleSave} disabled={loading || !waAgreed} size="lg">
             <Save className="w-4 h-4 mr-2" />
             {loading ? 'Saving...' : 'Save Settings'}
           </Button>
