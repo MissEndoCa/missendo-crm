@@ -101,9 +101,11 @@ const AboutUs = () => {
             <div className="p-6 rounded-lg bg-primary/5 border border-primary/20 text-center space-y-2">
               <h2 className="text-xl font-semibold">Get in Touch</h2>
               <p className="text-muted-foreground">Contact us to learn more about our platform, request a demo, or ask any questions.</p>
-              <a href="mailto:info@missendo.com" className="text-primary font-medium text-lg hover:underline inline-block">
-                info@missendo.com
-              </a>
+              <div className="space-y-1">
+                <a href="mailto:info@missendo.com" className="text-primary font-medium text-lg hover:underline block">info@missendo.com</a>
+                <a href="tel:+13106287442" className="text-primary font-medium hover:underline block">+1 (310) 628-7442</a>
+                <p className="text-sm text-muted-foreground">9440 Santa Monica Blvd, Suite 301, Beverly Hills, CA 90210</p>
+              </div>
             </div>
           </CardContent>
         </Card>

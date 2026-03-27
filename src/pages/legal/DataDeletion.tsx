@@ -112,10 +112,14 @@ For detailed information about Facebook's data policy: facebook.com/privacy`}
             </div>
 
             {/* Contact */}
-            <div className="p-6 rounded-lg bg-primary/5 border border-primary/20 text-center">
-              <h2 className="text-xl font-semibold mb-2">Contact</h2>
-              <a href="mailto:info@missendo.com" className="text-primary font-medium text-lg hover:underline">info@missendo.com</a>
-              <p className="text-sm text-muted-foreground mt-2">Response time: Within the legally mandated 30 days</p>
+            <div className="p-6 rounded-lg bg-primary/5 border border-primary/20 text-center space-y-2">
+              <h2 className="text-xl font-semibold">Contact</h2>
+              <div className="space-y-1">
+                <a href="mailto:info@missendo.com" className="text-primary font-medium text-lg hover:underline block">info@missendo.com</a>
+                <a href="tel:+13106287442" className="text-primary font-medium hover:underline block">+1 (310) 628-7442</a>
+                <p className="text-sm text-muted-foreground">9440 Santa Monica Blvd, Suite 301, Beverly Hills, CA 90210</p>
+              </div>
+              <p className="text-sm text-muted-foreground">Response time: Within the legally mandated 30 days</p>
             </div>
           </CardContent>
         </Card>

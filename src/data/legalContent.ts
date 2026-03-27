@@ -6,15 +6,18 @@ export interface LegalSection {
 export const privacySections: LegalSection[] = [
   {
     title: "1. Introduction",
-    content: `At Miss Endo CRM ("we", "our", or "platform"), we take the protection of your personal data very seriously. This Privacy Policy explains in detail the information we collect, use, store, and protect when you use our CRM services designed for clinics operating in the health tourism sector.
+    content: `At Miss Endo Tourism LLC ("we", "our", or "platform"), we take the protection of your personal data very seriously. This Privacy Policy explains in detail the information we collect, use, store, and protect when you use our CRM services designed for clinics operating in the health tourism sector.
 
 This policy has been prepared in accordance with all applicable data protection regulations, primarily the European Union General Data Protection Regulation (GDPR) and the Turkish Personal Data Protection Law (KVKK - Law No. 6698).`
   },
   {
     title: "2. Data Controller",
-    content: `Miss Endo acts as the data controller for personal data processed on this platform.
+    content: `Miss Endo Tourism LLC acts as the data controller for personal data processed on this platform.
 
-Contact: info@missendo.com`
+Contact:
+Email: info@missendo.com
+Phone: +1 (310) 628-7442
+Address: 9440 Santa Monica Blvd, Suite 301, Beverly Hills, CA 90210`
   },
   {
     title: "3. Data We Collect",
@@ -229,7 +232,10 @@ Your continued use of the platform means you accept the current privacy policy.`
     title: "14. Contact",
     content: `For questions about our privacy policy, your personal data, or your rights:
 
+Miss Endo Tourism LLC
 Email: info@missendo.com
+Phone: +1 (310) 628-7442
+Address: 9440 Santa Monica Blvd, Suite 301, Beverly Hills, CA 90210
 
 For detailed instructions on data deletion requests, please visit the /legal/data-deletion page.`
   }
@@ -238,9 +244,9 @@ For detailed instructions on data deletion requests, please visit the /legal/dat
 export const termsSections: LegalSection[] = [
   {
     title: "1. Service Description",
-    content: `Miss Endo CRM ("platform") is a comprehensive customer relationship management system developed for clinics operating in the health tourism sector. The platform offers lead management, patient tracking, appointment scheduling, transfer and accommodation coordination, financial management, email campaigns, Facebook Lead Ads integration, and reporting tools.
+    content: `Miss Endo CRM ("platform") is a comprehensive customer relationship management system developed by Miss Endo Tourism LLC for clinics operating in the health tourism sector. The platform offers lead management, patient tracking, appointment scheduling, transfer and accommodation coordination, financial management, email campaigns, Facebook Lead Ads integration, and reporting tools.
 
-The platform can only be used by organizations (clinics) that have signed a contract with Miss Endo. Individual user accounts are created by organization administrators.`
+The platform can only be used by organizations (clinics) that have signed a contract with Miss Endo Tourism LLC. Individual user accounts are created by organization administrators.`
   },
   {
     title: "2. Account Creation and Access",
@@ -303,10 +309,10 @@ The platform can only be used by organizations (clinics) that have signed a cont
   },
   {
     title: "6. Intellectual Property",
-    content: `• All intellectual property rights on the Miss Endo CRM platform, its design, source code, logo, and all content belong to Miss Endo.
+    content: `• All intellectual property rights on the Miss Endo CRM platform, its design, source code, logo, and all content belong to Miss Endo Tourism LLC.
 • Copying, reproducing, distributing, modifying, or creating derivative works of any part of the platform without written permission is prohibited.
 • Data entered by users on the platform (patient information, lead data, etc.) belongs to the respective organization.
-• Miss Endo reserves the right to use user data for anonymous and aggregate statistical analyses.`
+• Miss Endo Tourism LLC reserves the right to use user data for anonymous and aggregate statistical analyses.`
   },
   {
     title: "7. Privacy and Data Protection",
@@ -316,9 +322,9 @@ As platform users, you are also obligated to protect the confidentiality of data
   },
   {
     title: "8. Service Level and Availability",
-    content: `• Miss Endo makes reasonable efforts to ensure continuous and uninterrupted platform operation but does not guarantee 100% availability.
+    content: `• Miss Endo Tourism LLC makes reasonable efforts to ensure continuous and uninterrupted platform operation but does not guarantee 100% availability.
 • Planned maintenance will be communicated in advance whenever possible.
-• Miss Endo cannot be held responsible for interruptions caused by technical issues, natural disasters, internet infrastructure problems, or third-party services (Facebook, Supabase, etc.).`
+• Miss Endo Tourism LLC cannot be held responsible for interruptions caused by technical issues, natural disasters, internet infrastructure problems, or third-party services (Facebook, Supabase, etc.).`
   },
   {
     title: "9. Limitation of Liability",
@@ -329,7 +335,7 @@ As platform users, you are also obligated to protect the confidentiality of data
   },
   {
     title: "10. Account Suspension and Termination",
-    content: `Miss Endo may suspend or terminate a user account or organization in the following cases:
+    content: `Miss Endo Tourism LLC may suspend or terminate a user account or organization in the following cases:
 
 • Violation of these terms of service
 • Suspicion of illegal activity
@@ -341,7 +347,7 @@ In case of account termination, organizational data will be retained or deleted 
   },
   {
     title: "11. Service Changes",
-    content: `Miss Endo reserves the right to modify platform features, add new features, remove existing features, or completely terminate the service at any time. Significant changes will be communicated with reasonable advance notice.`
+    content: `Miss Endo Tourism LLC reserves the right to modify platform features, add new features, remove existing features, or completely terminate the service at any time. Significant changes will be communicated with reasonable advance notice.`
   },
   {
     title: "12. Modification of Terms",
@@ -357,6 +363,9 @@ Additional consent may be requested for significant changes.`
     title: "14. Contact",
     content: `For questions about terms of service:
 
-Email: info@missendo.com`
+Miss Endo Tourism LLC
+Email: info@missendo.com
+Phone: +1 (310) 628-7442
+Address: 9440 Santa Monica Blvd, Suite 301, Beverly Hills, CA 90210`
   }
 ];
