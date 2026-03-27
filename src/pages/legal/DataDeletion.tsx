@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Mail, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import LegalFooter from "@/components/LegalFooter";
 
 const DataDeletion = () => {
   return (
@@ -119,14 +120,7 @@ For detailed information about Facebook's data policy: facebook.com/privacy`}
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center text-sm text-muted-foreground print:hidden">
-          <p>© 2026 Miss Endo. All rights reserved.</p>
-          <div className="flex justify-center gap-4 mt-2">
-            <Link to="/legal/privacy-policy" className="hover:underline">Privacy Policy</Link>
-            <Link to="/legal/terms" className="hover:underline">Terms of Service</Link>
-            <Link to="/legal/contact" className="hover:underline">Contact</Link>
-          </div>
-        </div>
+        <LegalFooter />
       </div>
     </div>
   );

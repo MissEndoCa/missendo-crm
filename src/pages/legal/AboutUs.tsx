@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Shield, Users, Zap, Heart, Lock, BarChart3, Calendar, Globe2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import LegalFooter from "@/components/LegalFooter";
 
 const AboutUs = () => {
   return (
@@ -107,14 +108,7 @@ const AboutUs = () => {
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center text-sm text-muted-foreground print:hidden">
-          <p>© 2026 Miss Endo. All rights reserved.</p>
-          <div className="flex justify-center gap-4 mt-2">
-            <Link to="/legal/privacy-policy" className="hover:underline">Privacy Policy</Link>
-            <Link to="/legal/terms" className="hover:underline">Terms of Service</Link>
-            <Link to="/legal/contact" className="hover:underline">Contact</Link>
-          </div>
-        </div>
+        <LegalFooter />
       </div>
     </div>
   );
