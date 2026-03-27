@@ -139,7 +139,7 @@ export default function Auth() {
               <Shield className="w-4 h-4" />
               <span>Secure healthcare CRM platform</span>
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <Link to="/legal/about" className="hover:text-foreground hover:underline transition-colors">About Us</Link>
               <Link to="/legal/contact" className="hover:text-foreground hover:underline transition-colors">Contact</Link>
               <Link to="/legal/privacy-policy" className="hover:text-foreground hover:underline transition-colors">Privacy Policy</Link>
