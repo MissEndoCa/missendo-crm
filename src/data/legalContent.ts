@@ -8,7 +8,7 @@ export const privacySections: LegalSection[] = [
     title: "1. Introduction",
     content: `At Miss Endo Tourism LLC ("we", "our", or "platform"), we take the protection of your personal data very seriously. This Privacy Policy explains in detail the information we collect, use, store, and protect when you use our CRM services designed for clinics operating in the health tourism sector.
 
-This policy has been prepared in accordance with all applicable data protection regulations, primarily the European Union General Data Protection Regulation (GDPR) and the Turkish Personal Data Protection Law (KVKK - Law No. 6698).`
+This policy has been prepared in accordance with all applicable data protection regulations, primarily the European Union General Data Protection Regulation (GDPR).`
   },
   {
     title: "2. Data Controller",
@@ -120,7 +120,7 @@ Important Notes:
 • Access tokens are stored securely in encrypted form and transmitted through secure channels.
 • WhatsApp communication is used solely for legitimate clinic-patient interactions such as appointment reminders, treatment follow-ups, and patient inquiries.
 • No patient data is shared with Meta/WhatsApp beyond what is required for message delivery.
-• The clinic is responsible for obtaining appropriate patient consent before initiating WhatsApp communication, in accordance with GDPR/KVKK requirements.
+• The clinic is responsible for obtaining appropriate patient consent before initiating WhatsApp communication, in accordance with GDPR requirements.
 • Organizations can remove their WhatsApp configuration at any time, and the associated credentials will be immediately deleted from the system.
 • All WhatsApp communications must comply with Meta's WhatsApp Business Policy and Commerce Policy.`
   },
@@ -156,7 +156,7 @@ Important Notes:
 • Legitimate Interest: Improving service quality and ensuring security
 • Legal Obligation: Mandatory record-keeping under health legislation and tax legislation
 
-Personal data is processed within the legal bases specified in KVKK Article 5 and GDPR Article 6.`
+Personal data is processed within the legal bases specified in GDPR Article 6.`
   },
   {
     title: "8. Data Sharing and Transfer",
@@ -197,7 +197,7 @@ As our platform uses cloud-based infrastructure, data may be hosted on servers o
 Data that has exceeded its retention period is permanently deleted or anonymized using secure methods.`
   },
   {
-    title: "11. User Rights (KVKK/GDPR)",
+    title: "11. User Rights (GDPR)",
     content: `You have the following rights under applicable data protection legislation:
 
 • Right to Information: To learn whether your personal data is being processed
@@ -208,7 +208,7 @@ Data that has exceeded its retention period is permanently deleted or anonymized
 • Right to Object: To object to the processing of your personal data
 • Data Portability: To receive your data in a structured, commonly used, and machine-readable format
 • Right to Object to Automated Decision-Making: To object to decisions based solely on automated processing, including automated profiling
-• Right to Complain: To file a complaint with the relevant data protection authority (Turkey: KVKK Board, EU: local data protection authority)
+• Right to Complain: To file a complaint with the relevant data protection authority
 
 To exercise these rights, you can send an email to info@missendo.com. Your request will be evaluated and responded to within 30 days.`
   },
@@ -264,7 +264,7 @@ The platform can only be used by organizations (clinics) that have signed a cont
 • Keep your account credentials (email and password) confidential and not share them with anyone
 • Immediately report any unauthorized access to info@missendo.com
 • Use the platform only for legitimate clinic operations
-• Protect the confidentiality of patient and lead data and act in accordance with KVKK/GDPR legislation
+• Protect the confidentiality of patient and lead data and act in accordance with GDPR legislation
 • Respect third-party rights (intellectual property, privacy, etc.)
 • Not share data obtained through the platform with unauthorized persons or organizations`
   },
@@ -305,7 +305,7 @@ The platform can only be used by organizations (clinics) that have signed a cont
 • You agree to comply with Meta's WhatsApp Business Policy and Commerce Policy at all times
 • You accept that data sent through WhatsApp will be processed according to Meta's data handling practices
 • You understand that you can remove your WhatsApp configuration at any time, and the associated credentials will be immediately deleted from the system
-• You commit to not using the WhatsApp integration for spam, unsolicited marketing, or any communication that violates applicable data protection regulations (KVKK/GDPR)`
+• You commit to not using the WhatsApp integration for spam, unsolicited marketing, or any communication that violates applicable data protection regulations (GDPR)`
   },
   {
     title: "6. Intellectual Property",
@@ -318,7 +318,7 @@ The platform can only be used by organizations (clinics) that have signed a cont
     title: "7. Privacy and Data Protection",
     content: `Detailed information regarding the protection of personal data processed on the platform can be found in our Privacy Policy (/legal/privacy-policy).
 
-As platform users, you are also obligated to protect the confidentiality of data within your access scope and comply with relevant data protection legislation (KVKK, GDPR).`
+As platform users, you are also obligated to protect the confidentiality of data within your access scope and comply with relevant data protection legislation (GDPR).`
   },
   {
     title: "8. Service Level and Availability",

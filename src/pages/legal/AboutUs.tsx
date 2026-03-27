@@ -57,7 +57,7 @@ const AboutUs = () => {
                   { icon: Globe2, title: "Transfer & Accommodation Management", description: "Coordinate airport transfers, hotel accommodations, and city transportation for international patients from a single platform. Record companion information and special requirements." },
                   { icon: BarChart3, title: "Financial Tracking & Reporting", description: "Track treatment costs, payments, discounts, and income-expense management in detail. Access comprehensive reports and analytics to measure clinic performance." },
                   { icon: Zap, title: "Facebook Lead Ads Integration", description: "Automatically import potential patients from Facebook advertisements into your CRM system. Easily integrate your Facebook Pages with secure OAuth-based connection. Track ad performance and analyze your lead conversion rates." },
-                  { icon: Lock, title: "Security & GDPR/KVKK Compliance", description: "All data is protected with industry-standard encryption methods. Full compliance with GDPR and KVKK (Turkish Data Protection Law) regulations is ensured. With role-based access control, each user can only access the data they are authorized for." },
+                  { icon: Lock, title: "Security & GDPR Compliance", description: "All data is protected with industry-standard encryption methods. Full compliance with GDPR (General Data Protection Regulation) is ensured. With role-based access control, each user can only access the data they are authorized for." },
                 ].map((feature, index) => (
                   <div key={index} className="p-5 rounded-lg border space-y-2">
                     <div className="flex items-center gap-2">
@@ -78,7 +78,7 @@ const AboutUs = () => {
                   "A platform specifically designed for health tourism that deeply understands the sector's needs",
                   "End-to-end patient journey management: lead → patient → appointment → treatment → follow-up",
                   "Maximize advertising ROI with direct Facebook Lead Ads integration",
-                  "GDPR and KVKK compliant data management and patient privacy",
+                  "GDPR compliant data management and patient privacy",
                   "Multi-organization support for independent management of different clinics",
                   "Secure and controlled usage with role-based access system",
                   "Modern technology infrastructure that is continuously updated and improved",
