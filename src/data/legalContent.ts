@@ -324,7 +324,7 @@ As platform users, you are also obligated to protect the confidentiality of data
     title: "8. Service Level and Availability",
     content: `• Miss Endo Tourism LLC makes reasonable efforts to ensure continuous and uninterrupted platform operation but does not guarantee 100% availability.
 • Planned maintenance will be communicated in advance whenever possible.
-• Miss Endo cannot be held responsible for interruptions caused by technical issues, natural disasters, internet infrastructure problems, or third-party services (Facebook, Supabase, etc.).`
+• Miss Endo Tourism LLC cannot be held responsible for interruptions caused by technical issues, natural disasters, internet infrastructure problems, or third-party services (Facebook, Supabase, etc.).`
   },
   {
     title: "9. Limitation of Liability",
