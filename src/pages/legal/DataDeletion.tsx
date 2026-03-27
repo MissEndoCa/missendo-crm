@@ -22,7 +22,7 @@ const DataDeletion = () => {
           </CardHeader>
           <CardContent className="pt-6 space-y-8">
             <p className="text-muted-foreground text-center text-lg leading-relaxed">
-              Under KVKK (Turkish Personal Data Protection Law No. 6698) and GDPR (General Data Protection Regulation), you have the right to request the deletion of your personal data. You can submit a data deletion request by following the steps below.
+              Under GDPR (General Data Protection Regulation), you have the right to request the deletion of your personal data. You can submit a data deletion request by following the steps below.
             </p>
 
             {/* Steps */}
