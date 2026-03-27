@@ -41,11 +41,11 @@ const Contact = () => {
                 <div className="p-5 rounded-lg border bg-muted/30 space-y-3">
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary shrink-0" />
-                    <h3 className="font-semibold">Data Privacy & KVKK/GDPR</h3>
+                    <h3 className="font-semibold">Data Privacy & GDPR</h3>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">For requests related to your personal data, data deletion requests, access rights, and KVKK/GDPR related matters, you can write to the address below.</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">For requests related to your personal data, data deletion requests, access rights, and GDPR related matters, you can write to the address below.</p>
                   <a href="mailto:info@missendo.com" className="text-primary font-medium hover:underline inline-block">info@missendo.com</a>
-                  <p className="text-xs text-muted-foreground">KVKK/GDPR requests are responded to within 30 days</p>
+                  <p className="text-xs text-muted-foreground">GDPR requests are responded to within 30 days</p>
                 </div>
               </div>
             </div>
@@ -73,7 +73,7 @@ const Contact = () => {
             {/* Data Requests */}
             <div className="space-y-3">
               <h2 className="text-xl font-semibold">Submitting Data Requests</h2>
-              <p className="text-muted-foreground">Under KVKK and GDPR, you can submit the following requests regarding your personal data:</p>
+              <p className="text-muted-foreground">Under GDPR, you can submit the following requests regarding your personal data:</p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>Request access to your personal data</li>
                 <li>Request correction of your personal data</li>
