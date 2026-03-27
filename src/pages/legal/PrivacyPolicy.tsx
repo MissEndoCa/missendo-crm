@@ -126,6 +126,7 @@ Important Notes:
 
 • Direct Entry: Data manually entered into the platform by clinic staff
 • Facebook Lead Ads: Lead data automatically transferred through Facebook ad forms (with the user's consent on Facebook)
+• WhatsApp Business API: Message interactions between clinic staff and patients/leads through WhatsApp
 • Account Creation: Information obtained during the registration of clinic staff
 • Platform Usage: User interactions on the platform (creating appointments, adding notes, etc.)`
   },
@@ -160,6 +161,7 @@ Personal data is processed within the legal bases specified in KVKK Article 5 an
 • Service Providers: Data is shared with technical infrastructure providers (Supabase - database and authentication services) with data security ensured
 • Partner Clinics: Information is shared with the relevant clinic only for treatment purposes and with the patient's knowledge
 • Meta (Facebook): API communication is carried out only within the scope of OAuth authorization to receive Facebook Lead Ads data. No patient data is sent to Facebook
+• Meta (WhatsApp): Message delivery is facilitated through the WhatsApp Business API. Only the minimum data required for message delivery (phone number and message content) is transmitted
 • Legal Requirements: Sharing with authorized institutions and organizations may occur pursuant to court orders, prosecution requests, or applicable legislation
 
 International Data Transfer:
@@ -174,7 +176,7 @@ As our platform uses cloud-based infrastructure, data may be hosted on servers o
 • Access Control: Role-based access system (Super Admin, Clinic Admin, Clinic User) ensures each user can only access data they are authorized for
 • Organization Isolation: Each clinic/organization can only access their own data, cross-access is blocked
 • Audit Logging: Critical data operations (create, update, delete) are recorded in audit logs
-• Secure Token Management: Facebook access tokens are stored encrypted and transmitted through secure channels
+• Secure Token Management: Facebook and WhatsApp access tokens are stored encrypted and transmitted through secure channels
 • Regular Security Updates: Platform infrastructure is continuously updated and security vulnerabilities are proactively addressed`
   },
   {
@@ -186,6 +188,7 @@ As our platform uses cloud-based infrastructure, data may be hosted on servers o
 • Financial Records: 10 years under tax legislation
 • Audit Logs: 2 years
 • Facebook Access Tokens: Immediately deleted when the connection is disconnected
+• WhatsApp API Credentials: Immediately deleted when the configuration is removed
 
 Data that has exceeded its retention period is permanently deleted or anonymized using secure methods.`
   },
