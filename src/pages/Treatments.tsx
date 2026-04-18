@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { SimplePagination } from '@/components/SimplePagination';
+
+const PAGE_SIZE = 15;
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -99,6 +102,8 @@ export default function Treatments() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [treatmentsPage, setTreatmentsPage] = useState(1);
+  const [patientTreatmentsPage, setPatientTreatmentsPage] = useState(1);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -524,6 +529,11 @@ export default function Treatments() {
     const searchLower = patientSearchQuery.toLowerCase();
     return patientName.includes(searchLower) || treatmentName.includes(searchLower);
   });
+
+  useEffect(() => { setTreatmentsPage(1); }, [searchQuery]);
+  useEffect(() => { setPatientTreatmentsPage(1); }, [patientSearchQuery]);
+  const pagedTreatments = filteredTreatments.slice((treatmentsPage - 1) * PAGE_SIZE, treatmentsPage * PAGE_SIZE);
+  const pagedPatientTreatments = filteredPatientTreatments.slice((patientTreatmentsPage - 1) * PAGE_SIZE, patientTreatmentsPage * PAGE_SIZE);
 
   return (
     <>
