@@ -153,6 +153,7 @@ export default function Reminders() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [activeTab, setActiveTab] = useState('reminders');
+  const [pendingPage, setPendingPage] = useState(1);
   const [otherPage, setOtherPage] = useState(1);
   const [otherSearch, setOtherSearch] = useState('');
   
@@ -867,30 +868,46 @@ export default function Reminders() {
             </Card>
 
             {/* Pending Reminders */}
-            {pendingReminders.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-warning">
-                    <Clock className="w-5 h-5" />
-                    Pending Reminders ({pendingReminders.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {pendingReminders.map(reminder => (
-                      <ReminderCard 
-                        key={reminder.id} 
-                        reminder={reminder} 
-                        onComplete={() => handleMarkComplete(reminder.id)}
-                        onEdit={() => openEditDialog(reminder)}
-                        onDelete={() => { setDeletingId(reminder.id); setDeleteDialogOpen(true); }}
-                        onAddCallLog={handleAddCallLog}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {pendingReminders.length > 0 && (() => {
+              const safePendingPage = Math.min(
+                pendingPage,
+                Math.max(1, Math.ceil(pendingReminders.length / PAGE_SIZE))
+              );
+              const pendingPageItems = pendingReminders.slice(
+                (safePendingPage - 1) * PAGE_SIZE,
+                safePendingPage * PAGE_SIZE
+              );
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-warning">
+                      <Clock className="w-5 h-5" />
+                      Pending Reminders ({pendingReminders.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {pendingPageItems.map(reminder => (
+                        <ReminderCard
+                          key={reminder.id}
+                          reminder={reminder}
+                          onComplete={() => handleMarkComplete(reminder.id)}
+                          onEdit={() => openEditDialog(reminder)}
+                          onDelete={() => { setDeletingId(reminder.id); setDeleteDialogOpen(true); }}
+                          onAddCallLog={handleAddCallLog}
+                        />
+                      ))}
+                    </div>
+                    <SimplePagination
+                      currentPage={safePendingPage}
+                      totalItems={pendingReminders.length}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setPendingPage}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Other Reminders */}
             {otherReminders.length > 0 && (() => {
