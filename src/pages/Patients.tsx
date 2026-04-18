@@ -951,6 +951,13 @@ export default function Patients() {
             </Table>
           </div>
         )}
+
+        <SimplePagination
+          currentPage={page}
+          totalItems={filteredPatients.length}
+          pageSize={PATIENTS_PAGE_SIZE}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Patient Details Dialog */}
