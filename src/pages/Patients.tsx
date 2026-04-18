@@ -806,7 +806,7 @@ export default function Patients() {
                 No patients found
               </div>
             ) : (
-              filteredPatients.map(patient => (
+              pagedPatients.map(patient => (
                 <PatientCard
                   key={patient.id}
                   patient={patient}
@@ -853,7 +853,7 @@ export default function Patients() {
                     <TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center py-8 text-muted-foreground">
                       No patients found
                     </TableCell>
-                  </TableRow> : filteredPatients.map(patient => <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
+                  </TableRow> : pagedPatients.map(patient => <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
                       <TableCell onClick={() => { setSelectedPatient(patient); setShowPatientDetails(true); }}>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
