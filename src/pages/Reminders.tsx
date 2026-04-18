@@ -1302,7 +1302,7 @@ function ReminderCard({
 
   const targetPhone = reminder.patient?.phone || reminder.lead?.phone || '';
   const isPatient = !!reminder.patient;
-  const isPending = reminder.status === 'pending';
+  const isPending = reminder.status === 'pending' || reminder.status === 'sent';
   const isOverdue = isPending && new Date(reminder.reminder_date) < new Date();
 
   const typeInfo = REMINDER_TYPES.find(t => t.value === reminder.reminder_type);
