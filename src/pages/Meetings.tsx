@@ -1,7 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { SimplePagination } from '@/components/SimplePagination';
+
+const MEETINGS_PAGE_SIZE = 15;
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,6 +126,7 @@ export default function Meetings() {
   const [sortField, setSortField] = useState<SortField>('meeting_date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const orgId = profile?.organization_id;
 
