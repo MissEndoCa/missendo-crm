@@ -35,7 +35,6 @@ import {
   Bell,
   Mail,
   Handshake,
-  ImageIcon,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -79,9 +78,7 @@ function SidebarContent({
   if (isSuperAdmin) {
     navItems.push({ path: '/reminders', icon: Bell, label: 'Reminders' });
     navItems.push({ path: '/mailing', icon: Mail, label: 'Mailing' });
-    if (profileEmail === 'info@talxmedia.com.tr') {
-      navItems.push({ path: '/media', icon: ImageIcon, label: 'Media' });
-    }
+    // Media page hidden from sidebar (no users currently have access)
     navItems.push({ path: '/organizations', icon: Building2, label: 'Organizations' });
   }
 
