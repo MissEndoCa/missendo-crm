@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { SimplePagination } from '@/components/SimplePagination';
+
+const PAGE_SIZE = 15;
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -81,6 +84,8 @@ export default function Hotels() {
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<HotelData | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<PatientHotelBooking | null>(null);
+  const [hotelsPage, setHotelsPage] = useState(1);
+  const [bookingsPage, setBookingsPage] = useState(1);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -411,6 +416,11 @@ export default function Hotels() {
     return patientName.includes(searchLower) || hotelName.includes(searchLower);
   });
 
+  useEffect(() => { setHotelsPage(1); }, [searchQuery]);
+  useEffect(() => { setBookingsPage(1); }, [bookingSearchQuery]);
+  const pagedHotels = filteredHotels.slice((hotelsPage - 1) * PAGE_SIZE, hotelsPage * PAGE_SIZE);
+  const pagedBookings = filteredBookings.slice((bookingsPage - 1) * PAGE_SIZE, bookingsPage * PAGE_SIZE);
+
   return (
     <>
       <div className="space-y-4 md:space-y-6">
@@ -638,7 +648,7 @@ export default function Hotels() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredHotels.map((hotel) => (
+                    pagedHotels.map((hotel) => (
                       <TableRow key={hotel.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(hotel)}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -692,6 +702,12 @@ export default function Hotels() {
                 </TableBody>
               </Table>
             </div>
+            <SimplePagination
+              currentPage={hotelsPage}
+              totalItems={filteredHotels.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setHotelsPage}
+            />
           </TabsContent>
 
           {/* Patient Bookings Tab */}
@@ -743,7 +759,7 @@ export default function Hotels() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredBookings.map((booking) => (
+                      pagedBookings.map((booking) => (
                         <TableRow key={booking.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -828,6 +844,12 @@ export default function Hotels() {
                     )}
                   </TableBody>
                 </Table>
+                <SimplePagination
+                  currentPage={bookingsPage}
+                  totalItems={filteredBookings.length}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setBookingsPage}
+                />
               </CardContent>
             </Card>
           </TabsContent>

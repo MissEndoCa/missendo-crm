@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { SimplePagination } from '@/components/SimplePagination';
+
+const PAGE_SIZE = 15;
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -99,6 +102,8 @@ export default function Treatments() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [treatmentsPage, setTreatmentsPage] = useState(1);
+  const [patientTreatmentsPage, setPatientTreatmentsPage] = useState(1);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -525,6 +530,11 @@ export default function Treatments() {
     return patientName.includes(searchLower) || treatmentName.includes(searchLower);
   });
 
+  useEffect(() => { setTreatmentsPage(1); }, [searchQuery]);
+  useEffect(() => { setPatientTreatmentsPage(1); }, [patientSearchQuery]);
+  const pagedTreatments = filteredTreatments.slice((treatmentsPage - 1) * PAGE_SIZE, treatmentsPage * PAGE_SIZE);
+  const pagedPatientTreatments = filteredPatientTreatments.slice((patientTreatmentsPage - 1) * PAGE_SIZE, patientTreatmentsPage * PAGE_SIZE);
+
   return (
     <>
       <div className="space-y-4 md:space-y-6">
@@ -673,7 +683,7 @@ export default function Treatments() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTreatments.map((treatment) => (
+                    pagedTreatments.map((treatment) => (
                       <TableRow key={treatment.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(treatment)}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -712,6 +722,12 @@ export default function Treatments() {
                 </TableBody>
               </Table>
             </div>
+            <SimplePagination
+              currentPage={treatmentsPage}
+              totalItems={filteredTreatments.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setTreatmentsPage}
+            />
           </TabsContent>
 
           {/* Patient Treatments Tab */}
@@ -899,7 +915,7 @@ export default function Treatments() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredPatientTreatments.map((item) => (
+                      pagedPatientTreatments.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -991,6 +1007,12 @@ export default function Treatments() {
                     )}
                   </TableBody>
                 </Table>
+                <SimplePagination
+                  currentPage={patientTreatmentsPage}
+                  totalItems={filteredPatientTreatments.length}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPatientTreatmentsPage}
+                />
               </CardContent>
             </Card>
           </TabsContent>

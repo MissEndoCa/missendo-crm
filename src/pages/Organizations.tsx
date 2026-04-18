@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { SimplePagination } from '@/components/SimplePagination';
+
+const ORG_PAGE_SIZE = 15;
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -83,6 +86,7 @@ export default function Organizations() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [page, setPage] = useState(1);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -283,6 +287,9 @@ export default function Organizations() {
       .includes(searchQuery.toLowerCase())
   );
 
+  useEffect(() => { setPage(1); }, [searchQuery]);
+  const pagedOrganizations = filteredOrganizations.slice((page - 1) * ORG_PAGE_SIZE, page * ORG_PAGE_SIZE);
+
   // Show loading while authentication is being checked
   if (authLoading) {
     return (
@@ -462,7 +469,7 @@ export default function Organizations() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredOrganizations.map((org) => (
+                pagedOrganizations.map((org) => (
                   <TableRow key={org.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -545,6 +552,13 @@ export default function Organizations() {
             </TableBody>
           </Table>
         </div>
+
+        <SimplePagination
+          currentPage={page}
+          totalItems={filteredOrganizations.length}
+          pageSize={ORG_PAGE_SIZE}
+          onPageChange={setPage}
+        />
 
         {/* API Settings Dialog */}
         <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>

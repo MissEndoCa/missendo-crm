@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { SimplePagination } from '@/components/SimplePagination';
+
+const SERVICES_PAGE_SIZE = 15;
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -73,6 +76,7 @@ export default function Transfers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<TransferService | null>(null);
+  const [servicesPage, setServicesPage] = useState(1);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -219,6 +223,9 @@ export default function Transfers() {
   const filteredServices = transferServices.filter(transfer =>
     `${transfer.company_name} ${transfer.service_type}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  useEffect(() => { setServicesPage(1); }, [searchQuery]);
+  const pagedServices = filteredServices.slice((servicesPage - 1) * SERVICES_PAGE_SIZE, servicesPage * SERVICES_PAGE_SIZE);
 
   // Categorize patient transfers by type
   const arrivalTransfers = patientTransfers.filter(t => t.transfer_type === 'arrival' || !t.transfer_type);
@@ -598,7 +605,7 @@ export default function Transfers() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredServices.map((transfer) => (
+                    pagedServices.map((transfer) => (
                       <TableRow key={transfer.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(transfer)}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -630,6 +637,12 @@ export default function Transfers() {
                 </TableBody>
               </Table>
             </div>
+            <SimplePagination
+              currentPage={servicesPage}
+              totalItems={filteredServices.length}
+              pageSize={SERVICES_PAGE_SIZE}
+              onPageChange={setServicesPage}
+            />
           </TabsContent>
         </Tabs>
       </div>
