@@ -538,8 +538,13 @@ export default function Reminders() {
     return matchesSearch && matchesOrg;
   });
 
-  const pendingReminders = filteredReminders.filter(r => r.status === 'pending');
-  const otherReminders = filteredReminders.filter(r => r.status !== 'pending');
+  // 'sent' = email sent automatically when due; treat as still active until manually completed.
+  const pendingReminders = filteredReminders.filter(
+    r => r.status === 'pending' || r.status === 'sent'
+  );
+  const otherReminders = filteredReminders.filter(
+    r => r.status !== 'pending' && r.status !== 'sent'
+  );
 
   const quickCreateReminder = (targetType: 'patient' | 'lead', targetId: string, type: string) => {
     const target = targetType === 'patient' 
