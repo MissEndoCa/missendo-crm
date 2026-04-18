@@ -469,7 +469,7 @@ export default function Organizations() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredOrganizations.map((org) => (
+                pagedOrganizations.map((org) => (
                   <TableRow key={org.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
