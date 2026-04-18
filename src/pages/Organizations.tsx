@@ -553,6 +553,13 @@ export default function Organizations() {
           </Table>
         </div>
 
+        <SimplePagination
+          currentPage={page}
+          totalItems={filteredOrganizations.length}
+          pageSize={ORG_PAGE_SIZE}
+          onPageChange={setPage}
+        />
+
         {/* API Settings Dialog */}
         <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>
           <DialogContent className="max-w-2xl">
