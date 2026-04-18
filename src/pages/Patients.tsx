@@ -1,4 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
+import { SimplePagination } from '@/components/SimplePagination';
+
+const PATIENTS_PAGE_SIZE = 15;
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToWebP } from '@/lib/imageUtils';
@@ -114,6 +117,7 @@ export default function Patients() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFromLead, setIsFromLead] = useState(false);
   const [callCounts, setCallCounts] = useState<Record<string, { count: number; lastCallAt: string | null; lastResult: string | null }>>({});
+  const [page, setPage] = useState(1);
   useEffect(() => {
     if (authLoading) return;
     if (!user) return;
