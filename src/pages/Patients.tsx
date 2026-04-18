@@ -498,6 +498,10 @@ export default function Patients() {
       return matchesSearch && matchesClinic && matchesCountry;
     });
   }, [patients, searchQuery, clinicFilter, countryFilter]);
+
+  useEffect(() => { setPage(1); }, [searchQuery, clinicFilter, countryFilter]);
+  const pagedPatients = filteredPatients.slice((page - 1) * PATIENTS_PAGE_SIZE, page * PATIENTS_PAGE_SIZE);
+
   return <>
       <div className="space-y-4 md:space-y-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
