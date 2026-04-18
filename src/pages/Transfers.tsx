@@ -605,7 +605,7 @@ export default function Transfers() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredServices.map((transfer) => (
+                    pagedServices.map((transfer) => (
                       <TableRow key={transfer.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(transfer)}>
                         <TableCell>
                           <div className="flex items-center gap-2">
