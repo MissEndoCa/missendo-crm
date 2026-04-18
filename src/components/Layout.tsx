@@ -35,7 +35,6 @@ import {
   Bell,
   Mail,
   Handshake,
-  ImageIcon,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
