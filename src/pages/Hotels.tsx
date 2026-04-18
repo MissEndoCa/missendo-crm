@@ -648,7 +648,7 @@ export default function Hotels() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredHotels.map((hotel) => (
+                    pagedHotels.map((hotel) => (
                       <TableRow key={hotel.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(hotel)}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -753,7 +753,7 @@ export default function Hotels() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredBookings.map((booking) => (
+                      pagedBookings.map((booking) => (
                         <TableRow key={booking.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
