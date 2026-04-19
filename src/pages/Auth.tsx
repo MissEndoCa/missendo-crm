@@ -90,7 +90,7 @@ export default function Auth() {
             <img src={missEndoLogo} alt="Miss Endo" className="h-20 w-auto" />
           </div>
           <CardDescription className="text-base">
-            Sign in to your account
+            Sign in to your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
