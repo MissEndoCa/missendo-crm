@@ -519,6 +519,14 @@ export default function Leads() {
             <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Track and manage your potential patients</p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              className="flex-1 sm:flex-none"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Excel
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => pollFacebookLeads(true)} 
