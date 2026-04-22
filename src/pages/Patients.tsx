@@ -15,16 +15,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, User, Phone, Mail, Upload, X, Building2, Pencil, Trash2, FileText, DollarSign, PhoneCall } from 'lucide-react';
+import { Plus, Search, User, Phone, Mail, Upload, X, Building2, Pencil, Trash2, FileText, DollarSign, PhoneCall, Download } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PatientDetails } from '@/components/PatientDetails';
 import { ColumnFilter } from '@/components/ColumnFilter';
+import { SortableHeader, type SortDirection } from '@/components/SortableHeader';
 import { PatientCard } from '@/components/PatientCard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import * as XLSX from 'xlsx';
 type CrmStatus = 'new_lead' | 'called_answered' | 'called_no_answer' | 'waiting_photos' | 'photos_received' | 'treatment_plan_sent' | 'follow_up' | 'confirmed' | 'completed' | 'lost';
 
 const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; color: string; bgColor: string }> = {
@@ -118,6 +120,20 @@ export default function Patients() {
   const [isFromLead, setIsFromLead] = useState(false);
   const [callCounts, setCallCounts] = useState<Record<string, { count: number; lastCallAt: string | null; lastResult: string | null }>>({});
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<string | null>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const handleSort = (key: string) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortKey(null);
+      setSortDirection(null);
+    }
+  };
   useEffect(() => {
     if (authLoading) return;
     if (!user) return;
