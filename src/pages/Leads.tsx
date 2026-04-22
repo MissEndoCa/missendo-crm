@@ -761,12 +761,6 @@ export default function Leads() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-1">
-                    <SortableHeader title="Location" sortKey="country" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
-                    <ColumnFilter title="" options={countryOptions} selectedValues={countryFilter} onFilterChange={setCountryFilter} />
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
                     <SortableHeader title="Status" sortKey="status" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                     <ColumnFilter title="" options={statusOptions} selectedValues={statusFilter} onFilterChange={setStatusFilter} />
                   </div>
@@ -795,13 +789,13 @@ export default function Leads() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : sortedLeads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No leads found
                   </TableCell>
                 </TableRow>
@@ -824,14 +818,6 @@ export default function Leads() {
                           <span className="text-muted-foreground">{lead.phone}</span>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {lead.country && (
-                        <div className="flex items-center gap-1 text-sm">
-                          <MapPin className="w-3 h-3 text-muted-foreground" />
-                          <span>{lead.country}</span>
-                        </div>
-                      )}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {lead.status === 'converted_to_patient' ? (
