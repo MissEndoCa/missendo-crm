@@ -1008,6 +1008,7 @@ export default function Patients() {
                       <TableCell onClick={() => { setSelectedPatient(patient); setShowPatientDetails(true); }}>
                         <span className="text-sm">{patient.country || '-'}</span>
                       </TableCell>
+                      {isSuperAdmin && <TableCell onClick={() => { setSelectedPatient(patient); setShowPatientDetails(true); }}>
                           <Badge variant="outline" className="flex items-center gap-1 w-fit">
                             <Building2 className="w-3 h-3" />
                             {patient.organizations?.name || '-'}
