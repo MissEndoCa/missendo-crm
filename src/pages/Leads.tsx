@@ -106,8 +106,22 @@ export default function Leads() {
   const [noteEditLead, setNoteEditLead] = useState<string | null>(null);
   const [noteEditValue, setNoteEditValue] = useState('');
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<string | null>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
+
+  const handleSort = (key: string) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortKey(null);
+      setSortDirection(null);
+    }
+  };
 
   const [formData, setFormData] = useState({
     first_name: '',
