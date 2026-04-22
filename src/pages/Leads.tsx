@@ -37,11 +37,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2, Trash2, StickyNote, MessageSquarePlus } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2, Trash2, StickyNote, MessageSquarePlus, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ColumnFilter } from '@/components/ColumnFilter';
+import { SortableHeader, type SortDirection } from '@/components/SortableHeader';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import * as XLSX from 'xlsx';
 
 interface Lead {
   id: string;
