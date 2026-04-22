@@ -753,22 +753,42 @@ export default function Leads() {
           <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
                 <TableHead>
-                  <ColumnFilter title="Location" options={countryOptions} selectedValues={countryFilter} onFilterChange={setCountryFilter} />
+                  <SortableHeader title="Name" sortKey="name" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                 </TableHead>
                 <TableHead>
-                  <ColumnFilter title="Status" options={statusOptions} selectedValues={statusFilter} onFilterChange={setStatusFilter} />
-                </TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead>
-                  <ColumnFilter title="Clinic" options={clinicOptions} selectedValues={clinicFilter} onFilterChange={setClinicFilter} />
+                  <SortableHeader title="Contact" sortKey="contact" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                 </TableHead>
                 <TableHead>
-                  <ColumnFilter title="Source" options={sourceOptions} selectedValues={sourceFilter} onFilterChange={setSourceFilter} />
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Location" sortKey="country" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={countryOptions} selectedValues={countryFilter} onFilterChange={setCountryFilter} />
+                  </div>
                 </TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Status" sortKey="status" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={statusOptions} selectedValues={statusFilter} onFilterChange={setStatusFilter} />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <SortableHeader title="Notes" sortKey="notes" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Clinic" sortKey="clinic" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={clinicOptions} selectedValues={clinicFilter} onFilterChange={setClinicFilter} />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Source" sortKey="source" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={sourceOptions} selectedValues={sourceFilter} onFilterChange={setSourceFilter} />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <SortableHeader title="Date" sortKey="created_at" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                </TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
