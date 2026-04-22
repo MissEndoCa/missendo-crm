@@ -879,7 +879,7 @@ export default function Patients() {
               <div className="text-center py-8 text-muted-foreground">
                 Loading patients...
               </div>
-            ) : filteredPatients.length === 0 ? (
+            ) : sortedPatients.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No patients found
               </div>
@@ -1045,7 +1045,7 @@ export default function Patients() {
 
         <SimplePagination
           currentPage={page}
-          totalItems={filteredPatients.length}
+          totalItems={sortedPatients.length}
           pageSize={PATIENTS_PAGE_SIZE}
           onPageChange={setPage}
         />
