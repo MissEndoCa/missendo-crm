@@ -37,11 +37,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2, Trash2, StickyNote, MessageSquarePlus } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2, Trash2, StickyNote, MessageSquarePlus, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ColumnFilter } from '@/components/ColumnFilter';
+import { SortableHeader, type SortDirection } from '@/components/SortableHeader';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import * as XLSX from 'xlsx';
 
 interface Lead {
   id: string;
@@ -104,8 +106,22 @@ export default function Leads() {
   const [noteEditLead, setNoteEditLead] = useState<string | null>(null);
   const [noteEditValue, setNoteEditValue] = useState('');
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<string | null>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
+
+  const handleSort = (key: string) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortKey(null);
+      setSortDirection(null);
+    }
+  };
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -434,8 +450,64 @@ export default function Leads() {
     return matchesSearch && matchesStatus && matchesClinic && matchesSource && matchesCountry;
   });
 
-  useEffect(() => { setPage(1); }, [searchQuery, statusFilter, clinicFilter, sourceFilter, countryFilter]);
-  const pagedLeads = filteredLeads.slice((page - 1) * LEADS_PAGE_SIZE, page * LEADS_PAGE_SIZE);
+  const sortedLeads = [...filteredLeads].sort((a, b) => {
+    if (!sortKey || !sortDirection) return 0;
+    const getVal = (lead: Lead): string | number => {
+      switch (sortKey) {
+        case 'name': return `${lead.first_name} ${lead.last_name}`.toLowerCase();
+        case 'contact': return (lead.email || lead.phone || '').toLowerCase();
+        case 'country': return (lead.country || '').toLowerCase();
+        case 'status': return (statusConfig[lead.status]?.label || lead.status).toLowerCase();
+        case 'notes': return (lead.notes || '').toLowerCase();
+        case 'clinic': return (organizations.find(o => o.id === lead.organization_id)?.name || '').toLowerCase();
+        case 'source': return (lead.source || '').toLowerCase();
+        case 'created_at': return new Date(lead.created_at).getTime();
+        default: return '';
+      }
+    };
+    const av = getVal(a);
+    const bv = getVal(b);
+    if (av < bv) return sortDirection === 'asc' ? -1 : 1;
+    if (av > bv) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  useEffect(() => { setPage(1); }, [searchQuery, statusFilter, clinicFilter, sourceFilter, countryFilter, sortKey, sortDirection]);
+  const pagedLeads = sortedLeads.slice((page - 1) * LEADS_PAGE_SIZE, page * LEADS_PAGE_SIZE);
+
+  const handleExportExcel = () => {
+    if (sortedLeads.length === 0) {
+      toast({ title: 'No leads to export', variant: 'destructive' });
+      return;
+    }
+    const rows = sortedLeads.map(lead => ({
+      'First Name': lead.first_name,
+      'Last Name': lead.last_name,
+      'Email': lead.email || '',
+      'Phone': lead.phone,
+      'Country': lead.country || '',
+      'Status': statusConfig[lead.status]?.label || lead.status,
+      'Clinic': organizations.find(o => o.id === lead.organization_id)?.name || '',
+      'Source': lead.source || '',
+      'Notes': lead.notes || '',
+      'Appointment Date': lead.appointment_scheduled_date
+        ? format(new Date(lead.appointment_scheduled_date), 'dd/MM/yyyy')
+        : '',
+      'Will Come': lead.will_come === null ? '' : lead.will_come ? 'Yes' : 'No',
+      'Will Not Come Reason': lead.will_not_come_reason || '',
+      'Created At': format(new Date(lead.created_at), 'dd/MM/yyyy HH:mm'),
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads');
+    const colWidths = Object.keys(rows[0]).map(key => ({
+      wch: Math.max(key.length, ...rows.map(r => String(r[key as keyof typeof r] ?? '').length)) + 2,
+    }));
+    worksheet['!cols'] = colWidths;
+    const filename = `leads_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+    toast({ title: 'Export complete', description: `${rows.length} leads exported` });
+  };
 
   return (
     <>
@@ -447,6 +519,14 @@ export default function Leads() {
             <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Track and manage your potential patients</p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              className="flex-1 sm:flex-none"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Excel
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => pollFacebookLeads(true)} 
@@ -673,22 +753,42 @@ export default function Leads() {
           <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
                 <TableHead>
-                  <ColumnFilter title="Location" options={countryOptions} selectedValues={countryFilter} onFilterChange={setCountryFilter} />
+                  <SortableHeader title="Name" sortKey="name" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                 </TableHead>
                 <TableHead>
-                  <ColumnFilter title="Status" options={statusOptions} selectedValues={statusFilter} onFilterChange={setStatusFilter} />
-                </TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead>
-                  <ColumnFilter title="Clinic" options={clinicOptions} selectedValues={clinicFilter} onFilterChange={setClinicFilter} />
+                  <SortableHeader title="Contact" sortKey="contact" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                 </TableHead>
                 <TableHead>
-                  <ColumnFilter title="Source" options={sourceOptions} selectedValues={sourceFilter} onFilterChange={setSourceFilter} />
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Location" sortKey="country" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={countryOptions} selectedValues={countryFilter} onFilterChange={setCountryFilter} />
+                  </div>
                 </TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Status" sortKey="status" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={statusOptions} selectedValues={statusFilter} onFilterChange={setStatusFilter} />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <SortableHeader title="Notes" sortKey="notes" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Clinic" sortKey="clinic" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={clinicOptions} selectedValues={clinicFilter} onFilterChange={setClinicFilter} />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <SortableHeader title="Source" sortKey="source" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                    <ColumnFilter title="" options={sourceOptions} selectedValues={sourceFilter} onFilterChange={setSourceFilter} />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <SortableHeader title="Date" sortKey="created_at" currentSortKey={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                </TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -699,7 +799,7 @@ export default function Leads() {
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : filteredLeads.length === 0 ? (
+              ) : sortedLeads.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No leads found
