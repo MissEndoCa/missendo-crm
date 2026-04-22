@@ -581,13 +581,18 @@ export default function Patients() {
             <h1 className="text-2xl md:text-3xl font-bold">Patients</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage patient records and treatment history</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Patient
-              </Button>
-            </DialogTrigger>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={handleExportExcel} className="w-full sm:w-auto">
+              <Download className="w-4 h-4 mr-2" />
+              Export Excel
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm} className="w-full sm:w-auto">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Patient
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{selectedPatient ? 'Edit Patient' : 'Add New Patient'}</DialogTitle>
