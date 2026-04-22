@@ -515,8 +515,64 @@ export default function Patients() {
     });
   }, [patients, searchQuery, clinicFilter, countryFilter]);
 
-  useEffect(() => { setPage(1); }, [searchQuery, clinicFilter, countryFilter]);
-  const pagedPatients = filteredPatients.slice((page - 1) * PATIENTS_PAGE_SIZE, page * PATIENTS_PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [searchQuery, clinicFilter, countryFilter, sortKey, sortDirection]);
+
+  const sortedPatients = useMemo(() => {
+    if (!sortKey || !sortDirection) return filteredPatients;
+    const arr = [...filteredPatients];
+    const getVal = (p: Patient): string | number => {
+      switch (sortKey) {
+        case 'patient': return `${p.first_name} ${p.last_name}`.toLowerCase();
+        case 'crm_status': return (p.crm_status ? CRM_STATUS_CONFIG[p.crm_status]?.label : '').toLowerCase();
+        case 'calls': return callCounts[p.id]?.count || 0;
+        case 'clinic': return (p.organizations?.name || '').toLowerCase();
+        case 'country': return (p.country || '').toLowerCase();
+        case 'created_at': return new Date(p.created_at).getTime();
+        default: return '';
+      }
+    };
+    arr.sort((a, b) => {
+      const av = getVal(a);
+      const bv = getVal(b);
+      if (av < bv) return sortDirection === 'asc' ? -1 : 1;
+      if (av > bv) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [filteredPatients, sortKey, sortDirection, callCounts]);
+
+  const pagedPatients = sortedPatients.slice((page - 1) * PATIENTS_PAGE_SIZE, page * PATIENTS_PAGE_SIZE);
+
+  const handleExportExcel = () => {
+    if (sortedPatients.length === 0) {
+      toast({ title: 'No patients to export', variant: 'destructive' });
+      return;
+    }
+    const rows = sortedPatients.map(p => ({
+      'First Name': p.first_name,
+      'Last Name': p.last_name,
+      'Email': p.email || '',
+      'Phone': p.phone,
+      'Gender': p.gender || '',
+      'Date of Birth': p.date_of_birth ? format(new Date(p.date_of_birth), 'dd/MM/yyyy') : '',
+      'Country': p.country || '',
+      'Medical Condition': p.medical_condition || '',
+      'CRM Status': p.crm_status ? CRM_STATUS_CONFIG[p.crm_status]?.label : '',
+      'Clinic': p.organizations?.name || '',
+      'Treatments': (p.patient_treatments || []).map(pt => pt.treatments?.name).filter(Boolean).join(', '),
+      'Calls': callCounts[p.id]?.count || 0,
+      'Last Call': callCounts[p.id]?.lastCallAt ? format(new Date(callCounts[p.id]!.lastCallAt!), 'dd/MM/yyyy HH:mm') : '',
+      'Created At': format(new Date(p.created_at), 'dd/MM/yyyy HH:mm'),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Patients');
+    ws['!cols'] = Object.keys(rows[0]).map(key => ({
+      wch: Math.max(key.length, ...rows.map(r => String(r[key as keyof typeof r] ?? '').length)) + 2,
+    }));
+    XLSX.writeFile(wb, `patients_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`);
+    toast({ title: 'Export complete', description: `${rows.length} patients exported` });
+  };
 
   return <>
       <div className="space-y-4 md:space-y-6">
