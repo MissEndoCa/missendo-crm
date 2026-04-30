@@ -150,13 +150,9 @@ serve(async (req) => {
       });
     }
 
-    const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
-    const isAdmin = roles?.some(r => r.role === 'super_admin' || r.role === 'clinic_admin');
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Admin access required' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    // NOTE: Authorization is open to any authenticated user in the organization.
+    // All users in a clinic can connect/manage Facebook and share the same connection.
+    // TODO: Restrict to admins later if needed.
 
     const body = await req.json();
     const { action } = body;
