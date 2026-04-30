@@ -160,16 +160,34 @@ serve(async (req) => {
 
     switch (action) {
       case 'exchange': {
-        const { accessToken } = body;
-        if (!accessToken) {
-          return new Response(JSON.stringify({ error: 'Access token required' }), {
+        const { accessToken, code } = body;
+        if (!accessToken && !code) {
+          return new Response(JSON.stringify({ error: 'Access token or authorization code required' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
-        const exchangeUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&fb_exchange_token=${accessToken}`;
-        const exchangeRes = await fetch(exchangeUrl);
-        const exchangeData = await exchangeRes.json();
+        let exchangeData: any;
+        if (code) {
+          const codeExchangeUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${encodeURIComponent(code)}`;
+          const codeExchangeRes = await fetch(codeExchangeUrl);
+          const codeExchangeData = await codeExchangeRes.json();
+
+          if (codeExchangeData.error) {
+            console.error('Authorization code exchange error:', codeExchangeData.error);
+            return new Response(JSON.stringify({ error: codeExchangeData.error.message }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+          const longLivedUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&fb_exchange_token=${codeExchangeData.access_token}`;
+          const longLivedRes = await fetch(longLivedUrl);
+          exchangeData = await longLivedRes.json();
+        } else {
+          const exchangeUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&fb_exchange_token=${accessToken}`;
+          const exchangeRes = await fetch(exchangeUrl);
+          exchangeData = await exchangeRes.json();
+        }
 
         if (exchangeData.error) {
           console.error('Token exchange error:', exchangeData.error);

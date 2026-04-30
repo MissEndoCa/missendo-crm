@@ -159,7 +159,7 @@ export function FacebookConnectButton() {
         void (async () => {
           window.clearTimeout(loginTimeout);
           if (response?.authResponse) {
-            const { accessToken, userID } = response.authResponse;
+            const { accessToken, userID, code } = response.authResponse;
             setFbUserId(userID);
             try {
               const { data: session } = await supabase.auth.getSession();
@@ -167,7 +167,7 @@ export function FacebookConnectButton() {
 
               // Exchange token
               const exchangeRes = await supabase.functions.invoke('facebook-oauth', {
-                body: { action: 'exchange', accessToken },
+                body: { action: 'exchange', accessToken, code },
               });
               if (exchangeRes.error) throw new Error(exchangeRes.error.message || 'Token exchange failed');
               const { longLivedToken: token, permissions } = exchangeRes.data;
@@ -208,7 +208,7 @@ export function FacebookConnectButton() {
         })();
       }, {
         config_id: '1287317250193322',
-        response_type: 'token',
+        response_type: 'code',
         override_default_response_type: true,
         return_scopes: true,
         auth_type: 'rerequest',
