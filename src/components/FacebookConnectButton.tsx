@@ -208,6 +208,8 @@ export function FacebookConnectButton() {
         })();
       }, {
         config_id: '1287317250193322',
+        response_type: 'token',
+        override_default_response_type: true,
         return_scopes: true,
         auth_type: 'rerequest',
         display: 'popup',
