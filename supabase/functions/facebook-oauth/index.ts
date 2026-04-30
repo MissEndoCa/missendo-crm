@@ -332,7 +332,7 @@ serve(async (req) => {
             errorCode: 'NO_VISIBLE_PAGES_FOR_AD_ACCOUNT',
             permissions: permissionCheck,
           }), {
-            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
