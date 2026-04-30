@@ -37,7 +37,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2, Trash2, StickyNote, MessageSquarePlus, Download } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, UserPlus, RefreshCw, Loader2, Trash2, StickyNote, MessageSquarePlus, Download, Upload } from 'lucide-react';
+import { LeadImportDialog } from '@/components/leads/LeadImportDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ColumnFilter } from '@/components/ColumnFilter';
@@ -100,6 +101,7 @@ export default function Leads() {
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [countryFilter, setCountryFilter] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
@@ -526,6 +528,14 @@ export default function Leads() {
             >
               <Download className="w-4 h-4 mr-2" />
               Export Excel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsImportOpen(true)}
+              className="flex-1 sm:flex-none"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import
             </Button>
             <Button 
               variant="outline" 
@@ -962,6 +972,16 @@ export default function Leads() {
           onConfirm={handleDeleteLead}
           title="Delete Lead"
           description={`Are you sure you want to delete the lead ${deleteTarget?.first_name} ${deleteTarget?.last_name}? This action cannot be undone.`}
+        />
+
+        <LeadImportDialog
+          open={isImportOpen}
+          onOpenChange={setIsImportOpen}
+          onImported={loadLeads}
+          organizationId={profile?.organization_id}
+          isSuperAdmin={isSuperAdmin}
+          organizations={organizations}
+          createdBy={profile?.id}
         />
       </div>
     </>
