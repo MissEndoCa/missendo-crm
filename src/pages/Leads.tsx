@@ -529,6 +529,14 @@ export default function Leads() {
               <Download className="w-4 h-4 mr-2" />
               Export Excel
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsImportOpen(true)}
+              className="flex-1 sm:flex-none"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => pollFacebookLeads(true)} 
