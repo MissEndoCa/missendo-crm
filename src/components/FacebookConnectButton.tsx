@@ -207,10 +207,9 @@ export function FacebookConnectButton() {
           setLoading(false);
         })();
       }, {
-        scope: 'pages_show_list,pages_read_engagement,leads_retrieval,pages_manage_metadata,ads_read',
+        config_id: '1287317250193322',
         return_scopes: true,
         auth_type: 'rerequest',
-        enable_profile_selector: true,
         display: 'popup',
       });
     } catch (e) {
