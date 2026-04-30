@@ -120,6 +120,21 @@ Deno.serve(async (req) => {
     const accountUrl = `https://graph.facebook.com/v21.0/${adAccountId}?fields=currency&access_token=${accessToken}`
     const accountResponse = await fetch(accountUrl)
     const accountData = await accountResponse.json()
+
+    if (accountData?.error) {
+      console.error('Facebook account fetch error:', accountData.error)
+      return new Response(JSON.stringify({
+        error: accountData.error.message || 'Facebook API error',
+        errorCode: accountData.error.code,
+        errorSubcode: accountData.error.error_subcode,
+        campaigns: [],
+        currency: 'USD',
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const currency = accountData?.currency || 'USD'
 
     console.log(`Ad account currency: ${currency}`)
@@ -174,10 +189,11 @@ Deno.serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in fetch-ad-insights:', error)
-    return new Response(JSON.stringify({ error: error.message, campaigns: [] }), {
-      status: 500,
+    const message = error?.message || error?.error?.message || 'Unknown error'
+    return new Response(JSON.stringify({ error: message, campaigns: [], currency: 'USD' }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
